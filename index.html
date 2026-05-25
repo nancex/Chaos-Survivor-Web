@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel Survivor</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="gameRoot">
+      <canvas id="gameCanvas" aria-label="Pixel Survivor game field"></canvas>
+
+      <section id="hud" class="hud" aria-live="polite">
+        <div class="hud-left">
+          <div class="meter">
+            <span>生命</span>
+            <div class="bar"><i id="hpBar"></i></div>
+            <strong id="hpText">100</strong>
+          </div>
+          <div class="meter xp">
+            <span>经验</span>
+            <div class="bar"><i id="xpBar"></i></div>
+            <strong id="levelText">Lv.1</strong>
+          </div>
+        </div>
+
+        <div class="hud-center">
+          <strong id="timerText">00:00</strong>
+          <span id="waveText">第 1 波</span>
+        </div>
+
+        <div class="hud-right">
+          <span id="killText">击败 0</span>
+          <span id="coinText">碎片 0</span>
+          <span id="fpsText">60 fps</span>
+        </div>
+      </section>
+
+      <nav class="quick-actions" aria-label="Game actions">
+        <button id="pauseButton" type="button" title="暂停/继续">II</button>
+        <button id="muteButton" type="button" title="音效开关">♪</button>
+      </nav>
+
+      <div id="touchStick" class="touch-stick" aria-hidden="true">
+        <i></i>
+      </div>
+
+      <section id="startOverlay" class="overlay active">
+        <div class="panel intro">
+          <p class="eyebrow">PIXEL GEOMETRY SURVIVOR</p>
+          <h1>晶格幸存者</h1>
+          <p class="summary">在不断收缩的霓虹废墟中移动、升级、叠加武器，撑过 10 分钟并击败最终核心。</p>
+          <div class="stats-row">
+            <span>WASD / 方向键移动</span>
+            <span>自动攻击</span>
+            <span>P 暂停</span>
+          </div>
+          <button id="startButton" type="button" class="primary">开始生存</button>
+          <p id="bestText" class="subtle">最佳纪录 00:00</p>
+        </div>
+      </section>
+
+      <section id="levelOverlay" class="overlay">
+        <div class="panel choices">
+          <p class="eyebrow">LEVEL UP</p>
+          <h2>选择一次强化</h2>
+          <div id="choiceList" class="choice-list"></div>
+        </div>
+      </section>
+
+      <section id="endOverlay" class="overlay">
+        <div class="panel end">
+          <p id="endEyebrow" class="eyebrow">RUN COMPLETE</p>
+          <h2 id="endTitle">生存结束</h2>
+          <div id="endStats" class="end-stats"></div>
+          <button id="restartButton" type="button" class="primary">再来一局</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="./src/game.js"></script>
+  </body>
+</html>

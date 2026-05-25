@@ -242,14 +242,15 @@ function drawSlimeBody(ctx, e, lift) {
 function drawSlimeCore(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
   const flash = e.flash > 0;
+  const coreX = r * 0.08;
   const coreY = r * 0.02 + lift * 0.4;
   ctx.fillStyle = flash ? "rgba(255,255,255,0.82)" : e.slimeColors.core;
   ctx.beginPath();
-  ctx.ellipse(0, coreY, r * 0.68, r * 0.52, 0, 0, TAU);
+  ctx.ellipse(coreX, coreY, r * 0.68, r * 0.52, 0, 0, TAU);
   ctx.fill();
   ctx.fillStyle = flash ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.2)";
   ctx.beginPath();
-  ctx.ellipse(-r * 0.12, coreY - r * 0.08, r * 0.5, r * 0.34, -0.12, 0, TAU);
+  ctx.ellipse(coreX - r * 0.12, coreY - r * 0.08, r * 0.5, r * 0.34, -0.12, 0, TAU);
   ctx.fill();
 }
 
@@ -257,7 +258,7 @@ function drawSlimeFace(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
   const eye = Math.max(2.2, r * 0.12 * e.profile.eyeScale);
   const blink = e.faceBlink <= 0.08;
-  const faceX = 0;
+  const faceX = r * 0.08;
   const faceY = r * 0.02 + lift * 0.4;
   if (e.faceBlink <= -0.12) e.faceBlink = 1.4 + Math.random() * 1.8;
 

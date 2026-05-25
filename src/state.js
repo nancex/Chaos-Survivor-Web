@@ -8,6 +8,7 @@ export const state = {
   waveTimeLeft: FIRST_WAVE_SECONDS,
   pendingNextWave: false,
   pendingVictory: false,
+  spawnedBossWaves: new Set(),
   kills: 0,
   shards: 0,
   spawnBudget: 0,
@@ -91,6 +92,7 @@ export function resetRun(map) {
   state.waveTimeLeft = state.waveDuration;
   state.pendingNextWave = false;
   state.pendingVictory = false;
+  state.spawnedBossWaves = new Set();
   state.kills = 0;
   state.shards = 0;
   state.spawnBudget = 0;

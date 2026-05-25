@@ -87,7 +87,15 @@ export function spawnEnemyById(id, x = null, y = null) {
 
 export function spawnWaveBoss() {
   const boss = Object.values(enemyConfig).find((entry) => entry.bossWave === state.wave);
-  if (boss && !world.boss) spawnEnemyById(boss.id);
+  state.spawnedBossWaves ||= new Set();
+  if (boss && !world.boss && !state.spawnedBossWaves.has(state.wave)) {
+    const spawned = spawnEnemyById(boss.id);
+    if (spawned) state.spawnedBossWaves.add(state.wave);
+  }
+}
+
+export function isBossWave(wave) {
+  return Object.values(enemyConfig).some((entry) => entry.bossWave === wave);
 }
 
 export function availableEnemyIdsForWave(wave) {

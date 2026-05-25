@@ -190,9 +190,49 @@ function drawEnemyProjectiles(ctx) {
       drawSnowflakeProjectile(ctx, b);
       continue;
     }
+    if (b.shape === "stormBlade" || b.shape === "stormOrb") {
+      drawStormProjectile(ctx, b);
+      continue;
+    }
     ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
   }
+}
+
+function drawStormProjectile(ctx, b) {
+  const angle = Math.atan2(b.vy, b.vx);
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.shape === "stormBlade" ? angle : (b.spin || 0) + state.time * 8);
+  glow(ctx, 0, 0, b.r * 2.2, 0.48, b.color);
+  if (b.shape === "stormBlade") {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.moveTo(b.r * 2.8, 0);
+    ctx.lineTo(-b.r * 0.8, -b.r * 0.95);
+    ctx.lineTo(-b.r * 1.8, 0);
+    ctx.lineTo(-b.r * 0.8, b.r * 0.95);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(TAU / 4);
+      ctx.beginPath();
+      ctx.moveTo(-b.r * 1.4, 0);
+      ctx.lineTo(b.r * 1.4, 0);
+      ctx.stroke();
+    }
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.r, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawSnowflakeProjectile(ctx, b) {

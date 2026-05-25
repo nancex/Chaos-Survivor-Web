@@ -1,9 +1,9 @@
-import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, WORLD_SIZE } from "./constants.js";
+import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, TAU, WORLD_SIZE } from "./constants.js";
 import { state, world, input } from "./state.js";
 import { clamp, distSq, circleHit } from "./utils.js";
 import { burst, dust } from "./effects.js";
 import { playSfx } from "./audio.js";
-import { randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
+import { isBossWave, randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
 
 export function updatePlayer(dt) {
   const p = state.player;
@@ -30,9 +30,10 @@ export function updatePlayer(dt) {
 }
 
 export function updateSpawning(dt) {
+  spawnWaveBoss();
+  if (isBossWave(state.wave)) return;
   const danger = state.wave / 20;
   state.spawnBudget += dt * (3.8 + danger * 12 + state.wave * 0.45);
-  spawnWaveBoss();
   while (state.spawnBudget >= 1 && world.enemies.length < ENEMY_LIMIT) {
     state.spawnBudget--;
     spawnEnemyById(randomEnemyForWave(state.wave));

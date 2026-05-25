@@ -289,7 +289,7 @@ function drawBossBar(ctx) {
   if (!b || b.dead) return;
   const w = Math.min(620, viewport.width - 48);
   const x = (viewport.width - w) / 2;
-  const y = 18;
+  const y = 74;
   ctx.fillStyle = "rgba(6,9,18,0.86)";
   ctx.fillRect(x, y, w, 20);
   ctx.fillStyle = "rgba(255,255,255,0.08)";

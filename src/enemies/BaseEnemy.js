@@ -201,18 +201,7 @@ function addHazard(x, y, color, damage) {
 
 function drawEnemyShape(ctx, e) {
   if (e.behavior?.includes("split")) {
-    const scale = 1 + Math.sin(e.anim * 2) * 0.08;
-    ctx.scale(scale, 1 / scale);
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(-e.r * 0.85, e.r * 0.55, e.r * 1.7, e.r * 0.25);
-    ctx.fillStyle = e.flash > 0 ? "#fff" : e.color;
-    ctx.beginPath();
-    ctx.arc(0, 0, e.r, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.beginPath();
-    ctx.arc(-e.r * 0.25, -e.r * 0.25, e.r * 0.22, 0, TAU);
-    ctx.fill();
+    drawFallbackSlimeShape(ctx, e);
   } else if (e.behavior === "pylon" || e.behavior === "shield") {
     ctx.rotate(Math.sin(e.anim) * 0.1);
     ctx.fillStyle = e.flash > 0 ? "#fff" : e.color;
@@ -223,6 +212,56 @@ function drawEnemyShape(ctx, e) {
   } else {
     drawZombieShape(ctx, e);
   }
+}
+
+function drawFallbackSlimeShape(ctx, e) {
+  const lift = Math.max(0, Math.sin(e.anim * 2.2)) * 4;
+  const squash = 1 + Math.sin(e.anim * 3.2) * 0.07;
+  const r = e.r * (e.type === "slime_large" ? 1.18 : e.type === "slime_medium" ? 1.06 : 1);
+  const flash = e.flash > 0;
+  const body = flash ? "#ffffff" : e.color;
+  const core = flash ? "#ffffff" : "#9dffac";
+  const dark = flash ? "#eaffef" : "#2f8b4b";
+
+  ctx.translate(0, -lift);
+  ctx.scale(squash, 1 / squash);
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(0, r * 0.68 + lift, r * 0.92, r * 0.18, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.98, r * 0.18);
+  ctx.bezierCurveTo(-r, -r * 0.58, -r * 0.42, -r * 0.94, 0, -r * 0.94);
+  ctx.bezierCurveTo(r * 0.5, -r * 0.92, r, -r * 0.55, r, r * 0.16);
+  ctx.bezierCurveTo(r * 0.82, r * 0.75, r * 0.36, r * 0.94, 0, r * 0.86);
+  ctx.bezierCurveTo(-r * 0.44, r * 0.94, -r * 0.86, r * 0.74, -r * 0.98, r * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.ellipse(r * 0.08, r * 0.02, r * 0.68, r * 0.52, 0, 0, TAU);
+  ctx.fill();
+
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.arc(r * -0.15, r * -0.08, r * 0.11, 0, TAU);
+  ctx.arc(r * 0.31, r * -0.08, r * 0.11, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = Math.max(1.4, r * 0.05);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(r * 0.08, r * 0.14, r * 0.18, Math.PI * 0.16, Math.PI * 0.84);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+
+  ctx.fillStyle = "rgba(255,255,255,0.58)";
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.38, -r * 0.48, r * 0.2, r * 0.1, -0.5, 0, TAU);
+  ctx.fill();
 }
 
 function drawZombieShape(ctx, e) {

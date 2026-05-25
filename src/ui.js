@@ -37,7 +37,7 @@ export function updateHud(fps) {
   ui.xpBar.style.transform = `scaleX(${Math.max(0, p.xp / p.xpNeed)})`;
   ui.hpText.textContent = `${Math.max(0, Math.ceil(p.hp))}`;
   ui.levelText.textContent = `Lv.${p.level}`;
-  ui.timerText.textContent = formatTime(state.waveTimeLeft);
+  ui.timerText.textContent = state.bossWaveActive ? "BOSS" : formatTime(state.waveTimeLeft);
   ui.waveText.textContent = `第 ${state.wave}/${TOTAL_WAVES} 波`;
   ui.killText.textContent = `击败 ${state.kills}`;
   ui.coinText.textContent = `碎片 ${state.shards}`;

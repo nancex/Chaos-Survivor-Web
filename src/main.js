@@ -3,7 +3,7 @@ import { state, world, resetRun } from "./state.js";
 import { ui, updateHud, updateBestText, showChoices, hideChoices, pickThree, showEnd } from "./ui.js";
 import { generateMap } from "./map.js";
 import { bindInput } from "./input.js";
-import { setupEnemyRegistry } from "./enemyRegistry.js";
+import { isBossWave, setupEnemyRegistry } from "./enemyRegistry.js";
 import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, collectAllExperience, clearEnemies } from "./entities.js";
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
 import { updateEffects } from "./effects.js";
@@ -112,12 +112,14 @@ export async function bootGame() {
 
   function update(dt) {
     if (state.mode !== "playing") return;
+    const bossWave = isBossWave(state.wave);
+    state.bossWaveActive = bossWave;
     state.time += dt;
-    state.waveTimeLeft = Math.max(0, state.waveTimeLeft - dt);
+    if (!bossWave) state.waveTimeLeft = Math.max(0, state.waveTimeLeft - dt);
     state.shake = Math.max(0, state.shake - dt * 20);
     state.flash = Math.max(0, state.flash - dt * 3);
     updatePlayer(dt);
-    if (state.waveTimeLeft > 0) updateSpawning(dt);
+    if (bossWave || state.waveTimeLeft > 0) updateSpawning(dt);
     updateEnemies(dt);
     rebuildGrid();
     updateWeapons(dt);
@@ -126,7 +128,8 @@ export async function bootGame() {
     updateCamera(dt);
     checkLevelUps();
     if (state.player.hp <= 0) endGame(false);
-    if (state.mode === "playing" && state.waveTimeLeft <= 0) completeWave();
+    if (state.mode === "playing" && bossWave && !world.boss && state.spawnedBossWaves?.has(state.wave)) completeWave();
+    if (state.mode === "playing" && !bossWave && state.waveTimeLeft <= 0) completeWave();
   }
 
   function loop(now) {

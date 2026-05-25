@@ -1,6 +1,5 @@
 {
   "zombie": {"name":"僵尸","category":"小怪","trait":"近战压迫","waves":[1,20],"hp":44,"speed":78,"damage":14,"xp":5,"radius":14,"color":"#7ccf68","behavior":"melee","desc":"最基础的近战敌人，移动慢但比较耐打，会持续向玩家逼近。","tip":"利用走位和范围武器边退边清，不要被数量包住。"},
-  "speeder": {"name":"急行者","category":"小怪","trait":"高速突进","waves":[2,20],"hp":34,"speed":118,"damage":12,"xp":4,"radius":12,"color":"#ffd166","behavior":"speeder","desc":"会蓄力后突然加速冲脸，适合混在怪潮里打乱节奏。","tip":"看到它准备冲刺时横向拉开，不要直线后撤。"},
   "lancer": {"name":"突刺者","category":"小怪","trait":"直线穿刺","waves":[2,20],"hp":52,"speed":82,"damage":18,"xp":7,"radius":15,"color":"#ff9f6e","behavior":"lancer","desc":"会朝玩家方向猛冲，瞬时爆发比普通近战更高。","tip":"保持斜向移动，让它扑空后再回头输出。"},
   "wisp": {"name":"冰霜幽灵","category":"小怪","trait":"远程风筝","waves":[3,20],"hp":38,"speed":70,"damage":10,"xp":8,"radius":13,"color":"#9ff4ff","behavior":"ranged","desc":"会与玩家保持距离并持续发射弹幕。","tip":"优先处理，避免远程弹幕在场上越积越多。"},
   "slime_large": {"name":"大型史莱姆","category":"小怪","trait":"分裂压场","waves":[4,20],"hp":160,"speed":45,"damage":25,"xp":16,"radius":25,"color":"#77ff8a","behavior":"split_large","desc":"行动最慢，但生命和碰撞伤害最高，死亡后会分裂。","tip":"尽量在空旷区域击杀，避免被分裂体围住。"},

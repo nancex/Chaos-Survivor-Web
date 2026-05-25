@@ -3,7 +3,6 @@ import { state, world } from "./state.js";
 import { clamp } from "./utils.js";
 import { setSpawnConfigured } from "./enemies/BaseEnemy.js";
 import { Zombie } from "./enemies/zombie.js";
-import { Speeder } from "./enemies/speeder.js";
 import { Lancer } from "./enemies/lancer.js";
 import { Wisp } from "./enemies/wisp.js";
 import { SlimeLarge } from "./enemies/slime_large.js";
@@ -34,7 +33,6 @@ import { DarkCrystalRift } from "./enemies/dark_crystal_rift.js";
 
 const classes = {
   zombie: Zombie,
-  speeder: Speeder,
   lancer: Lancer,
   wisp: Wisp,
   slime_large: SlimeLarge,

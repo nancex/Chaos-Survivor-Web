@@ -64,7 +64,7 @@ export class BaseEnemy {
     if (this.behavior === "shield") return this.shield(dt, dx, dy, d);
     if (this.behavior === "berserker" && this.hp < this.maxHp * 0.5) this.speed *= 1 + dt * 0.35;
     if (this.boss) return this.bossMove(dt, dx, dy, d);
-    return this.chase(dt, dx, dy, d, this.behavior === "speeder" ? 1.55 : 1);
+    return this.chase(dt, dx, dy, d);
   }
 
   chase(dt, dx, dy, d, mul = 1) {

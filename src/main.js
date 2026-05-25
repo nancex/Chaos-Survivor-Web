@@ -1,6 +1,6 @@
 import { SAVE_KEY, TOTAL_WAVES, waveDurationFor } from "./constants.js";
 import { state, world, resetRun } from "./state.js";
-import { ui, updateHud, updateBestText, showChoices, hideChoices, pickThree, showEnd } from "./ui.js";
+import { ui, updateHud, updateBestText, showChoices, showWeaponCarousel, hideChoices, pickThree, showEnd } from "./ui.js";
 import { generateMap } from "./map.js";
 import { bindInput } from "./input.js";
 import { isBossWave, setupEnemyRegistry } from "./enemyRegistry.js";
@@ -27,10 +27,10 @@ export async function bootGame() {
   }
 
   function showStarterChoices() {
-    showChoices({
+    showWeaponCarousel({
       eyebrow: "STARTER WEAPON",
       title: "选择开局武器",
-      items: pickThree(STARTER_WEAPONS),
+      items: STARTER_WEAPONS,
       onPick: (item) => {
         activateWeapon(item.id);
         hideChoices();

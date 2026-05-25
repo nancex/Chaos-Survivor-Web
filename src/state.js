@@ -30,6 +30,7 @@ export const world = {
   hazards: [],
   gems: [],
   particles: [],
+  weaponFx: [],
   grid: new Map(),
   boss: null,
 };
@@ -66,12 +67,11 @@ export function createPlayer() {
 
 export function createWeapons() {
   return {
-    bolt: { level: 0, timer: 0, cooldown: 0.62, damage: 18, speed: 560 },
-    dagger: { level: 0, timer: 1.3, cooldown: 1.55, count: 1, damage: 18 },
-    ice: { level: 0, timer: 0.8, cooldown: 1.05, count: 1, damage: 16, speed: 430, turnSpeed: 4.5 },
-    missile: { level: 0, timer: 1.2, cooldown: 1.75, damage: 26, speed: 360, explodeRadius: 86, explodeDamage: 22, turnSpeed: 2.4 },
-    boomerang: { level: 0, timer: 1.4, cooldown: 1.9, count: 1, damage: 20, speed: 480, returnAfter: 0.32, returnSpeed: 1.2 },
-    orb: { level: 0, angle: 0, count: 2, radius: 76, damage: 20, hitCd: 0.22 },
+    arc: { level: 0, timer: 0, cooldown: 0.72, damage: 20, range: 620, chainRange: 170, chains: 3, falloff: 0.78 },
+    ice: { level: 0, timer: 0.8, cooldown: 1.05, count: 1, damage: 16, speed: 430, turnSpeed: 5.2, freezeDuration: 0.45 },
+    missile: { level: 0, timer: 1.2, cooldown: 1.75, damage: 26, speed: 360, explodeRadius: 96, explodeDamage: 24, turnSpeed: 2.5 },
+    boomerang: { level: 0, timer: 1.4, cooldown: 1.9, count: 1, damage: 20, speed: 520, returnAfter: 0.52, returnSpeed: 1.25 },
+    drone: { level: 0, angle: 0, count: 2, orbitRadius: 78, acquireRange: 560, attackRange: 420, fireCooldown: 0.42, bulletDamage: 9, bulletSpeed: 520, drones: [] },
     pulse: { level: 0, timer: 2.4, cooldown: 3.4, damage: 24, radius: 102 },
   };
 }
@@ -83,6 +83,7 @@ export function resetRun(map) {
   world.hazards.length = 0;
   world.gems.length = 0;
   world.particles.length = 0;
+  world.weaponFx.length = 0;
   world.grid.clear();
   world.boss = null;
 

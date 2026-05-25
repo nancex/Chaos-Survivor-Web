@@ -1,6 +1,9 @@
 import { SAVE_KEY, TOTAL_WAVES } from "./constants.js";
 import { state } from "./state.js";
 import { choice, formatTime } from "./utils.js";
+import { startWeaponPreview } from "./weaponPreview.js";
+
+let stopPreview = null;
 
 export const ui = {
   canvas: document.getElementById("gameCanvas"),
@@ -49,9 +52,11 @@ export function updateBestText() {
 }
 
 export function showChoices({ eyebrow, title, items, onPick }) {
+  clearPreview();
   ui.levelEyebrow.textContent = eyebrow;
   ui.levelTitle.textContent = title;
   ui.choiceList.innerHTML = "";
+  ui.choiceList.className = "choice-list";
   for (const item of items) {
     const button = document.createElement("button");
     button.type = "button";
@@ -63,7 +68,71 @@ export function showChoices({ eyebrow, title, items, onPick }) {
   ui.levelOverlay.classList.add("active");
 }
 
+export function showWeaponCarousel({ eyebrow, title, items, onPick }) {
+  clearPreview();
+  let index = 0;
+  ui.levelEyebrow.textContent = eyebrow;
+  ui.levelTitle.textContent = title;
+  ui.choiceList.innerHTML = "";
+  ui.choiceList.className = "choice-list weapon-choice-list";
+
+  const root = document.createElement("div");
+  root.className = "weapon-carousel";
+  const prev = document.createElement("button");
+  prev.type = "button";
+  prev.className = "weapon-nav";
+  prev.textContent = "‹";
+  prev.setAttribute("aria-label", "上一种武器");
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "weapon-nav";
+  next.textContent = "›";
+  next.setAttribute("aria-label", "下一种武器");
+  const card = document.createElement("article");
+  card.className = "weapon-card";
+  const canvas = document.createElement("canvas");
+  canvas.className = "weapon-preview";
+  const name = document.createElement("strong");
+  const desc = document.createElement("p");
+  const tags = document.createElement("div");
+  tags.className = "weapon-tags";
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "primary weapon-confirm";
+  confirm.textContent = "选择武器";
+
+  card.append(canvas, name, desc, tags, confirm);
+  root.append(prev, card, next);
+  ui.choiceList.appendChild(root);
+
+  function renderInfo() {
+    const item = items[index];
+    name.textContent = `${item.icon} ${item.name}`;
+    desc.textContent = item.desc;
+    tags.innerHTML = "";
+    weaponTags(item.id).forEach((text) => {
+      const tag = document.createElement("span");
+      tag.textContent = text;
+      tags.appendChild(tag);
+    });
+  }
+
+  prev.addEventListener("click", () => {
+    index = (index - 1 + items.length) % items.length;
+    renderInfo();
+  });
+  next.addEventListener("click", () => {
+    index = (index + 1) % items.length;
+    renderInfo();
+  });
+  confirm.addEventListener("click", () => onPick(items[index]), { once: true });
+  renderInfo();
+  stopPreview = startWeaponPreview(canvas, () => items[index]);
+  ui.levelOverlay.classList.add("active");
+}
+
 export function hideChoices() {
+  clearPreview();
   ui.levelOverlay.classList.remove("active");
 }
 
@@ -83,4 +152,22 @@ export function showEnd(victory) {
   });
   ui.endOverlay.classList.add("active");
   updateBestText();
+}
+
+function weaponTags(id) {
+  const tags = {
+    arc: ["自动锁定", "连锁传导", "即时命中"],
+    ice: ["追踪", "冻结控制", "单体压制"],
+    missile: ["追踪", "范围爆炸", "群体清理"],
+    boomerang: ["远距离", "往返切割", "高穿透"],
+    drone: ["自动炮台", "离身攻击", "持续输出"],
+  };
+  return tags[id] || ["武器"];
+}
+
+function clearPreview() {
+  if (stopPreview) {
+    stopPreview();
+    stopPreview = null;
+  }
 }

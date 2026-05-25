@@ -45,6 +45,13 @@ export function updateEnemies(dt) {
   for (const e of world.enemies) e.shielded = false;
   for (let i = world.enemies.length - 1; i >= 0; i--) {
     const e = world.enemies[i];
+    if (e.freezeTimer > 0 && !e.boss) {
+      e.freezeTimer = Math.max(0, e.freezeTimer - dt);
+      e.hitTimer = Math.max(0, e.hitTimer - dt);
+      e.flash = Math.max(0, e.flash - dt * 4);
+      continue;
+    }
+    if (e.freezeTimer > 0) e.freezeTimer = Math.max(0, e.freezeTimer - dt * 2.5);
     e.update(dt);
   }
   updateEnemyProjectiles(dt);

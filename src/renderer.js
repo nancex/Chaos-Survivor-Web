@@ -47,11 +47,12 @@ export function render(ctx) {
   drawGems(ctx);
   drawProjectiles(ctx);
   for (const e of world.enemies) if (inView(e.x, e.y, e.r + 80)) e.draw(ctx);
-  drawOrbitOrbs(ctx);
+  drawDrones(ctx);
   drawPlayer(ctx);
   drawEnemyProjectiles(ctx);
   drawHazards(ctx);
   drawEffects(ctx);
+  drawWeaponFx(ctx);
   ctx.restore();
   drawBossBar(ctx);
   if (state.flash > 0) {
@@ -147,33 +148,259 @@ function drawPlayerMouth(ctx, mood) {
 function drawProjectiles(ctx) {
   for (const b of world.projectiles) {
     if (!inView(b.x, b.y, 60)) continue;
-    const tail = b.shape === "missile" ? 58 : b.shape === "dagger" ? 30 : 44;
+    const tail = b.shape === "missile" ? 64 : b.shape === "droneBolt" ? 28 : 48;
     const tx = b.x - Math.cos(b.angle) * tail;
     const ty = b.y - Math.sin(b.angle) * tail;
     const grad = ctx.createLinearGradient(tx, ty, b.x, b.y);
     grad.addColorStop(0, hexToRgba(b.color, 0));
     grad.addColorStop(1, "#fff");
-    ctx.strokeStyle = grad; ctx.lineWidth = b.shape === "dagger" ? 4 : 6; ctx.lineCap = "round";
+    ctx.strokeStyle = grad; ctx.lineWidth = b.shape === "droneBolt" ? 4 : 6; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.lineCap = "butt";
-    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle + (b.shape === "boomerang" ? state.time * 18 : 0));
-    if (b.shape === "boomerang") star(ctx, b.r * 2, b.color);
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.angle + (b.shape === "boomerang" ? b.spin : 0));
+    glow(ctx, 0, 0, b.r * 1.7, 0.36, b.color);
+    if (b.shape === "boomerang") drawBoomerangProjectile(ctx, b);
+    else if (b.shape === "missile") drawMissileProjectile(ctx, b);
+    else if (b.shape === "ice") drawIceProjectile(ctx, b);
+    else if (b.shape === "droneBolt") drawDroneBolt(ctx, b);
     else diamond(ctx, b.r * 2.6, b.r, b.color);
     ctx.restore();
   }
 }
 
-function drawOrbitOrbs(ctx) {
-  const w = state.weapons.orb;
+function drawDrones(ctx) {
+  const w = state.weapons.drone;
   if (!w || w.level <= 0) return;
-  const p = state.player;
-  for (let i = 0; i < w.count; i++) {
-    const a = w.angle + (i / w.count) * TAU;
-    const x = p.x + Math.cos(a) * w.radius;
-    const y = p.y + Math.sin(a) * w.radius;
-    glow(ctx, x, y, 14, 0.6, "#ffd166");
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 7, 0, TAU); ctx.fill();
-    ctx.fillStyle = "#ffd166"; ctx.beginPath(); ctx.arc(x, y, 12, 0, TAU); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); ctx.fill();
+  for (const d of w.drones) {
+    if (!inView(d.x, d.y, 60)) continue;
+    drawDrone(ctx, d.x, d.y, d.anim, d.mode === "attack");
   }
+}
+
+function drawWeaponFx(ctx) {
+  for (const fx of world.weaponFx) {
+    const k = Math.max(0, fx.life / fx.maxLife);
+    if (fx.kind === "arc") {
+      drawArcFx(ctx, fx, k);
+    } else if (fx.kind === "explosion") {
+      drawExplosionFx(ctx, fx, k);
+    } else if (fx.kind === "iceHit") {
+      drawIceHitFx(ctx, fx, k);
+    } else if (fx.kind === "muzzle") {
+      drawMuzzleFx(ctx, fx, k);
+    } else if (fx.kind === "pulse") {
+      ctx.strokeStyle = hexToRgba(fx.color, k * 0.8);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, fx.radius * (1 - k), 0, TAU);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = hexToRgba(fx.color, k);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(fx.x, fx.y, 18 * (1 - k), 0, TAU);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawIceProjectile(ctx, b) {
+  const r = b.r;
+  ctx.fillStyle = "#dffcff";
+  ctx.beginPath();
+  ctx.moveTo(r * 3.2, 0);
+  ctx.lineTo(r * 0.4, r * 1.15);
+  ctx.lineTo(-r * 1.1, r * 0.42);
+  ctx.lineTo(-r * 1.45, 0);
+  ctx.lineTo(-r * 1.1, -r * 0.42);
+  ctx.lineTo(r * 0.4, -r * 1.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = b.color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.9, 0);
+  ctx.lineTo(r * 2.2, 0);
+  ctx.stroke();
+}
+
+function drawMissileProjectile(ctx, b) {
+  const r = b.r;
+  ctx.fillStyle = "#fff1c4";
+  ctx.beginPath();
+  ctx.moveTo(r * 3.1, 0);
+  ctx.lineTo(r * 0.8, r * 1.25);
+  ctx.lineTo(-r * 2.1, r * 0.8);
+  ctx.lineTo(-r * 2.45, 0);
+  ctx.lineTo(-r * 2.1, -r * 0.8);
+  ctx.lineTo(r * 0.8, -r * 1.25);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#ff7a2f";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = "#42e8ff";
+  ctx.fillRect(-r * 0.45, -r * 0.45, r * 0.9, r * 0.9);
+  ctx.fillStyle = "#ff4d6d";
+  ctx.beginPath();
+  ctx.moveTo(-r * 2.3, -r * 0.65);
+  ctx.lineTo(-r * 3.8, 0);
+  ctx.lineTo(-r * 2.3, r * 0.65);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawBoomerangProjectile(ctx, b) {
+  const r = b.r;
+  ctx.fillStyle = b.color;
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = i * TAU / 4;
+    const long = i % 2 === 0 ? r * 3.2 : r * 1.35;
+    ctx.lineTo(Math.cos(a) * long, Math.sin(a) * long);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.strokeStyle = "#42e8ff";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.1, 0, TAU);
+  ctx.stroke();
+}
+
+function drawDroneBolt(ctx, b) {
+  const r = b.r;
+  ctx.fillStyle = "#ffffff";
+  diamond(ctx, r * 2.2, r * 0.75, "#ffffff");
+  ctx.strokeStyle = b.color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.2, -r * 0.95);
+  ctx.lineTo(r * 1.7, 0);
+  ctx.lineTo(-r * 1.2, r * 0.95);
+  ctx.stroke();
+}
+
+function drawDrone(ctx, x, y, t, attacking) {
+  ctx.save();
+  ctx.translate(x, y + Math.sin(t * 9) * 1.5);
+  ctx.rotate(Math.sin(t * 3) * 0.1);
+  glow(ctx, 0, 0, attacking ? 20 : 16, attacking ? 0.55 : 0.38, attacking ? "#77ff8a" : "#ffd166");
+  ctx.strokeStyle = attacking ? "#77ff8a" : "#42e8ff";
+  ctx.lineWidth = 2;
+  ctx.fillStyle = "rgba(10,16,28,0.92)";
+  ctx.beginPath();
+  ctx.roundRect(-12, -8, 24, 16, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = attacking ? "#77ff8a" : "#ffd166";
+  ctx.fillRect(-4, -3, 8, 6);
+  for (const sx of [-17, 17]) {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(sx, 0, 5 + Math.sin(t * 18) * 1.2, 0, TAU);
+    ctx.stroke();
+    ctx.fillStyle = attacking ? "rgba(119,255,138,0.75)" : "rgba(66,232,255,0.75)";
+    ctx.fillRect(sx - 2, -2, 4, 4);
+  }
+  ctx.restore();
+}
+
+function drawArcFx(ctx, fx, k) {
+  ctx.lineCap = "round";
+  for (const seg of fx.segments) {
+    const points = jaggedLine(seg.x1, seg.y1, seg.x2, seg.y2, 8, 10, seg.seed + state.time * 80);
+    ctx.strokeStyle = hexToRgba("#ffffff", k);
+    ctx.lineWidth = 5 * k;
+    strokePolyline(ctx, points);
+    ctx.strokeStyle = hexToRgba(fx.color, k);
+    ctx.lineWidth = 2;
+    strokePolyline(ctx, points);
+    glow(ctx, seg.x2, seg.y2, 18, k * 0.35, fx.color);
+  }
+  ctx.lineCap = "butt";
+}
+
+function drawExplosionFx(ctx, fx, k) {
+  const progress = 1 - k;
+  const r = fx.radius * progress;
+  glow(ctx, fx.x, fx.y, fx.radius * 0.5, k * 0.42, fx.color);
+  ctx.strokeStyle = hexToRgba("#ffffff", k);
+  ctx.lineWidth = 4 * k;
+  ctx.beginPath();
+  ctx.arc(fx.x, fx.y, r, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.85);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(fx.x, fx.y, r * 0.65, 0, TAU);
+  ctx.stroke();
+  for (let i = 0; i < 12; i++) {
+    const a = i * TAU / 12 + fx.seed;
+    const inner = r * 0.35;
+    const outer = r * (0.82 + (i % 3) * 0.08);
+    ctx.beginPath();
+    ctx.moveTo(fx.x + Math.cos(a) * inner, fx.y + Math.sin(a) * inner);
+    ctx.lineTo(fx.x + Math.cos(a) * outer, fx.y + Math.sin(a) * outer);
+    ctx.stroke();
+  }
+}
+
+function drawIceHitFx(ctx, fx, k) {
+  glow(ctx, fx.x, fx.y, 20, k * 0.32, fx.color);
+  ctx.strokeStyle = hexToRgba("#dffcff", k);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    const a = i * TAU / 6 + state.time;
+    ctx.beginPath();
+    ctx.moveTo(fx.x, fx.y);
+    ctx.lineTo(fx.x + Math.cos(a) * 26 * (1 - k), fx.y + Math.sin(a) * 26 * (1 - k));
+    ctx.stroke();
+  }
+}
+
+function drawMuzzleFx(ctx, fx, k) {
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate(fx.angle);
+  ctx.fillStyle = hexToRgba(fx.color, k);
+  ctx.beginPath();
+  ctx.moveTo(0, -5);
+  ctx.lineTo(24 * (1 - k), 0);
+  ctx.lineTo(0, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function jaggedLine(x1, y1, x2, y2, steps, amp, seed) {
+  const points = [];
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.max(1, Math.hypot(dx, dy));
+  const nx = -dy / len;
+  const ny = dx / len;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const jitter = i === 0 || i === steps ? 0 : Math.sin(seed + i * 12.9898) * amp;
+    points.push({ x: x1 + dx * t + nx * jitter, y: y1 + dy * t + ny * jitter });
+  }
+  return points;
+}
+
+function strokePolyline(ctx, points) {
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.stroke();
 }
 
 function drawGems(ctx) {

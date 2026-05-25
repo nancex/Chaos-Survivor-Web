@@ -8,7 +8,7 @@ import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, c
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
 import { updateEffects } from "./effects.js";
 import { resizeCanvas, updateCamera, render } from "./renderer.js";
-import { playTone } from "./audio.js";
+import { playSfx } from "./audio.js";
 
 export async function bootGame() {
   await setupEnemyRegistry();
@@ -23,7 +23,7 @@ export async function bootGame() {
     ui.startOverlay.classList.remove("active");
     ui.endOverlay.classList.remove("active");
     showStarterChoices();
-    playTone(180, 0.04, "square");
+    playSfx("start");
   }
 
   function showStarterChoices() {
@@ -35,7 +35,7 @@ export async function bootGame() {
         activateWeapon(item.id);
         hideChoices();
         state.mode = "playing";
-        playTone(360, 0.08, "triangle");
+        playSfx("select");
       },
     });
   }
@@ -64,6 +64,7 @@ export async function bootGame() {
     p.xp -= p.xpNeed;
     p.level++;
     p.xpNeed = Math.floor(p.xpNeed * 1.22 + 8);
+    playSfx("level");
     showLevelChoices();
     return true;
   }
@@ -87,6 +88,7 @@ export async function bootGame() {
     state.waveTimeLeft = state.waveDuration;
     state.spawnBudget = 0;
     state.mode = "playing";
+    playSfx("wave");
   }
 
   function endGame(victory) {
@@ -95,7 +97,7 @@ export async function bootGame() {
     const best = Number(localStorage.getItem(SAVE_KEY) || 0);
     if (state.time > best) localStorage.setItem(SAVE_KEY, String(Math.floor(state.time)));
     showEnd(victory);
-    playTone(victory ? 520 : 120, 0.12, "sawtooth");
+    playSfx(victory ? "victory" : "defeat");
   }
 
   function togglePause() {

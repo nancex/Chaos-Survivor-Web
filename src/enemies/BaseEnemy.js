@@ -2,6 +2,7 @@ import { TAU, WORLD_SIZE } from "../constants.js";
 import { state, world } from "../state.js";
 import { clamp, distSq } from "../utils.js";
 import { burst, pulse } from "../effects.js";
+import { playSfx } from "../audio.js";
 
 export class BaseEnemy {
   constructor(config, x, y) {
@@ -49,6 +50,7 @@ export class BaseEnemy {
       state.shake = 8;
       state.flash = 0.28;
       burst(p.x, p.y, 12, "#ff4d6d", 120);
+      playSfx("hurt");
       if (this.behavior === "exploder") this.hp = 0;
     }
   }
@@ -154,6 +156,7 @@ export class BaseEnemy {
     state.kills++;
     if (this.boss && world.boss === this) world.boss = null;
     burst(this.x, this.y, this.boss ? 48 : 12, this.color, this.boss ? 240 : 140);
+    playSfx(this.boss ? "explode" : "hit");
     import("../entities.js").then(({ dropGem }) => dropGem(this.x, this.y, this.xp));
     const i = world.enemies.indexOf(this);
     if (i >= 0) world.enemies.splice(i, 1);

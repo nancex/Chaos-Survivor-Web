@@ -2,7 +2,7 @@ import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, WORLD_SIZE } from "./constants.js";
 import { state, world, input } from "./state.js";
 import { clamp, distSq, circleHit } from "./utils.js";
 import { burst, dust } from "./effects.js";
-import { playTone } from "./audio.js";
+import { playSfx } from "./audio.js";
 import { randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
 
 export function updatePlayer(dt) {
@@ -75,7 +75,7 @@ export function updateGems(dt) {
       p.xp += g.value;
       state.shards += g.value;
       world.gems.splice(i, 1);
-      playTone(760, 0.02, "sine");
+      playSfx("gem");
     }
   }
 }
@@ -150,6 +150,7 @@ function updateEnemyProjectiles(dt) {
       p.hp -= b.damage;
       p.invuln = 0.5;
       burst(p.x, p.y, 8, b.color, 100);
+      playSfx("hurt");
       world.enemyProjectiles.splice(i, 1);
     } else if (b.life <= 0) world.enemyProjectiles.splice(i, 1);
   }
@@ -163,6 +164,7 @@ function updateHazards(dt) {
     if (distSq(h.x, h.y, p.x, p.y) < (h.r + p.r) ** 2 && p.invuln <= 0) {
       p.hp -= h.damage;
       p.invuln = 0.35;
+      playSfx("hurt");
     }
     if (h.life <= 0) world.hazards.splice(i, 1);
   }

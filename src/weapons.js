@@ -3,7 +3,7 @@ import { state, world } from "./state.js";
 import { angleDiff, circleHit, clamp } from "./utils.js";
 import { damageEnemy, nearestEnemy, queryEnemies } from "./entities.js";
 import { burst, pulse, trail } from "./effects.js";
-import { playTone } from "./audio.js";
+import { playSfx } from "./audio.js";
 
 export const STARTER_WEAPONS = [
   { id: "bolt", icon: "✦", name: "棱镜电弧", desc: "自动锁定最近敌人，发射高亮能量弹。" },
@@ -38,7 +38,7 @@ export function updateWeapons(dt) {
     const target = nearestEnemy(p.x, p.y, 760);
     if (!target) return;
     fireProjectile(Math.atan2(target.y - p.y, target.x - p.x), w.bolt, { shape: "ball", color: "#42e8ff", pierce: 1, radius: 4, life: 1.4 });
-    playTone(360, 0.025, "square");
+    playSfx("shoot");
   });
   fireAuto(w.dagger, dt, () => {
     const base = Math.atan2(p.dirY, p.dirX);
@@ -92,8 +92,8 @@ function updateProjectiles(dt) {
     for (const e of hits) {
       if (b.pierce <= 0 || b.hitIds.has(e)) continue;
       if (circleHit(b.x, b.y, b.r, e.x, e.y, e.r)) {
-        b.hitIds.add(e); b.pierce--; damageEnemy(e, b.damage, b.x, b.y); burst(b.x, b.y, 8, b.color, 180);
-        if (b.explodeRadius) explode(b);
+        b.hitIds.add(e); b.pierce--; damageEnemy(e, b.damage, b.x, b.y); burst(b.x, b.y, 8, b.color, 180); playSfx("hit");
+        if (b.explodeRadius) { explode(b); playSfx("explode"); }
       }
     }
     if (b.life <= 0 || b.pierce <= 0) world.projectiles.splice(i, 1);
@@ -137,7 +137,7 @@ function updateOrbWeapon(dt) {
     const y = p.y + Math.sin(a) * w.radius;
     trail(x, y, p.x + Math.cos(a - 0.16) * w.radius, p.y + Math.sin(a - 0.16) * w.radius, "#ffd166", 8);
     queryEnemies(x, y, 30, hits);
-    for (const e of hits) if (e.hitTimer <= 0 && circleHit(x, y, 16, e.x, e.y, e.r)) { damageEnemy(e, w.damage, x, y); e.hitTimer = w.hitCd; pulse(x, y, 24, "#ffd166", 0.12); }
+    for (const e of hits) if (e.hitTimer <= 0 && circleHit(x, y, 16, e.x, e.y, e.r)) { damageEnemy(e, w.damage, x, y); e.hitTimer = w.hitCd; pulse(x, y, 24, "#ffd166", 0.12); playSfx("hit"); }
     hits.length = 0;
   }
 }
@@ -152,4 +152,5 @@ function updatePulseWeapon(dt) {
   queryEnemies(state.player.x, state.player.y, w.radius, hits);
   for (const e of hits) damageEnemy(e, w.damage, e.x, e.y);
   pulse(state.player.x, state.player.y, w.radius, "#77ff8a", 0.34);
+  playSfx("explode");
 }

@@ -2,6 +2,7 @@ import { TAU, WORLD_SIZE } from "../constants.js";
 import { state } from "../state.js";
 import { burst, pulse, trail } from "../effects.js";
 import { clamp } from "../utils.js";
+import { playSfx } from "../audio.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
 export class SlimeEnemy extends BaseEnemy {
@@ -86,6 +87,7 @@ export class SlimeEnemy extends BaseEnemy {
     this.landSquash = 1;
     pulse(this.x, this.y + this.r * 0.45, this.r * this.profile.landPulse, this.slimeColors.trail, 0.18);
     if (this.profile.landBurst > 0) burst(this.x, this.y + this.r * 0.35, this.profile.landBurst, this.slimeColors.trail, 70);
+    playSfx("slimeLand");
   }
 
   jumpLift() {
@@ -107,6 +109,7 @@ export class SlimeEnemy extends BaseEnemy {
     drawSlimeShadow(ctx, this, lift);
     ctx.scale(scaleX, scaleY);
     drawSlimeBody(ctx, this, lift);
+    drawSlimeCore(ctx, this, lift);
     drawSlimeFace(ctx, this, lift);
     drawSlimeGloss(ctx, this, lift);
     ctx.restore();
@@ -180,14 +183,14 @@ export const SLIME_PROFILES = {
 };
 
 const SLIME_VARIANTS = {
-  green: { body: "#77ff8a", dark: "#2f8b4b", light: "#caffb8", trail: "#b8ffba", face: "#173b1c", mouth: "#20662d" },
-  mint: { body: "#6fffd6", dark: "#228f7a", light: "#c9fff1", trail: "#9fffea", face: "#123f39", mouth: "#1b7d6b" },
-  aqua: { body: "#72d7ff", dark: "#276f9a", light: "#d1f4ff", trail: "#a6ebff", face: "#14324a", mouth: "#23688c" },
-  blue: { body: "#8fb7ff", dark: "#3d5fa4", light: "#dce8ff", trail: "#b8d2ff", face: "#1d2a55", mouth: "#3b5aa0" },
-  berry: { body: "#ff8bd7", dark: "#a73675", light: "#ffd6f0", trail: "#ffb9e7", face: "#56213f", mouth: "#a13a74" },
-  honey: { body: "#ffd166", dark: "#aa7422", light: "#fff1b7", trail: "#ffe08a", face: "#5f3b12", mouth: "#9b671d" },
-  amber: { body: "#ffad66", dark: "#a65a22", light: "#ffe0b8", trail: "#ffc48a", face: "#5a2f15", mouth: "#914f1e" },
-  lime: { body: "#b6ff69", dark: "#5f9325", light: "#e4ffc2", trail: "#d7ff9a", face: "#28440f", mouth: "#5d8f22" },
+  green: { body: "#77ff8a", core: "#9dffac", dark: "#2f8b4b", light: "#caffb8", trail: "#b8ffba", face: "#173b1c", mouth: "#20662d" },
+  mint: { body: "#6fffd6", core: "#9affe7", dark: "#228f7a", light: "#c9fff1", trail: "#9fffea", face: "#123f39", mouth: "#1b7d6b" },
+  aqua: { body: "#72d7ff", core: "#9be8ff", dark: "#276f9a", light: "#d1f4ff", trail: "#a6ebff", face: "#14324a", mouth: "#23688c" },
+  blue: { body: "#8fb7ff", core: "#adcaff", dark: "#3d5fa4", light: "#dce8ff", trail: "#b8d2ff", face: "#1d2a55", mouth: "#3b5aa0" },
+  berry: { body: "#ff8bd7", core: "#ffaee4", dark: "#a73675", light: "#ffd6f0", trail: "#ffb9e7", face: "#56213f", mouth: "#a13a74" },
+  honey: { body: "#ffd166", core: "#ffe08a", dark: "#aa7422", light: "#fff1b7", trail: "#ffe08a", face: "#5f3b12", mouth: "#9b671d" },
+  amber: { body: "#ffad66", core: "#ffc28a", dark: "#a65a22", light: "#ffe0b8", trail: "#ffc48a", face: "#5a2f15", mouth: "#914f1e" },
+  lime: { body: "#b6ff69", core: "#cfff93", dark: "#5f9325", light: "#e4ffc2", trail: "#d7ff9a", face: "#28440f", mouth: "#5d8f22" },
 };
 
 function pickSlimeVariant(profile) {
@@ -236,12 +239,26 @@ function drawSlimeBody(ctx, e, lift) {
   ctx.stroke();
 }
 
+function drawSlimeCore(ctx, e, lift) {
+  const r = e.r * e.profile.bodyScale;
+  const flash = e.flash > 0;
+  const coreY = r * 0.02 + lift * 0.4;
+  ctx.fillStyle = flash ? "rgba(255,255,255,0.82)" : e.slimeColors.core;
+  ctx.beginPath();
+  ctx.ellipse(0, coreY, r * 0.68, r * 0.52, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = flash ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.2)";
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.12, coreY - r * 0.08, r * 0.5, r * 0.34, -0.12, 0, TAU);
+  ctx.fill();
+}
+
 function drawSlimeFace(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
   const eye = Math.max(2.2, r * 0.12 * e.profile.eyeScale);
   const blink = e.faceBlink <= 0.08;
-  const faceX = (e.flip || 1) * r * 0.08;
-  const faceY = r * 0.06;
+  const faceX = 0;
+  const faceY = r * 0.02 + lift * 0.4;
   if (e.faceBlink <= -0.12) e.faceBlink = 1.4 + Math.random() * 1.8;
 
   ctx.save();
@@ -249,27 +266,27 @@ function drawSlimeFace(ctx, e, lift) {
   ctx.scale(e.flip || 1, 1);
   ctx.fillStyle = e.slimeColors.face;
   if (blink) {
-    ctx.fillRect(-r * 0.38, -r * 0.08, eye * 1.9, 2);
-    ctx.fillRect(r * 0.18, -r * 0.08, eye * 1.9, 2);
+    ctx.fillRect(-r * 0.32, -r * 0.1, eye * 1.8, 2);
+    ctx.fillRect(r * 0.14, -r * 0.1, eye * 1.8, 2);
   } else {
     ctx.beginPath();
-    ctx.ellipse(-r * 0.28, -r * 0.1 + lift, eye, eye * 1.2, 0, 0, TAU);
+    ctx.ellipse(-r * 0.23, -r * 0.1, eye, eye * 1.2, 0, 0, TAU);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(r * 0.28, -r * 0.1 + lift, eye, eye * 1.2, 0, 0, TAU);
+    ctx.ellipse(r * 0.23, -r * 0.1, eye, eye * 1.2, 0, 0, TAU);
     ctx.fill();
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(-r * 0.24, -r * 0.18 + lift, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
-    ctx.fillRect(r * 0.32, -r * 0.18 + lift, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
+    ctx.fillRect(-r * 0.19, -r * 0.18, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
+    ctx.fillRect(r * 0.27, -r * 0.18, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
   }
 
   ctx.strokeStyle = e.slimeColors.mouth;
   ctx.lineWidth = Math.max(1.4, r * 0.05);
   ctx.lineCap = "round";
   ctx.beginPath();
-  if (e.profile.mouth === "big") ctx.arc(0, r * 0.16, r * 0.24, Math.PI * 0.12, Math.PI * 0.88);
-  else if (e.profile.mouth === "tiny") ctx.arc(0, r * 0.18, r * 0.12, Math.PI * 0.18, Math.PI * 0.82);
-  else ctx.arc(0, r * 0.15, r * 0.18, Math.PI * 0.16, Math.PI * 0.84);
+  if (e.profile.mouth === "big") ctx.arc(0, r * 0.13, r * 0.22, Math.PI * 0.12, Math.PI * 0.88);
+  else if (e.profile.mouth === "tiny") ctx.arc(0, r * 0.15, r * 0.11, Math.PI * 0.18, Math.PI * 0.82);
+  else ctx.arc(0, r * 0.13, r * 0.16, Math.PI * 0.16, Math.PI * 0.84);
   ctx.stroke();
   ctx.lineCap = "butt";
   ctx.restore();

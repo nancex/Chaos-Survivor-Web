@@ -249,17 +249,20 @@ function drawBossBar(ctx) {
   if (!b || b.dead) return;
   const w = Math.min(620, viewport.width - 48);
   const x = (viewport.width - w) / 2;
-  const y = 72;
-  ctx.fillStyle = "rgba(6,9,18,0.78)";
-  ctx.fillRect(x, y, w, 18);
+  const y = 18;
+  ctx.fillStyle = "rgba(6,9,18,0.86)";
+  ctx.fillRect(x, y, w, 20);
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(x + 3, y + 3, w - 6, 14);
   ctx.fillStyle = "#ff4d6d";
-  ctx.fillRect(x + 2, y + 2, (w - 4) * Math.max(0, b.hp / b.maxHp), 14);
-  ctx.strokeStyle = "rgba(255,255,255,0.7)";
-  ctx.strokeRect(x, y, w, 18);
+  ctx.fillRect(x + 3, y + 3, (w - 6) * Math.max(0, b.hp / b.maxHp), 14);
+  ctx.strokeStyle = "rgba(255,255,255,0.78)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, 20);
   ctx.fillStyle = "#f3f7ff";
   ctx.font = "13px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`${b.name} · ${b.trait}`, viewport.width / 2, y - 8);
+  ctx.fillText(`${b.name} · ${b.trait}`, viewport.width / 2, y + 34);
 }
 
 function inView(x, y, pad) {

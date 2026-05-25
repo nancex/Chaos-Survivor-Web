@@ -1,6 +1,6 @@
 import { input, state } from "./state.js";
 import { ui } from "./ui.js";
-import { setMuted, isMuted } from "./audio.js";
+import { setMuted, isMuted, nextMusicTrack } from "./audio.js";
 
 export function bindInput({ start, restart, togglePause }) {
   const keys = new Map([["KeyW", "up"], ["ArrowUp", "up"], ["KeyS", "down"], ["ArrowDown", "down"], ["KeyA", "left"], ["ArrowLeft", "left"], ["KeyD", "right"], ["ArrowRight", "right"]]);
@@ -8,6 +8,7 @@ export function bindInput({ start, restart, togglePause }) {
     const action = keys.get(event.code);
     if (action) { input[action] = true; event.preventDefault(); }
     if (event.code === "KeyP" || event.code === "Escape") togglePause();
+    if (event.code === "KeyM") nextMusicTrack();
     if (event.code === "Space" && state.mode === "menu") start();
   });
   window.addEventListener("keyup", (event) => {

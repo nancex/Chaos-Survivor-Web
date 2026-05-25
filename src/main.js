@@ -8,7 +8,7 @@ import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, c
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
 import { updateEffects } from "./effects.js";
 import { resizeCanvas, updateCamera, render } from "./renderer.js";
-import { playSfx } from "./audio.js";
+import { playSfx, startMusic, stopMusic } from "./audio.js";
 
 export async function bootGame() {
   await setupEnemyRegistry();
@@ -24,6 +24,7 @@ export async function bootGame() {
     ui.endOverlay.classList.remove("active");
     showStarterChoices();
     playSfx("start");
+    startMusic();
   }
 
   function showStarterChoices() {
@@ -36,6 +37,7 @@ export async function bootGame() {
         hideChoices();
         state.mode = "playing";
         playSfx("select");
+        startMusic();
       },
     });
   }
@@ -98,6 +100,7 @@ export async function bootGame() {
     if (state.time > best) localStorage.setItem(SAVE_KEY, String(Math.floor(state.time)));
     showEnd(victory);
     playSfx(victory ? "victory" : "defeat");
+    stopMusic();
   }
 
   function togglePause() {
@@ -107,6 +110,7 @@ export async function bootGame() {
     } else if (state.mode === "paused") {
       state.mode = "playing";
       ui.pauseButton.textContent = "II";
+      startMusic();
     }
   }
 

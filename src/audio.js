@@ -1,9 +1,19 @@
 let muted = false;
 let audio = null;
+let musicAudio = null;
+let musicTracks = null;
+let musicIndex = 0;
+let proceduralTimer = null;
+let musicGain = null;
 const lastPlayed = new Map();
+const MUSIC_MANIFEST_URL = "./assets/music/playlist.json";
+const SUPPORTED_MUSIC = new Set(["mp3", "ogg", "wav", "m4a"]);
 
 export function setMuted(value) {
   muted = value;
+  if (musicAudio) musicAudio.muted = muted;
+  if (musicGain) musicGain.gain.value = muted ? 0.0001 : 0.035;
+  if (!muted && !musicAudio && !proceduralTimer) startMusic();
 }
 
 export function isMuted() {
@@ -13,18 +23,17 @@ export function isMuted() {
 export function playTone(freq, duration = 0.04, type = "sine") {
   if (muted) return;
   try {
-    audio ||= new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state === "suspended") audio.resume();
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
+    const ctx = ensureAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq;
     gain.gain.value = 0.035;
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.connect(gain);
-    gain.connect(audio.destination);
+    gain.connect(ctx.destination);
     osc.start();
-    osc.stop(audio.currentTime + duration);
+    osc.stop(ctx.currentTime + duration);
   } catch {
     muted = true;
   }
@@ -41,6 +50,128 @@ export function playSfx(name) {
     if (layer.noise) playNoise(layer);
     else playLayer(layer);
   }
+}
+
+export async function startMusic() {
+  if (muted) return;
+  stopProceduralMusic();
+  const tracks = await loadMusicTracks();
+  if (!tracks.length) {
+    startProceduralMusic();
+    return;
+  }
+  playMusicTrack(musicIndex % tracks.length);
+}
+
+export function stopMusic() {
+  if (musicAudio) {
+    musicAudio.pause();
+    musicAudio.src = "";
+    musicAudio = null;
+  }
+  stopProceduralMusic();
+}
+
+export async function nextMusicTrack() {
+  const tracks = await loadMusicTracks();
+  if (!tracks.length) return;
+  musicIndex = (musicIndex + 1) % tracks.length;
+  playMusicTrack(musicIndex);
+}
+
+async function loadMusicTracks() {
+  if (musicTracks) return musicTracks;
+  try {
+    const res = await fetch(MUSIC_MANIFEST_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`music manifest ${res.status}`);
+    const data = await res.json();
+    const rawTracks = Array.isArray(data) ? data : data.tracks;
+    const base = new URL(MUSIC_MANIFEST_URL, window.location.href);
+    musicTracks = (rawTracks || [])
+      .map(normalizeTrack)
+      .filter((track) => track && track.enabled !== false && SUPPORTED_MUSIC.has(fileExt(track.file)))
+      .map((track) => ({ ...track, url: new URL(track.file, base).href }));
+  } catch {
+    musicTracks = [];
+  }
+  return musicTracks;
+}
+
+function normalizeTrack(track) {
+  if (typeof track === "string") return { file: track, name: track };
+  if (!track || typeof track.file !== "string") return null;
+  return { file: track.file, name: track.name || track.file, enabled: track.enabled };
+}
+
+function fileExt(file) {
+  return file.split("?")[0].split("#")[0].split(".").pop().toLowerCase();
+}
+
+function playMusicTrack(index) {
+  const track = musicTracks[index];
+  if (!track || muted) return;
+  stopMusic();
+  musicIndex = index;
+  musicAudio = new Audio(track.url);
+  musicAudio.loop = musicTracks.length === 1;
+  musicAudio.volume = 0.42;
+  musicAudio.muted = muted;
+  musicAudio.addEventListener("ended", () => {
+    if (!musicTracks?.length) return;
+    musicIndex = (musicIndex + 1) % musicTracks.length;
+    playMusicTrack(musicIndex);
+  });
+  musicAudio.play().catch(() => {
+    musicAudio = null;
+    startProceduralMusic();
+  });
+}
+
+function startProceduralMusic() {
+  if (muted || proceduralTimer) return;
+  try {
+    const ctx = ensureAudio();
+    musicGain ||= ctx.createGain();
+    musicGain.gain.value = 0.035;
+    musicGain.connect(ctx.destination);
+    let step = 0;
+    const notes = [110, 146.83, 164.81, 220, 246.94, 293.66, 329.63, 440];
+    const playStep = () => {
+      if (muted) return;
+      const root = notes[step % notes.length];
+      playMusicNote(root, 1.8, "triangle", 0.022);
+      playMusicNote(root * 1.5, 0.42, "sine", 0.012, 0.08);
+      if (step % 4 === 0) playMusicNote(root * 0.5, 2.4, "sine", 0.018);
+      step++;
+    };
+    playStep();
+    proceduralTimer = window.setInterval(playStep, 1850);
+  } catch {
+    muted = true;
+  }
+}
+
+function stopProceduralMusic() {
+  if (proceduralTimer) {
+    window.clearInterval(proceduralTimer);
+    proceduralTimer = null;
+  }
+}
+
+function playMusicNote(freq, duration, type, gainValue, delay = 0) {
+  const ctx = ensureAudio();
+  const start = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  gain.gain.setValueAtTime(0.001, start);
+  gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+  osc.connect(gain);
+  gain.connect(musicGain || ctx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.05);
 }
 
 const SFX = {

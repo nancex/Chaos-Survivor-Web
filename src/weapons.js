@@ -383,5 +383,5 @@ function updateWeaponFx(dt) {
 }
 
 function scaled(value) {
-  return value * state.player.damageScale;
+  return value;
 }

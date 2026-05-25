@@ -35,7 +35,7 @@
   const ENEMY_LIMIT = 420;
   const BULLET_LIMIT = 260;
   const GEM_LIMIT = 320;
-  const PARTICLE_LIMIT = 280;
+  const PARTICLE_LIMIT = 420;
   const CELL_SIZE = 128;
   const SAVE_KEY = "pixel-survivor-best";
 
@@ -515,14 +515,22 @@
   function updateBullets(dt) {
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i];
+      b.prevX = b.x;
+      b.prevY = b.y;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       b.life -= dt;
+      b.trailTimer -= dt;
+      if (b.trailTimer <= 0) {
+        b.trailTimer = b.kind === "knife" ? 0.045 : 0.035;
+        bulletTrail(b.x, b.y, b.prevX, b.prevY, b.color, b.kind);
+      }
       const hits = [];
       queryEnemies(b.x, b.y, b.r + 28, hits);
       for (const e of hits) {
         if (b.pierce <= 0) break;
         if (circleHit(b.x, b.y, b.r, e.x, e.y, e.r)) {
+          bulletImpact(b.x, b.y, b.angle, b.color, b.kind);
           damageEnemy(e, b.damage, b.x, b.y);
           b.pierce--;
         }
@@ -628,13 +636,21 @@
     const b = pop(bulletPool, {});
     b.x = x;
     b.y = y;
+    b.prevX = x - Math.cos(angle) * 16;
+    b.prevY = y - Math.sin(angle) * 16;
     b.vx = Math.cos(angle) * speed;
     b.vy = Math.sin(angle) * speed;
+    b.angle = angle;
     b.damage = damage;
     b.pierce = pierce;
     b.color = color;
     b.r = r;
     b.life = life;
+    b.maxLife = life;
+    b.trailTimer = 0;
+    b.spin = Math.random() * TAU;
+    b.kind = pierce > 1 ? "knife" : "bolt";
+    muzzleFlash(x, y, angle, color);
     bullets.push(b);
   }
 
@@ -664,6 +680,64 @@
     p.size = 2 + Math.random() * 4;
     p.color = color;
     particles.push(p);
+  }
+
+  function muzzleFlash(x, y, angle, color) {
+    showPulse(x, y, 18, color, 0.14);
+    for (let i = 0; i < 5 && particles.length < PARTICLE_LIMIT; i++) {
+      const p = pop(particlePool, {});
+      p.kind = "bulletSpark";
+      p.x = x + Math.cos(angle) * 12;
+      p.y = y + Math.sin(angle) * 12;
+      const a = angle + (Math.random() - 0.5) * 0.9;
+      const s = 80 + Math.random() * 170;
+      p.vx = Math.cos(a) * s;
+      p.vy = Math.sin(a) * s;
+      p.life = 0.12 + Math.random() * 0.12;
+      p.maxLife = p.life;
+      p.t = 0;
+      p.size = 2 + Math.random() * 3;
+      p.color = color;
+      particles.push(p);
+    }
+  }
+
+  function bulletTrail(x, y, prevX, prevY, color, kind) {
+    if (particles.length >= PARTICLE_LIMIT) return;
+    const p = pop(particlePool, {});
+    p.kind = "bulletTrail";
+    p.x = x;
+    p.y = y;
+    p.prevX = prevX;
+    p.prevY = prevY;
+    p.vx = 0;
+    p.vy = 0;
+    p.life = kind === "knife" ? 0.16 : 0.2;
+    p.maxLife = p.life;
+    p.t = 0;
+    p.size = kind === "knife" ? 3 : 5;
+    p.color = color;
+    particles.push(p);
+  }
+
+  function bulletImpact(x, y, angle, color, kind) {
+    showPulse(x, y, kind === "knife" ? 18 : 24, color, 0.18);
+    for (let i = 0; i < 9 && particles.length < PARTICLE_LIMIT; i++) {
+      const p = pop(particlePool, {});
+      p.kind = i % 3 === 0 ? "bulletShard" : "bulletSpark";
+      p.x = x;
+      p.y = y;
+      const a = angle + Math.PI + (Math.random() - 0.5) * 2.4;
+      const s = 90 + Math.random() * 260;
+      p.vx = Math.cos(a) * s;
+      p.vy = Math.sin(a) * s;
+      p.life = 0.16 + Math.random() * 0.24;
+      p.maxLife = p.life;
+      p.t = 0;
+      p.size = 2 + Math.random() * 5;
+      p.color = i % 4 === 0 ? "#ffffff" : color;
+      particles.push(p);
+    }
   }
 
   function dust(x, y, vx, vy) {
@@ -1112,8 +1186,37 @@
   function drawBullets() {
     for (const b of bullets) {
       if (!inView(b.x, b.y, 40)) continue;
-      ctx.fillStyle = b.color;
-      ctx.fillRect(Math.round(b.x - b.r), Math.round(b.y - b.r), b.r * 2, b.r * 2);
+      const fade = clamp(b.life / b.maxLife, 0, 1);
+      const tailX = b.x - Math.cos(b.angle) * (b.kind === "knife" ? 30 : 44);
+      const tailY = b.y - Math.sin(b.angle) * (b.kind === "knife" ? 30 : 44);
+      const grad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
+      grad.addColorStop(0, hexToRgba(b.color, 0));
+      grad.addColorStop(0.55, hexToRgba(b.color, 0.35 * fade));
+      grad.addColorStop(1, "#ffffff");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = b.kind === "knife" ? 4 : 6;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.lineCap = "butt";
+
+      drawGlowCircle(b.x, b.y, b.r + 2, b.kind === "knife" ? 0.28 : 0.42, b.color);
+      ctx.save();
+      ctx.translate(Math.round(b.x), Math.round(b.y));
+      ctx.rotate(b.angle + (b.kind === "knife" ? b.spin + state.time * 18 : 0));
+      ctx.fillStyle = "#ffffff";
+      if (b.kind === "knife") {
+        ctx.fillRect(-b.r * 1.2, -b.r * 0.7, b.r * 2.8, b.r * 1.4);
+        ctx.fillStyle = b.color;
+        ctx.fillRect(-b.r * 1.8, -b.r * 0.35, b.r * 1.2, b.r * 0.7);
+      } else {
+        ctx.fillRect(-b.r, -b.r, b.r * 2, b.r * 2);
+        ctx.fillStyle = b.color;
+        ctx.fillRect(-b.r * 0.45, -b.r * 0.45, b.r * 0.9, b.r * 0.9);
+      }
+      ctx.restore();
     }
   }
 
@@ -1151,6 +1254,30 @@
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius * (1 - alpha * 0.2), 0, TAU);
         ctx.stroke();
+      } else if (p.kind === "bulletTrail") {
+        const grad = ctx.createLinearGradient(p.prevX, p.prevY, p.x, p.y);
+        grad.addColorStop(0, hexToRgba(p.color, 0));
+        grad.addColorStop(1, hexToRgba(p.color, alpha * 0.55));
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = p.size * alpha;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(p.prevX, p.prevY);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        ctx.lineCap = "butt";
+      } else if (p.kind === "bulletSpark") {
+        ctx.fillStyle = hexToRgba(p.color, alpha);
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+        ctx.fillStyle = `rgba(255,255,255,${alpha * 0.7})`;
+        ctx.fillRect(Math.round(p.x + p.size), Math.round(p.y), Math.max(1, p.size * 0.5), Math.max(1, p.size * 0.5));
+      } else if (p.kind === "bulletShard") {
+        ctx.save();
+        ctx.translate(Math.round(p.x), Math.round(p.y));
+        ctx.rotate(p.t * 18);
+        ctx.fillStyle = hexToRgba(p.color, alpha);
+        ctx.fillRect(-p.size, -p.size * 0.35, p.size * 2, p.size * 0.7);
+        ctx.restore();
       } else if (p.kind === "dust") {
         ctx.fillStyle = `rgba(143,162,160,${alpha * 0.28})`;
         ctx.fillRect(Math.round(p.x - p.size / 2), Math.round(p.y - p.size / 2), p.size, p.size);

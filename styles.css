@@ -164,12 +164,21 @@ button {
   gap: 8px;
 }
 
+.quick-actions.blocked {
+  opacity: 0.24;
+  pointer-events: none;
+}
+
 .quick-actions button {
   width: 42px;
   height: 42px;
   border-radius: 4px;
   color: var(--ink);
   background: var(--panel-strong);
+}
+
+#inventoryButton {
+  width: 64px;
 }
 
 .quick-actions button:hover,
@@ -421,22 +430,46 @@ h2 {
 }
 
 .inventory-panel {
-  width: min(1040px, 100%);
-  max-height: min(760px, calc(100vh - 36px));
+  width: min(1120px, calc(100vw - 28px));
+  max-height: min(780px, calc(100vh - 28px));
   overflow: hidden;
-  padding: 20px;
+  padding: 0;
+  border-color: rgba(66, 232, 255, 0.32);
+  background:
+    linear-gradient(180deg, rgba(18, 30, 48, 0.96), rgba(5, 9, 18, 0.96)),
+    var(--panel-strong);
 }
 
 .inventory-head {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 14px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(66, 232, 255, 0.18);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .inventory-head h2 {
   margin-bottom: 0;
+}
+
+.inventory-summary {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.inventory-summary span {
+  min-width: 88px;
+  border: 1px solid rgba(66, 232, 255, 0.2);
+  border-radius: 4px;
+  padding: 7px 10px;
+  background: rgba(3, 6, 12, 0.35);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
 }
 
 #inventoryCloseButton {
@@ -451,9 +484,14 @@ h2 {
 
 .inventory-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 300px;
-  grid-template-rows: auto auto;
-  gap: 12px;
+  grid-template-columns: 230px minmax(360px, 1fr) 330px;
+  grid-template-areas:
+    "stats weapons detail"
+    "items weapons detail";
+  gap: 14px;
+  padding: 16px 20px 20px;
+  overflow: auto;
+  max-height: calc(min(780px, 100vh - 28px) - 76px);
 }
 
 .inventory-stats,
@@ -463,24 +501,27 @@ h2 {
   min-width: 0;
   border: 1px solid var(--edge);
   border-radius: 6px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.055);
+  padding: 14px;
+  background: rgba(3, 8, 16, 0.44);
 }
 
 .inventory-stats {
-  grid-row: span 2;
+  grid-area: stats;
 }
 
 .inventory-weapons {
-  min-height: 282px;
+  grid-area: weapons;
+  min-height: 420px;
 }
 
 .inventory-detail {
-  grid-row: span 2;
+  grid-area: detail;
+  display: flex;
+  flex-direction: column;
 }
 
 .inventory-items {
-  grid-column: 2;
+  grid-area: items;
 }
 
 .inventory-layout h3 {
@@ -501,6 +542,7 @@ h2 {
 .item-card {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
   border: 1px solid rgba(255, 255, 255, 0.11);
   padding: 8px;
@@ -509,24 +551,39 @@ h2 {
   font-size: 13px;
 }
 
+.item-card small {
+  grid-column: 1 / -1;
+  color: rgba(167, 180, 199, 0.72);
+  font-size: 11px;
+}
+
+.item-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
 .weapon-slot-list {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .weapon-slot {
-  min-height: 86px;
+  min-height: 76px;
   border: 1px solid var(--edge);
   border-radius: 5px;
-  padding: 9px;
+  padding: 10px;
   background: rgba(255, 255, 255, 0.06);
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .weapon-slot.active {
   border-color: var(--cyan);
-  box-shadow: inset 0 0 0 1px rgba(66, 232, 255, 0.35);
+  background: linear-gradient(135deg, rgba(66, 232, 255, 0.16), rgba(255, 255, 255, 0.06));
+  box-shadow: inset 0 0 0 1px rgba(66, 232, 255, 0.35), 0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
 .weapon-slot.empty {
@@ -537,17 +594,18 @@ h2 {
 .weapon-slot i,
 .weapon-detail-icon {
   display: inline-grid;
-  width: 30px;
-  height: 30px;
-  margin-right: 6px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   place-items: center;
   border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
   font-style: normal;
 }
 
 .weapon-slot strong {
   display: block;
-  margin-top: 6px;
   font-size: 13px;
 }
 
@@ -561,6 +619,7 @@ h2 {
 .weapon-detail-card {
   display: grid;
   gap: 10px;
+  flex: 1;
 }
 
 .weapon-detail-title {
@@ -576,7 +635,8 @@ h2 {
 .inventory-actions {
   display: grid;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .inventory-actions button {
@@ -595,6 +655,29 @@ h2 {
 .inventory-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+
+.weapon-meter {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.weapon-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+}
+
+.empty-detail {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
 }
 
 .touch-stick {
@@ -658,11 +741,17 @@ h2 {
 
   .inventory-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "stats"
+      "weapons"
+      "detail"
+      "items";
     max-height: calc(100vh - 170px);
     overflow: auto;
   }
 
   .inventory-stats,
+  .inventory-weapons,
   .inventory-detail,
   .inventory-items {
     grid-column: auto;

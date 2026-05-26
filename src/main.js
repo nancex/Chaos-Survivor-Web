@@ -10,13 +10,12 @@ import {
   showPauseMenu,
   hidePauseMenu,
   hideAllOverlays,
-  showInventory,
-  hideInventory,
   pickThree,
   showEnd,
 } from "./ui.js";
 import { generateMap } from "./map.js";
 import { bindInput } from "./input.js";
+import { closeInventory, initInventoryUi, isInventoryOpen } from "./inventoryUi.js";
 import { isBossWave, setupEnemyRegistry } from "./enemyRegistry.js";
 import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, collectAllExperience, clearEnemies } from "./entities.js";
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
@@ -25,8 +24,9 @@ import { resizeCanvas, updateCamera, render } from "./renderer.js";
 import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "./audio.js";
 
 export async function bootGame() {
-  await setupEnemyRegistry();
   const ctx = ui.canvas.getContext("2d", { alpha: false });
+  initInventoryUi();
+  await setupEnemyRegistry();
   let lastTime = 0;
   let fps = 60;
   let fpsAcc = 0;
@@ -112,13 +112,14 @@ export async function bootGame() {
     const best = Number(localStorage.getItem(SAVE_KEY) || 0);
     if (state.time > best) localStorage.setItem(SAVE_KEY, String(Math.floor(state.time)));
     hidePauseMenu();
-    hideInventory();
+    closeInventory();
     showEnd(victory);
     playSfx(victory ? "victory" : "defeat");
     stopMusic();
   }
 
   function pauseGame() {
+    if (isInventoryOpen()) closeInventory();
     if (state.mode !== "playing") return;
     state.mode = "paused";
     ui.pauseButton.textContent = "▶";
@@ -135,29 +136,12 @@ export async function bootGame() {
   }
 
   function togglePause() {
-    if (state.mode === "inventory") {
+    if (isInventoryOpen()) {
       closeInventory();
       return;
     }
     if (state.mode === "playing") pauseGame();
     else if (state.mode === "paused") resumeGame();
-  }
-
-  function openInventory() {
-    if (state.mode !== "playing") return;
-    state.mode = "inventory";
-    showInventory();
-  }
-
-  function closeInventory() {
-    if (state.mode !== "inventory") return;
-    hideInventory();
-    state.mode = "playing";
-  }
-
-  function toggleInventory() {
-    if (state.mode === "inventory") closeInventory();
-    else openInventory();
   }
 
   function returnToMenu() {
@@ -210,7 +194,7 @@ export async function bootGame() {
 
   resizeCanvas(ui.canvas, ctx);
   window.addEventListener("resize", () => resizeCanvas(ui.canvas, ctx));
-  bindInput({ start, restart: start, togglePause, toggleInventory, resume: resumeGame, returnToMenu });
+  bindInput({ start, restart: start, togglePause, resume: resumeGame, returnToMenu });
   resetRun(generateMap());
   state.mode = "menu";
   updateBestText();

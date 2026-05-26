@@ -2,7 +2,7 @@ import { input, state } from "./state.js";
 import { ui } from "./ui.js";
 import { setMuted, isMuted, nextMusicTrack } from "./audio.js";
 
-export function bindInput({ start, restart, togglePause, toggleInventory, resume, returnToMenu }) {
+export function bindInput({ start, restart, togglePause, resume, returnToMenu }) {
   const keys = new Map([
     ["KeyW", "up"], ["ArrowUp", "up"],
     ["KeyS", "down"], ["ArrowDown", "down"],
@@ -10,28 +10,44 @@ export function bindInput({ start, restart, togglePause, toggleInventory, resume
     ["KeyD", "right"], ["ArrowRight", "right"],
   ]);
 
-  window.addEventListener("keydown", (event) => {
+  function handleKeyDown(event) {
+    if (event.__survivorHandled) return;
     const action = keys.get(event.code);
     if (action) {
       input[action] = true;
       event.preventDefault();
     }
-    if (event.code === "KeyP" || event.code === "Escape") togglePause();
-    if (event.code === "KeyE") toggleInventory();
-    if (event.code === "KeyM") nextMusicTrack();
-    if (event.code === "Space" && state.mode === "menu") start();
-  });
+    const key = event.key?.toLowerCase();
+    if ((event.code === "KeyP" || event.code === "Escape") && !event.repeat) {
+      event.__survivorHandled = true;
+      event.preventDefault();
+      togglePause();
+      return;
+    }
+    if ((event.code === "KeyM" || key === "m") && !event.repeat) {
+      event.__survivorHandled = true;
+      nextMusicTrack();
+      return;
+    }
+    if (event.code === "Space" && state.mode === "menu") {
+      event.__survivorHandled = true;
+      start();
+    }
+  }
 
-  window.addEventListener("keyup", (event) => {
+  document.addEventListener("keydown", handleKeyDown, { capture: true });
+
+  document.addEventListener("keyup", (event) => {
     const action = keys.get(event.code);
     if (action) {
       input[action] = false;
       event.preventDefault();
     }
-  });
+  }, { capture: true });
 
   ui.canvas.addEventListener("pointerdown", (event) => {
     if (state.mode === "menu" || state.mode === "inventory") return;
+    if (event.pointerType !== "touch") return;
     input.pointerId = event.pointerId;
     setStick(event);
     ui.canvas.setPointerCapture(event.pointerId);
@@ -41,6 +57,7 @@ export function bindInput({ start, restart, togglePause, toggleInventory, resume
   });
   ui.canvas.addEventListener("pointerup", clearStick);
   ui.canvas.addEventListener("pointercancel", clearStick);
+  ui.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
   ui.startButton.addEventListener("click", start);
   ui.restartButton.addEventListener("click", restart);
@@ -48,7 +65,6 @@ export function bindInput({ start, restart, togglePause, toggleInventory, resume
   ui.resumeButton.addEventListener("click", resume);
   ui.menuButton.addEventListener("click", returnToMenu);
   ui.pauseButton.addEventListener("click", togglePause);
-  ui.inventoryCloseButton.addEventListener("click", toggleInventory);
   ui.muteButton.addEventListener("click", () => {
     setMuted(!isMuted());
     ui.muteButton.textContent = isMuted() ? "×" : "♪";

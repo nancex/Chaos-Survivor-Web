@@ -17,6 +17,7 @@ let stopPreview = null;
 
 export const ui = {
   canvas: document.getElementById("gameCanvas"),
+  quickActions: document.querySelector(".quick-actions"),
   hpBar: document.getElementById("hpBar"),
   hpText: document.getElementById("hpText"),
   xpBar: document.getElementById("xpBar"),
@@ -47,6 +48,7 @@ export const ui = {
   weaponFuseButton: document.getElementById("weaponFuseButton"),
   itemList: document.getElementById("itemList"),
   pauseButton: document.getElementById("pauseButton"),
+  inventoryButton: document.getElementById("inventoryButton"),
   muteButton: document.getElementById("muteButton"),
   bestText: document.getElementById("bestText"),
   endEyebrow: document.getElementById("endEyebrow"),
@@ -75,6 +77,7 @@ export function updateBestText() {
 
 export function showChoices({ eyebrow, title, items, onPick }) {
   clearPreview();
+  ui.quickActions?.classList.add("blocked");
   ui.levelEyebrow.textContent = eyebrow;
   ui.levelTitle.textContent = title;
   ui.choiceList.innerHTML = "";
@@ -92,6 +95,7 @@ export function showChoices({ eyebrow, title, items, onPick }) {
 
 export function showWeaponCarousel({ eyebrow, title, items, onPick }) {
   clearPreview();
+  ui.quickActions?.classList.add("blocked");
   let index = 0;
   ui.levelEyebrow.textContent = eyebrow;
   ui.levelTitle.textContent = title;
@@ -139,15 +143,28 @@ export function showWeaponCarousel({ eyebrow, title, items, onPick }) {
     });
   }
 
-  prev.addEventListener("click", () => {
+  let picked = false;
+  function pickCurrent() {
+    if (picked) return;
+    picked = true;
+    onPick(items[index]);
+  }
+
+  prev.addEventListener("click", (event) => {
+    event.stopPropagation();
     index = (index - 1 + items.length) % items.length;
     renderInfo();
   });
-  next.addEventListener("click", () => {
+  next.addEventListener("click", (event) => {
+    event.stopPropagation();
     index = (index + 1) % items.length;
     renderInfo();
   });
-  confirm.addEventListener("click", () => onPick(items[index]), { once: true });
+  card.addEventListener("click", pickCurrent);
+  confirm.addEventListener("click", (event) => {
+    event.stopPropagation();
+    pickCurrent();
+  });
   renderInfo();
   stopPreview = startWeaponPreview(canvas, () => items[index]);
   ui.levelOverlay.classList.add("active");
@@ -156,6 +173,7 @@ export function showWeaponCarousel({ eyebrow, title, items, onPick }) {
 export function hideChoices() {
   clearPreview();
   ui.levelOverlay.classList.remove("active");
+  ui.quickActions?.classList.remove("blocked");
 }
 
 export function showInventory() {
@@ -184,6 +202,7 @@ export function hidePauseMenu() {
 
 export function hideAllOverlays() {
   clearPreview();
+  ui.quickActions?.classList.remove("blocked");
   ui.startOverlay.classList.remove("active");
   ui.levelOverlay.classList.remove("active");
   ui.pauseOverlay.classList.remove("active");

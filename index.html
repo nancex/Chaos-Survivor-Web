@@ -37,6 +37,7 @@
       </section>
 
       <nav class="quick-actions" aria-label="游戏操作">
+        <button id="inventoryButton" type="button" title="背包">背包</button>
         <button id="pauseButton" type="button" title="暂停/继续">II</button>
         <button id="muteButton" type="button" title="音效开关">♪</button>
       </nav>
@@ -85,6 +86,10 @@
             <div>
               <p class="eyebrow">INVENTORY</p>
               <h2>背包</h2>
+            </div>
+            <div class="inventory-summary" aria-label="背包摘要">
+              <span id="inventoryWeaponCount">武器 0/6</span>
+              <span id="inventoryShardCount">碎片 0</span>
             </div>
             <button id="inventoryCloseButton" type="button" title="关闭背包">×</button>
           </div>

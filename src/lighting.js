@@ -88,12 +88,14 @@ function addMapLights(lights, camera, viewport) {
     if (prop.kind === "rubble") continue;
     if (!worldVisible(prop.x, prop.y, 220, camera)) continue;
     const pulse = 0.75 + Math.sin(state.time * 2.2 + prop.phase) * 0.25;
+    const radiusMul = prop.kind === "beacon" ? 5.2 : prop.kind === "dataCore" ? 4.5 : prop.kind === "relayPad" ? 3.2 : 3.8;
+    const strengthBase = prop.kind === "beacon" ? 0.46 : prop.kind === "relayPad" ? 0.24 : prop.kind === "dataCore" ? 0.36 : 0.32;
     addWorldLight(lights, camera, viewport, {
       x: prop.x,
       y: prop.y,
-      radius: prop.size * (prop.kind === "beacon" ? 5.2 : 3.8),
+      radius: prop.size * radiusMul,
       color: prop.color,
-      strength: (prop.kind === "beacon" ? 0.46 : 0.32) * pulse,
+      strength: strengthBase * pulse,
       core: 0.18,
     });
     count++;

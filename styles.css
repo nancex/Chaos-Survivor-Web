@@ -1047,30 +1047,39 @@ h2 {
   font-size: 12px;
 }
 
-.item-card::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  z-index: 20;
+.inventory-tooltip {
+  position: fixed;
+  z-index: 100;
+  display: grid;
+  gap: 5px;
   width: max-content;
-  max-width: 230px;
-  transform: translateX(-50%) translateY(4px);
-  border: 1px solid rgba(66, 232, 255, 0.34);
+  max-width: 260px;
+  border: 1px solid rgba(66, 232, 255, 0.38);
   border-radius: 5px;
   padding: 9px 10px;
-  background: rgba(4, 9, 18, 0.96);
+  background:
+    linear-gradient(135deg, rgba(66, 232, 255, 0.1), transparent),
+    rgba(4, 9, 18, 0.98);
   color: var(--ink);
   font-size: 12px;
   line-height: 1.45;
-  white-space: normal;
   opacity: 0;
   pointer-events: none;
+  transform: translateY(4px);
 }
 
-.item-card:hover::after {
-  transform: translateX(-50%) translateY(0);
+.inventory-tooltip.active {
   opacity: 1;
+  transform: translateY(0);
+}
+
+.inventory-tooltip strong {
+  color: var(--cyan);
+  font-size: 12px;
+}
+
+.inventory-tooltip span {
+  color: var(--muted);
 }
 
 .weapon-slot-list {

@@ -23,6 +23,9 @@ export function initInventoryUi() {
   dom.fuseButton = document.getElementById("weaponFuseButton");
   dom.items = document.getElementById("itemList");
   dom.pauseOverlay = document.getElementById("pauseOverlay");
+  dom.tooltip = document.createElement("div");
+  dom.tooltip.className = "inventory-tooltip";
+  document.body.appendChild(dom.tooltip);
 
   dom.openButton?.addEventListener("click", toggleInventory);
   dom.closeButton?.addEventListener("click", closeInventory);
@@ -52,6 +55,7 @@ export function openInventory() {
 
 export function closeInventory() {
   if (!isInventoryOpen()) return false;
+  hideItemTooltip();
   dom.overlay?.classList.remove("active");
   state.mode = previousMode === "paused" ? "paused" : "playing";
   if (state.mode === "paused") dom.pauseOverlay?.classList.add("active");
@@ -185,6 +189,39 @@ function renderItems() {
     const qty = item.id === "shard_core" ? state.shards : item.qty;
     row.setAttribute("data-tip", `${item.name}：${item.desc}`);
     row.innerHTML = `<i>${item.icon}</i><strong>x${qty}</strong>`;
+    const tipText = `${item.name}: ${item.desc}`;
+    row.addEventListener("mouseenter", (event) => showItemTooltip(event, tipText));
+    row.addEventListener("mousemove", (event) => moveItemTooltip(event));
+    row.addEventListener("mouseleave", hideItemTooltip);
     dom.items.appendChild(row);
   }
+}
+
+function showItemTooltip(event, text) {
+  if (!dom.tooltip) return;
+  const [title, ...desc] = text.split(": ");
+  dom.tooltip.innerHTML = `<strong>${title}</strong><span>${desc.join(": ")}</span>`;
+  dom.tooltip.classList.add("active");
+  moveItemTooltip(event);
+}
+
+function moveItemTooltip(event) {
+  if (!dom.tooltip?.classList.contains("active")) return;
+  const panel = dom.overlay?.querySelector(".inventory-panel");
+  const bounds = panel?.getBoundingClientRect();
+  if (!bounds) return;
+  const tip = dom.tooltip.getBoundingClientRect();
+  const margin = 12;
+  const preferredX = event.clientX + 14;
+  const preferredY = event.clientY - tip.height - 14;
+  const x = Math.min(Math.max(preferredX, bounds.left + margin), bounds.right - tip.width - margin);
+  let y = preferredY;
+  if (y < bounds.top + margin) y = event.clientY + 16;
+  y = Math.min(Math.max(y, bounds.top + margin), bounds.bottom - tip.height - margin);
+  dom.tooltip.style.left = `${Math.round(x)}px`;
+  dom.tooltip.style.top = `${Math.round(y)}px`;
+}
+
+function hideItemTooltip() {
+  dom.tooltip?.classList.remove("active");
 }

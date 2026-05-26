@@ -75,14 +75,9 @@ export function updateBlackhole(dt) {
   h.x = clamp(h.x, -half + h.r, half - h.r);
   h.y = clamp(h.y, -half + h.r, half - h.r);
 
-  pullBody(state.player, h, dt, 1.0);
+  pullBody(state.player, h, dt, 1.0, 1.55);
   state.player.x = clamp(state.player.x, -half + state.player.r, half - state.player.r);
   state.player.y = clamp(state.player.y, -half + state.player.r, half - state.player.r);
-  pullCollections(h, dt);
-  for (const e of world.enemies) {
-    if (e.dead || e.boss) continue;
-    pullBody(e, h, dt, 0.42);
-  }
 
   h.damageTick -= dt;
   if (h.damageTick <= 0) {
@@ -95,23 +90,17 @@ export function updateBlackhole(dt) {
   if (h.life <= 0) collapseBlackhole(h);
 }
 
-function pullBody(body, h, dt, mul) {
+function pullBody(body, h, dt, mul, rangeMul = 1.55) {
   const dx = h.x - body.x;
   const dy = h.y - body.y;
   const d2 = dx * dx + dy * dy;
-  const range = h.r * 1.55;
+  const range = h.r * rangeMul;
   if (d2 > range * range) return;
   const d = Math.max(1, Math.sqrt(d2));
   const falloff = 1 - d / range;
-  const pull = h.pull * falloff * falloff * mul;
+  const pull = h.pull * (0.18 + falloff * falloff) * mul;
   body.x += (dx / d) * pull * dt;
   body.y += (dy / d) * pull * dt;
-}
-
-function pullCollections(h, dt) {
-  for (const list of [world.gems, world.coins]) {
-    for (const item of list) pullBody(item, h, dt, 0.5);
-  }
 }
 
 function damagePlayerInBlackhole(h) {

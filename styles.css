@@ -12,8 +12,9 @@
   --yellow: #ffd166;
   --violet: #b48cff;
   --black: #060912;
+  --font-pixel: "Zpix", "Fusion Pixel 12px Monospaced SC", "Cubic 11", "Press Start 2P", "Pixelify Sans", "Silkscreen", "Courier New", "Microsoft YaHei", monospace;
   color-scheme: dark;
-  font-family: "Trebuchet MS", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: var(--font-pixel);
 }
 
 * {

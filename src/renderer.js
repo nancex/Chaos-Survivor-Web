@@ -16,6 +16,8 @@ const QUALITY_COLORS = {
   legendary: "#ffd166",
 };
 
+const CANVAS_PIXEL_FONT = "'Zpix', 'Fusion Pixel 12px Monospaced SC', 'Cubic 11', 'Courier New', monospace";
+
 function qualityColor(quality, fallback) {
   return !quality || quality === "common" ? fallback : QUALITY_COLORS[quality] || fallback;
 }
@@ -1116,7 +1118,7 @@ function drawBossBar(ctx) {
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, w, 20);
   ctx.fillStyle = "#f3f7ff";
-  ctx.font = "13px sans-serif";
+  ctx.font = `13px ${CANVAS_PIXEL_FONT}`;
   ctx.textAlign = "center";
   ctx.fillText(`${b.name} · ${b.trait}`, viewport.width / 2, y + 34);
 }
@@ -1142,7 +1144,7 @@ function drawTwinBossBar(ctx, b, x, y, w) {
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, w, 32);
   ctx.fillStyle = "#f3f7ff";
-  ctx.font = "13px sans-serif";
+  ctx.font = `13px ${CANVAS_PIXEL_FONT}`;
   ctx.textAlign = "center";
   const tag = b.shared.resonance ? " · 双瞳共鸣" : b.enraged ? " · 单眼暴走" : "";
   ctx.fillText(`裂渊双瞳${tag}`, viewport.width / 2, y + 47);

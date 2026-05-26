@@ -90,8 +90,16 @@ function addMapLights(lights, camera, viewport) {
     if (prop.kind === "rubble") continue;
     if (!worldVisible(prop.x, prop.y, 220, camera)) continue;
     const pulse = 0.75 + Math.sin(state.time * 2.2 + prop.phase) * 0.25;
-    const radiusMul = prop.kind === "beacon" ? 5.2 : prop.kind === "dataCore" ? 4.5 : prop.kind === "relayPad" ? 3.2 : 3.8;
-    const strengthBase = prop.kind === "beacon" ? 0.46 : prop.kind === "relayPad" ? 0.24 : prop.kind === "dataCore" ? 0.36 : 0.32;
+    const radiusMul =
+      prop.kind === "reactorCore" ? 5.6 :
+        prop.kind === "wallLight" ? 4.2 :
+          prop.kind === "terminal" || prop.kind === "specimenTank" || prop.kind === "cryoPod" ? 3.6 :
+            prop.kind === "beacon" ? 5.2 : prop.kind === "dataCore" ? 4.5 : prop.kind === "relayPad" ? 3.2 : 2.8;
+    const strengthBase =
+      prop.kind === "reactorCore" ? 0.42 :
+        prop.kind === "wallLight" ? 0.32 :
+          prop.kind === "terminal" || prop.kind === "specimenTank" || prop.kind === "cryoPod" ? 0.24 :
+            prop.kind === "beacon" ? 0.46 : prop.kind === "relayPad" ? 0.24 : prop.kind === "dataCore" ? 0.36 : 0.16;
     addWorldLight(lights, camera, viewport, {
       x: prop.x,
       y: prop.y,
@@ -121,10 +129,12 @@ function addMapLights(lights, camera, viewport) {
 
   for (const tile of map.tiles || []) {
     if (count >= MAX_MAP_LIGHTS) break;
-    if (!tile.glow || !worldVisible(tile.x + map.tileSize / 2, tile.y + map.tileSize / 2, 120, camera)) continue;
+    const tw = tile.w || map.tileSize;
+    const th = tile.h || map.tileSize;
+    if (!tile.glow || !worldVisible(tile.x + tw / 2, tile.y + th / 2, 120, camera)) continue;
     addWorldLight(lights, camera, viewport, {
-      x: tile.x + map.tileSize / 2,
-      y: tile.y + map.tileSize / 2,
+      x: tile.x + tw / 2,
+      y: tile.y + th / 2,
       radius: 92,
       color: tile.glow,
       strength: 0.1,

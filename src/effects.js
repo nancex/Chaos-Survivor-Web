@@ -95,9 +95,11 @@ function spawnAmbientFromMap(map, camX, camY, viewW, viewH, budget) {
 function sampleGlowTile(map, camX, camY, viewW, viewH) {
   if (!map.tiles?.length) return false;
   const tile = map.tiles[Math.floor(Math.random() * map.tiles.length)];
-  if (!tile.glow || !rectVisible(tile.x, tile.y, map.tileSize, map.tileSize, camX, camY, viewW, viewH, 80)) return false;
-  const x = tile.x + 18 + Math.random() * (map.tileSize - 36);
-  const y = tile.y + 18 + Math.random() * (map.tileSize - 36);
+  const tw = tile.w || map.tileSize;
+  const th = tile.h || map.tileSize;
+  if (!tile.glow || !rectVisible(tile.x, tile.y, tw, th, camX, camY, viewW, viewH, 80)) return false;
+  const x = tile.x + 12 + Math.random() * Math.max(8, tw - 24);
+  const y = tile.y + 12 + Math.random() * Math.max(8, th - 24);
   if (Math.random() < 0.65) spawnAmbientMoteAt(x, y, tile.glow, 0.45);
   else spawnAmbientEmber(x, y, tile.glow);
   return true;
@@ -119,12 +121,23 @@ function sampleProp(map, camX, camY, viewW, viewH) {
   if (!map.props?.length) return false;
   const prop = map.props[Math.floor(Math.random() * map.props.length)];
   if (prop.kind === "rubble" || !pointVisible(prop.x, prop.y, camX, camY, viewW, viewH, 120)) return false;
+  const color = prop.color || map.palette?.accent?.[0] || "#42e8ff";
   const angle = Math.random() * TAU;
-  const r = prop.size * (0.7 + Math.random() * 1.9);
+  const r = prop.size * (0.45 + Math.random() * 1.35);
   const x = prop.x + Math.cos(angle) * r;
   const y = prop.y + Math.sin(angle) * r;
-  if (Math.random() < 0.78) spawnAmbientMoteAt(x, y, prop.color || "#77ff8a", 0.55);
-  else spawnAmbientEmber(x, y, prop.color || "#77ff8a");
+  if (prop.kind === "ventPipe" || prop.kind === "cryoPod") {
+    spawnAmbientMist(x, y, color, prop.kind === "cryoPod" ? 0.065 : 0.05);
+  } else if (prop.kind === "wallLight") {
+    if (Math.random() < 0.72) spawnAmbientMoteAt(x, y, color, 0.42);
+    else spawnAmbientEmber(x, y, color, 0.55);
+  } else if (prop.kind === "terminal" || prop.kind === "reactorCore") {
+    spawnAmbientScan(x, y, prop.rot || Math.random() * TAU, color);
+  } else if (prop.kind === "brokenRack" || prop.kind === "crateStack") {
+    if (Math.random() < 0.55) spawnAmbientMoteAt(x, y, "#9aa7b4", 0.16);
+    else spawnAmbientEmber(x, y, "#ff7a1a", 0.42);
+  } else if (Math.random() < 0.78) spawnAmbientMoteAt(x, y, color, 0.38);
+  else spawnAmbientEmber(x, y, color);
   return true;
 }
 
@@ -161,7 +174,7 @@ function spawnAmbientMoteAt(x, y, color, alpha) {
   });
 }
 
-function spawnAmbientEmber(x, y, color) {
+function spawnAmbientEmber(x, y, color, alpha = 0.8) {
   const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
   const speed = 18 + Math.random() * 42;
   particle("ember", x, y, {
@@ -170,20 +183,20 @@ function spawnAmbientEmber(x, y, color) {
     life: 0.75 + Math.random() * 0.75,
     size: 2 + Math.random() * 3,
     color,
-    alpha: 0.8,
+    alpha,
     drift: 18,
     ambient: true,
   });
 }
 
-function spawnAmbientMist(x, y, color) {
+function spawnAmbientMist(x, y, color, alpha = 0.075) {
   particle("mist", x, y, {
-    vx: 5 + Math.random() * 13,
+    vx: 4 + Math.random() * 10,
     vy: (Math.random() - 0.5) * 5,
     life: 3.2 + Math.random() * 2.4,
-    size: 24 + Math.random() * 42,
+    size: 22 + Math.random() * 38,
     color,
-    alpha: 0.075,
+    alpha,
     drift: 6,
     angle: Math.random() * TAU,
     ambient: true,

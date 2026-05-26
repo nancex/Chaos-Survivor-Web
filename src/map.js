@@ -1,34 +1,24 @@
 import { WORLD_SIZE, TAU } from "./constants.js";
-import { mulberry32, hexToRgba } from "./utils.js";
+import { hexToRgba, mulberry32 } from "./utils.js";
+
+const LAB_PALETTE = {
+  base: "#071018",
+  dark: "#03070d",
+  floor: ["#111a22", "#151f29", "#18252f", "#0e171f"],
+  roomFloor: ["#18232b", "#1b2933", "#202f38", "#142028"],
+  corridor: ["#101922", "#13202a", "#162531"],
+  line: "#7dd3fc",
+  accent: ["#7dd3fc", "#72ffb4", "#ffd166", "#ff7a1a"],
+  warning: "#ffd166",
+  rust: "#9a4f2f",
+};
 
 export function generateMap() {
-  const palettes = [
-    {
-      base: "#07111d",
-      floor: ["#0b1d2a", "#102d36", "#162f3f", "#0f2931"],
-      dark: "#040811",
-      line: "#42e8ff",
-      accent: ["#42e8ff", "#77ff8a", "#ffd166", "#b48cff"],
-    },
-    {
-      base: "#110d1f",
-      floor: ["#18162c", "#20244a", "#2a2340", "#192c44"],
-      dark: "#070512",
-      line: "#b48cff",
-      accent: ["#b48cff", "#42e8ff", "#ff4d6d", "#ffd166"],
-    },
-    {
-      base: "#071b17",
-      floor: ["#0e2825", "#173832", "#214132", "#162b38"],
-      dark: "#030b0d",
-      line: "#77ff8a",
-      accent: ["#77ff8a", "#42e8ff", "#ffd166", "#ff65d8"],
-    },
-  ];
-  const palette = palettes[Math.floor(Math.random() * palettes.length)];
   const rng = mulberry32(Math.floor(Math.random() * 2147483647));
-  const tileSize = 128;
   const half = WORLD_SIZE / 2;
+  const tileSize = 96;
+  const rooms = createLabRooms(rng, half);
+  const corridors = createCorridors(rooms);
   const tiles = [];
   const props = [];
   const energyLines = [];
@@ -36,56 +26,12 @@ export function generateMap() {
   const cableRuns = [];
   const fogBanks = [];
 
-  for (let y = -half; y < half; y += tileSize) {
-    for (let x = -half; x < half; x += tileSize) {
-      const color = palette.floor[Math.floor(rng() * palette.floor.length)];
-      const accent = palette.accent[Math.floor(rng() * palette.accent.length)];
-      const panel = rng() > 0.34;
-      const grate = rng() > 0.68;
-      const crack = rng() > 0.72;
-      const glow = rng() > 0.82 ? accent : null;
-      const trim = rng() > 0.56;
-      const stain = rng() > 0.74;
-      const node = rng() > 0.9 ? accent : null;
-      tiles.push({
-        x, y, color, accent,
-        panel, grate, crack, glow,
-        trim, stain, node,
-        rot: Math.floor(rng() * 4),
-        detail: rng(),
-        detailKind: Math.floor(rng() * 5),
-        edgeWear: rng(),
-        phase: rng() * TAU,
-      });
+  for (const room of rooms) addRoomTiles(rng, room, tiles, floorDecals, props, energyLines, cableRuns, fogBanks);
+  for (const corridor of corridors) addCorridorTiles(rng, corridor, tiles, floorDecals, props, energyLines, cableRuns);
+  addPerimeterServiceLines(rng, half, props, cableRuns, energyLines, fogBanks);
+  addRandomWear(rng, tiles, floorDecals);
 
-      if (rng() > 0.84) {
-        props.push(createProp(rng, x + 18 + rng() * 92, y + 18 + rng() * 92, palette));
-      }
-      if (rng() > 0.86) {
-        floorDecals.push(createFloorDecal(rng, x, y, tileSize, palette));
-      }
-      if (rng() > 0.955) {
-        cableRuns.push(createCableRun(rng, x, y, tileSize, palette));
-      }
-      if (rng() > 0.94) {
-        energyLines.push(createEnergyLine(rng, x + tileSize / 2, y + tileSize / 2, palette));
-      }
-    }
-  }
-
-  for (let i = 0; i < 18; i++) {
-    fogBanks.push({
-      x: -half + rng() * WORLD_SIZE,
-      y: -half + rng() * WORLD_SIZE,
-      rx: 220 + rng() * 420,
-      ry: 90 + rng() * 180,
-      color: palette.accent[Math.floor(rng() * palette.accent.length)],
-      alpha: 0.025 + rng() * 0.035,
-      phase: rng() * TAU,
-    });
-  }
-
-  return { tileSize, palette, tiles, props, energyLines, floorDecals, cableRuns, fogBanks };
+  return { tileSize, palette: LAB_PALETTE, rooms, corridors, tiles, props, energyLines, floorDecals, cableRuns, fogBanks };
 }
 
 export function drawMap(ctx, map, camX, camY, viewW, viewH, time) {
@@ -95,354 +41,477 @@ export function drawMap(ctx, map, camX, camY, viewW, viewH, time) {
   drawFloorDecals(ctx, map, camX, camY, viewW, viewH, time);
   drawCableRuns(ctx, map, camX, camY, viewW, viewH, time);
   drawEnergyLines(ctx, map, camX, camY, viewW, viewH, time);
-  drawGrid(ctx, map, camX, camY, viewW, viewH, time);
+  drawRoomBorders(ctx, map, camX, camY, viewW, viewH);
   drawProps(ctx, map, camX, camY, viewW, viewH, time);
   drawFog(ctx, map, camX, camY, viewW, viewH, time);
 }
 
-function createProp(rng, x, y, palette) {
-  const roll = rng();
-  const kind = roll > 0.86 ? "beacon" : roll > 0.72 ? "dataCore" : roll > 0.58 ? "pylon" : roll > 0.42 ? "crystalCluster" : roll > 0.24 ? "relayPad" : roll > 0.12 ? "conduit" : "rubble";
+function createLabRooms(rng, half) {
+  const rooms = [
+    { id: "core", x: -560, y: -420, w: 1120, h: 840, zone: "reactor" },
+    { id: "west-lab", x: -2050, y: -920, w: 960, h: 720, zone: "bio" },
+    { id: "east-lab", x: 1110, y: -940, w: 980, h: 740, zone: "cryo" },
+    { id: "storage", x: -2050, y: 560, w: 1020, h: 740, zone: "storage" },
+    { id: "control", x: 1050, y: 580, w: 1020, h: 700, zone: "control" },
+    { id: "north-hall", x: -680, y: -1910, w: 1360, h: 520, zone: "service" },
+    { id: "south-hall", x: -720, y: 1410, w: 1440, h: 540, zone: "service" },
+  ];
+  for (let i = 0; i < 6; i++) {
+    const w = 520 + Math.floor(rng() * 4) * 96;
+    const h = 420 + Math.floor(rng() * 3) * 96;
+    const side = i % 4;
+    const x = side < 2 ? (side === 0 ? -half + 230 + rng() * 420 : half - 230 - w - rng() * 420) : -w / 2 + (rng() - 0.5) * 860;
+    const y = side >= 2 ? (side === 2 ? -half + 260 + rng() * 360 : half - 260 - h - rng() * 360) : -h / 2 + (rng() - 0.5) * 920;
+    rooms.push({ id: `annex-${i}`, x, y, w, h, zone: i % 2 ? "service" : "storage" });
+  }
+  return rooms;
+}
+
+function createCorridors(rooms) {
+  const core = rooms[0];
+  const cx = core.x + core.w / 2;
+  const cy = core.y + core.h / 2;
+  const corridors = [
+    { x: -WORLD_SIZE / 2, y: -160, w: WORLD_SIZE, h: 320, axis: "h" },
+    { x: -170, y: -WORLD_SIZE / 2, w: 340, h: WORLD_SIZE, axis: "v" },
+  ];
+  for (const room of rooms.slice(1)) {
+    const rx = room.x + room.w / 2;
+    const ry = room.y + room.h / 2;
+    corridors.push({ x: Math.min(cx, rx), y: ry - 90, w: Math.abs(cx - rx), h: 180, axis: "h" });
+    corridors.push({ x: cx - 90, y: Math.min(cy, ry), w: 180, h: Math.abs(cy - ry), axis: "v" });
+  }
+  return corridors.filter((c) => c.w > 0 && c.h > 0);
+}
+
+function addRoomTiles(rng, room, tiles, decals, props, energyLines, cables, fogBanks) {
+  let y = room.y;
+  while (y < room.y + room.h) {
+    const h = pickTileSpan(rng, room.zone);
+    let x = room.x;
+    while (x < room.x + room.w) {
+      const w = pickTileSpan(rng, room.zone);
+      const tw = Math.min(w, room.x + room.w - x);
+      const th = Math.min(h, room.y + room.h - y);
+      tiles.push(createLabTile(rng, x, y, tw, th, room.zone, false));
+      maybeAddRoomDecal(rng, x, y, tw, th, room.zone, decals);
+      x += tw;
+    }
+    y += h;
+  }
+
+  addFixedRoomProps(rng, room, props, decals, energyLines, cables, fogBanks);
+}
+
+function addCorridorTiles(rng, corridor, tiles, decals, props, energyLines, cables) {
+  const step = 128;
+  for (let y = corridor.y; y < corridor.y + corridor.h; y += step) {
+    for (let x = corridor.x; x < corridor.x + corridor.w; x += step) {
+      const tw = Math.min(step, corridor.x + corridor.w - x);
+      const th = Math.min(step, corridor.y + corridor.h - y);
+      tiles.push(createLabTile(rng, x, y, tw, th, "corridor", true));
+      if (rng() < 0.22) decals.push(createDecal(rng, x + tw / 2, y + th / 2, "arrow", LAB_PALETTE.line, corridor.axis === "h" ? 0 : Math.PI / 2));
+      if (rng() < 0.12) decals.push(createDecal(rng, x + tw * 0.5, y + th * 0.5, "grate", LAB_PALETTE.line, corridor.axis === "h" ? 0 : Math.PI / 2));
+    }
+  }
+  for (let t = 0; t < 1; t += 0.18) {
+    const x = corridor.x + corridor.w * t;
+    const y = corridor.y + corridor.h * t;
+    if (rng() < 0.48) cables.push(createCable(rng, x + corridor.w * 0.08, y + corridor.h * 0.08, corridor.axis === "h", LAB_PALETTE.line, 180 + rng() * 260));
+  }
+  if (rng() < 0.65) {
+    const y = corridor.y + corridor.h * (corridor.axis === "h" ? 0.18 : 0.5);
+    const x = corridor.x + corridor.w * (corridor.axis === "v" ? 0.18 : 0.5);
+    energyLines.push(createEnergyLine(rng, x, y, corridor.axis === "h", corridor.axis === "h" ? corridor.w * 0.72 : corridor.h * 0.72, LAB_PALETTE.line));
+  }
+  if (rng() < 0.45) props.push(createProp(rng, corridor.x + corridor.w * rng(), corridor.y + corridor.h * rng(), "wallLight", 18, LAB_PALETTE.line));
+}
+
+function pickTileSpan(rng, zone) {
+  const sizes = zone === "corridor" ? [96, 128] : [64, 96, 128, 160, 192];
+  return sizes[Math.floor(rng() * sizes.length)];
+}
+
+function createLabTile(rng, x, y, w, h, zone, corridor) {
+  const floor = corridor ? LAB_PALETTE.corridor : zone === "reactor" ? LAB_PALETTE.roomFloor : LAB_PALETTE.floor;
+  const accent = zone === "bio" ? "#72ffb4" : zone === "cryo" ? "#7dd3fc" : zone === "control" ? "#ffd166" : LAB_PALETTE.accent[Math.floor(rng() * LAB_PALETTE.accent.length)];
   return {
-    x, y, kind,
-    size: 12 + rng() * 28,
-    color: palette.accent[Math.floor(rng() * palette.accent.length)],
-    alt: palette.accent[Math.floor(rng() * palette.accent.length)],
+    x, y, w, h, zone,
+    color: floor[Math.floor(rng() * floor.length)],
+    accent,
+    panel: rng() < (corridor ? 0.78 : 0.62),
+    grate: rng() < (zone === "service" ? 0.28 : 0.12),
+    crack: rng() < 0.2,
+    stain: rng() < 0.32,
+    scuff: rng(),
+    seam: rng() < 0.72,
+    glow: rng() < (corridor ? 0.08 : 0.045) ? accent : null,
+    warning: rng() < (zone === "reactor" ? 0.2 : 0.08),
+    rot: Math.floor(rng() * 4),
     phase: rng() * TAU,
-    rot: rng() * TAU,
+    wear: rng(),
+    detailKind: Math.floor(rng() * 6),
   };
 }
 
-function createFloorDecal(rng, x, y, size, palette) {
-  return {
-    x: x + 18 + rng() * (size - 36),
-    y: y + 18 + rng() * (size - 36),
-    kind: Math.floor(rng() * 5),
-    w: 26 + rng() * 54,
-    h: 16 + rng() * 42,
-    color: palette.accent[Math.floor(rng() * palette.accent.length)],
-    phase: rng() * TAU,
-    rot: Math.floor(rng() * 4) * Math.PI / 2,
-  };
+function maybeAddRoomDecal(rng, x, y, w, h, zone, decals) {
+  if (rng() < 0.08) decals.push(createDecal(rng, x + w * 0.5, y + h * 0.5, "scorch", LAB_PALETTE.rust, rng() * TAU, w, h));
+  if (rng() < 0.045) decals.push(createDecal(rng, x + w * 0.5, y + h * 0.5, "spill", zone === "bio" ? "#72ffb4" : "#7dd3fc", rng() * TAU, w, h));
+  if (rng() < 0.035) decals.push(createDecal(rng, x + w * 0.5, y + h * 0.5, "hatch", LAB_PALETTE.line, rng() * TAU, w, h));
+  if (zone === "service" && rng() < 0.08) decals.push(createDecal(rng, x + w * 0.5, y + h * 0.5, "grate", LAB_PALETTE.line, rng() * TAU, w, h));
 }
 
-function createCableRun(rng, x, y, size, palette) {
-  const horizontal = rng() > 0.5;
-  const bend = rng() > 0.45;
-  const length = 96 + rng() * 104;
-  const ox = x + size * (0.25 + rng() * 0.5);
-  const oy = y + size * (0.25 + rng() * 0.5);
-  return {
-    x: ox,
-    y: oy,
-    horizontal,
-    bend,
-    length,
-    color: palette.accent[Math.floor(rng() * palette.accent.length)],
-    phase: rng() * TAU,
-  };
+function addFixedRoomProps(rng, room, props, decals, energyLines, cables, fogBanks) {
+  const cx = room.x + room.w / 2;
+  const cy = room.y + room.h / 2;
+  const accent = room.zone === "bio" ? "#72ffb4" : room.zone === "cryo" ? "#7dd3fc" : room.zone === "control" ? "#ffd166" : LAB_PALETTE.line;
+  props.push(createProp(rng, room.x + 42, room.y + 42, "wallLight", 18, accent, 0));
+  props.push(createProp(rng, room.x + room.w - 42, room.y + room.h - 42, "wallLight", 18, accent, Math.PI));
+
+  if (room.zone === "reactor") {
+    props.push(createProp(rng, cx, cy, "reactorCore", 70, "#7dd3fc"));
+    decals.push(createDecal(rng, cx, cy, "reactorRing", "#7dd3fc", 0, 260, 260));
+    for (let i = 0; i < 4; i++) energyLines.push(createEnergyLine(rng, cx, cy, i % 2 === 0, 360 + i * 80, i % 2 ? "#72ffb4" : "#7dd3fc"));
+  } else if (room.zone === "bio" || room.zone === "cryo") {
+    const count = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < count; i++) props.push(createProp(rng, room.x + 150 + rng() * (room.w - 300), room.y + 120 + rng() * (room.h - 240), room.zone === "bio" ? "specimenTank" : "cryoPod", 34 + rng() * 18, accent));
+    if (rng() < 0.8) fogBanks.push(createFog(room.x + room.w * rng(), room.y + room.h * rng(), 180 + rng() * 180, 70 + rng() * 70, accent, 0.035));
+  } else if (room.zone === "control") {
+    for (let i = 0; i < 5; i++) props.push(createProp(rng, room.x + 130 + i * 160, room.y + 120 + rng() * 360, "terminal", 28 + rng() * 10, i % 2 ? "#72ffb4" : "#ffd166"));
+  } else if (room.zone === "storage") {
+    for (let i = 0; i < 6; i++) props.push(createProp(rng, room.x + 80 + rng() * (room.w - 160), room.y + 80 + rng() * (room.h - 160), rng() < 0.55 ? "brokenRack" : "crateStack", 28 + rng() * 20, accent));
+  } else {
+    props.push(createProp(rng, cx + (rng() - 0.5) * room.w * 0.5, cy + (rng() - 0.5) * room.h * 0.5, "ventPipe", 36 + rng() * 24, accent, rng() < 0.5 ? 0 : Math.PI / 2));
+  }
+
+  if (rng() < 0.7) cables.push(createCable(rng, room.x + 60, cy, true, accent, room.w - 120));
+  if (rng() < 0.55) cables.push(createCable(rng, cx, room.y + 60, false, accent, room.h - 120));
 }
 
-function createEnergyLine(rng, x, y, palette) {
-  const horizontal = rng() > 0.5;
-  const length = 160 + rng() * 360;
+function addPerimeterServiceLines(rng, half, props, cables, energyLines, fogBanks) {
+  for (let i = 0; i < 16; i++) {
+    const horizontal = i % 2 === 0;
+    const side = i % 4;
+    const x = side === 1 ? half - 120 : side === 3 ? -half + 120 : -half + 300 + rng() * (WORLD_SIZE - 600);
+    const y = side === 0 ? -half + 120 : side === 2 ? half - 120 : -half + 300 + rng() * (WORLD_SIZE - 600);
+    props.push(createProp(rng, x, y, i % 3 === 0 ? "ventPipe" : "wallLight", 24 + rng() * 18, i % 3 ? "#7dd3fc" : "#9aa7b4", horizontal ? 0 : Math.PI / 2));
+    if (rng() < 0.72) cables.push(createCable(rng, x, y, horizontal, "#64748b", 180 + rng() * 280));
+  }
+  for (let i = 0; i < 10; i++) {
+    const horizontal = rng() < 0.5;
+    energyLines.push(createEnergyLine(rng, -half + 420 + rng() * (WORLD_SIZE - 840), -half + 420 + rng() * (WORLD_SIZE - 840), horizontal, 260 + rng() * 480, rng() < 0.6 ? "#7dd3fc" : "#72ffb4"));
+  }
+  for (let i = 0; i < 14; i++) {
+    fogBanks.push(createFog(-half + rng() * WORLD_SIZE, -half + rng() * WORLD_SIZE, 160 + rng() * 260, 60 + rng() * 110, rng() < 0.5 ? "#7dd3fc" : "#9aa7b4", 0.018 + rng() * 0.024));
+  }
+}
+
+function addRandomWear(rng, tiles, decals) {
+  for (let i = 0; i < Math.min(180, tiles.length * 0.12); i++) {
+    const tile = tiles[Math.floor(rng() * tiles.length)];
+    decals.push(createDecal(rng, tile.x + rng() * tile.w, tile.y + rng() * tile.h, rng() < 0.55 ? "scratch" : "scorch", rng() < 0.5 ? "#64748b" : LAB_PALETTE.rust, rng() * TAU, 32 + rng() * 70, 10 + rng() * 34));
+  }
+}
+
+function createProp(rng, x, y, kind, size, color, rot = rng() * TAU) {
+  return { x, y, kind, size, color, alt: LAB_PALETTE.accent[Math.floor(rng() * LAB_PALETTE.accent.length)], phase: rng() * TAU, rot };
+}
+
+function createDecal(rng, x, y, kind, color, rot = 0, w = 70, h = 40) {
+  return { x, y, kind, w: Math.max(18, w * (0.7 + rng() * 0.5)), h: Math.max(12, h * (0.75 + rng() * 0.5)), color, phase: rng() * TAU, rot };
+}
+
+function createCable(rng, x, y, horizontal, color, length) {
+  return { x, y, horizontal, color, length, bend: rng() < 0.42, phase: rng() * TAU, broken: rng() < 0.18 };
+}
+
+function createEnergyLine(rng, x, y, horizontal, length, color) {
   return {
     x1: x - (horizontal ? length / 2 : 0),
     y1: y - (horizontal ? 0 : length / 2),
     x2: x + (horizontal ? length / 2 : 0),
     y2: y + (horizontal ? 0 : length / 2),
-    color: palette.accent[Math.floor(rng() * palette.accent.length)],
+    color,
     phase: rng() * TAU,
   };
+}
+
+function createFog(x, y, rx, ry, color, alpha) {
+  return { x, y, rx, ry, color, alpha, phase: Math.random() * TAU };
 }
 
 function drawBase(ctx, map, camX, camY, viewW, viewH, time) {
   const g = ctx.createLinearGradient(camX, camY, camX + viewW, camY + viewH);
   g.addColorStop(0, map.palette.dark);
-  g.addColorStop(0.45, map.palette.base);
-  g.addColorStop(1, "#03060d");
+  g.addColorStop(0.5, map.palette.base);
+  g.addColorStop(1, "#050910");
   ctx.fillStyle = g;
   ctx.fillRect(camX, camY, viewW, viewH);
-
-  ctx.fillStyle = hexToRgba(map.palette.line, 0.035 + Math.sin(time * 0.7) * 0.012);
+  ctx.fillStyle = `rgba(125,211,252,${0.018 + Math.sin(time * 0.45) * 0.006})`;
   ctx.fillRect(camX, camY, viewW, viewH);
 }
 
 function drawTiles(ctx, map, camX, camY, viewW, viewH, time) {
-  const pad = map.tileSize;
   for (const tile of map.tiles) {
-    if (!rectVisible(tile.x, tile.y, map.tileSize, map.tileSize, camX, camY, viewW, viewH, pad)) continue;
+    if (!rectVisible(tile.x, tile.y, tile.w, tile.h, camX, camY, viewW, viewH, 80)) continue;
     ctx.fillStyle = tile.color;
-    ctx.fillRect(tile.x, tile.y, map.tileSize, map.tileSize);
-
-    ctx.fillStyle = tile.detail > 0.5 ? "rgba(255,255,255,0.035)" : "rgba(0,0,0,0.08)";
-    ctx.fillRect(tile.x + 8, tile.y + 8, map.tileSize - 16, map.tileSize - 16);
-
-    if (tile.stain) drawTileStain(ctx, tile, map.tileSize);
-    if (tile.panel) drawPanel(ctx, tile, map.tileSize, time);
-    if (tile.grate) drawGrate(ctx, tile, map.tileSize);
-    if (tile.trim) drawTileTrim(ctx, tile, map.tileSize);
-    drawMicroDetails(ctx, tile, map.tileSize);
-    if (tile.glow) drawTileGlow(ctx, tile, map.tileSize, time);
-    if (tile.node) drawTileNode(ctx, tile, map.tileSize, time);
-    if (tile.crack) drawCrack(ctx, tile, map.tileSize);
+    ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+    if (tile.seam) drawTileSeam(ctx, tile);
+    if (tile.panel) drawLabPanel(ctx, tile, time);
+    if (tile.grate) drawTileGrate(ctx, tile);
+    if (tile.warning) drawWarningStripe(ctx, tile);
+    if (tile.stain) drawTileStain(ctx, tile);
+    if (tile.crack) drawCrack(ctx, tile);
+    drawWear(ctx, tile);
+    if (tile.glow) drawTileGlow(ctx, tile, time);
   }
 }
 
-function drawPanel(ctx, tile, size, time) {
-  const inset = 14 + (tile.rot % 2) * 6;
-  ctx.strokeStyle = "rgba(255,255,255,0.055)";
+function drawTileSeam(ctx, tile) {
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
   ctx.lineWidth = 1;
-  ctx.strokeRect(tile.x + inset, tile.y + inset, size - inset * 2, size - inset * 2);
-
-  const pulse = 0.16 + Math.max(0, Math.sin(time * 1.6 + tile.phase)) * 0.14;
-  ctx.strokeStyle = hexToRgba(tile.accent, pulse);
-  ctx.lineWidth = 2;
+  ctx.strokeRect(tile.x + 1, tile.y + 1, tile.w - 2, tile.h - 2);
+  ctx.strokeStyle = "rgba(0,0,0,0.22)";
   ctx.beginPath();
-  if (tile.rot % 2 === 0) {
-    ctx.moveTo(tile.x + 22, tile.y + size - 24);
-    ctx.lineTo(tile.x + size * 0.45, tile.y + size - 24);
-    ctx.lineTo(tile.x + size - 22, tile.y + size * 0.42);
-  } else {
-    ctx.moveTo(tile.x + size - 22, tile.y + 24);
-    ctx.lineTo(tile.x + size * 0.58, tile.y + 24);
-    ctx.lineTo(tile.x + 22, tile.y + size * 0.58);
-  }
+  ctx.moveTo(tile.x, tile.y + tile.h);
+  ctx.lineTo(tile.x + tile.w, tile.y + tile.h);
+  ctx.lineTo(tile.x + tile.w, tile.y);
   ctx.stroke();
 }
 
-function drawGrate(ctx, tile, size) {
-  ctx.strokeStyle = "rgba(3,6,12,0.34)";
-  ctx.lineWidth = 2;
-  const x = tile.x + 22;
-  const y = tile.y + 22;
-  const w = size - 44;
-  for (let i = 0; i < 5; i++) {
-    const yy = y + i * 13;
+function drawLabPanel(ctx, tile, time) {
+  const inset = Math.min(18, Math.max(8, Math.min(tile.w, tile.h) * 0.12));
+  ctx.fillStyle = tile.w > 130 || tile.h > 130 ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.055)";
+  ctx.fillRect(tile.x + inset, tile.y + inset, tile.w - inset * 2, tile.h - inset * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.055)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(tile.x + inset, tile.y + inset, tile.w - inset * 2, tile.h - inset * 2);
+  if (tile.detailKind < 2) {
+    const pulse = 0.08 + Math.max(0, Math.sin(time * 1.6 + tile.phase)) * 0.08;
+    ctx.strokeStyle = hexToRgba(tile.accent, pulse);
     ctx.beginPath();
-    ctx.moveTo(x, yy);
-    ctx.lineTo(x + w, yy + (tile.rot % 2 ? 8 : -8));
+    ctx.moveTo(tile.x + inset + 8, tile.y + tile.h - inset - 8);
+    ctx.lineTo(tile.x + tile.w * 0.48, tile.y + tile.h - inset - 8);
+    ctx.lineTo(tile.x + tile.w - inset - 8, tile.y + tile.h * 0.42);
     ctx.stroke();
   }
 }
 
-function drawTileGlow(ctx, tile, size, time) {
-  const alpha = 0.24 + Math.sin(time * 2 + tile.phase) * 0.09;
-  ctx.strokeStyle = hexToRgba(tile.glow, alpha);
-  ctx.lineWidth = 2;
-  ctx.strokeRect(tile.x + 5, tile.y + 5, size - 10, size - 10);
-  ctx.fillStyle = hexToRgba(tile.glow, alpha * 0.14);
-  ctx.fillRect(tile.x + 8, tile.y + 8, size - 16, size - 16);
+function drawTileGrate(ctx, tile) {
+  const x = tile.x + tile.w * 0.18;
+  const y = tile.y + tile.h * 0.2;
+  const w = tile.w * 0.64;
+  const h = tile.h * 0.58;
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  for (let yy = y + 8; yy < y + h - 4; yy += 10) {
+    ctx.beginPath();
+    ctx.moveTo(x + 6, yy);
+    ctx.lineTo(x + w - 6, yy + (tile.rot % 2 ? 4 : -4));
+    ctx.stroke();
+  }
 }
 
-function drawCrack(ctx, tile, size) {
-  ctx.strokeStyle = "rgba(3,6,12,0.42)";
-  ctx.lineWidth = 3;
+function drawWarningStripe(ctx, tile) {
+  const vertical = tile.w < tile.h;
+  ctx.save();
+  ctx.translate(tile.x + tile.w / 2, tile.y + tile.h / 2);
+  ctx.rotate(vertical ? Math.PI / 2 : 0);
+  const w = vertical ? tile.h : tile.w;
+  const h = 16;
+  ctx.fillStyle = "rgba(0,0,0,0.26)";
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  for (let x = -w / 2; x < w / 2; x += 22) {
+    ctx.fillStyle = "rgba(255,209,102,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(x, -h / 2);
+    ctx.lineTo(x + 9, -h / 2);
+    ctx.lineTo(x - 1, h / 2);
+    ctx.lineTo(x - 10, h / 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawTileStain(ctx, tile) {
+  const w = Math.min(tile.w * 0.55, 58 + tile.wear * 44);
+  const h = Math.min(tile.h * 0.46, 26 + (1 - tile.wear) * 38);
+  const x = tile.x + tile.w * (0.18 + tile.scuff * 0.44);
+  const y = tile.y + tile.h * (0.18 + Math.abs(Math.sin(tile.phase)) * 0.44);
+  ctx.fillStyle = "rgba(0,0,0,0.14)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = hexToRgba(tile.zone === "bio" ? "#72ffb4" : tile.zone === "cryo" ? "#7dd3fc" : LAB_PALETTE.rust, 0.035);
+  ctx.fillRect(x + 5, y + 4, w * 0.58, h * 0.42);
+}
+
+function drawCrack(ctx, tile) {
+  const sx = tile.x + tile.w * 0.18;
+  const sy = tile.y + tile.h * (0.25 + tile.scuff * 0.35);
+  ctx.strokeStyle = "rgba(0,0,0,0.42)";
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.moveTo(tile.x + 18, tile.y + 20 + tile.detail * 50);
-  ctx.lineTo(tile.x + 43, tile.y + 44);
-  ctx.lineTo(tile.x + 75, tile.y + 32 + tile.detail * 50);
-  ctx.lineTo(tile.x + 106, tile.y + 84);
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(tile.x + tile.w * 0.38, tile.y + tile.h * 0.42);
+  ctx.lineTo(tile.x + tile.w * 0.54, tile.y + tile.h * (0.32 + tile.wear * 0.3));
+  ctx.lineTo(tile.x + tile.w * 0.82, tile.y + tile.h * 0.72);
   ctx.stroke();
   ctx.strokeStyle = "rgba(255,255,255,0.035)";
   ctx.lineWidth = 1;
   ctx.stroke();
 }
 
-function drawTileStain(ctx, tile, size) {
-  const w = 26 + tile.edgeWear * 42;
-  const h = 18 + (1 - tile.edgeWear) * 34;
-  const x = tile.x + 18 + tile.detail * (size - 58);
-  const y = tile.y + 18 + Math.abs(Math.sin(tile.phase)) * (size - 58);
-  ctx.fillStyle = "rgba(0,0,0,0.12)";
-  ctx.fillRect(x, y, w, h);
-  ctx.fillStyle = hexToRgba(tile.accent, 0.035);
-  ctx.fillRect(x + 5, y + 4, w * 0.55, h * 0.42);
-}
-
-function drawTileTrim(ctx, tile, size) {
-  const len = 22 + tile.edgeWear * 24;
-  const inset = 6;
-  ctx.strokeStyle = "rgba(255,255,255,0.075)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(tile.x + inset, tile.y + inset + len);
-  ctx.lineTo(tile.x + inset, tile.y + inset);
-  ctx.lineTo(tile.x + inset + len, tile.y + inset);
-  ctx.moveTo(tile.x + size - inset - len, tile.y + size - inset);
-  ctx.lineTo(tile.x + size - inset, tile.y + size - inset);
-  ctx.lineTo(tile.x + size - inset, tile.y + size - inset - len);
-  if (tile.rot % 2) {
-    ctx.moveTo(tile.x + size - inset - len * 0.72, tile.y + inset);
-    ctx.lineTo(tile.x + size - inset, tile.y + inset);
-    ctx.lineTo(tile.x + size - inset, tile.y + inset + len * 0.72);
+function drawWear(ctx, tile) {
+  ctx.fillStyle = "rgba(255,255,255,0.045)";
+  const count = tile.wear > 0.65 ? 5 : 3;
+  for (let i = 0; i < count; i++) {
+    const px = tile.x + 8 + ((tile.scuff * 149 + i * 31 + tile.detailKind * 17) % Math.max(12, tile.w - 16));
+    const py = tile.y + 8 + ((tile.wear * 157 + i * 29 + tile.rot * 13) % Math.max(12, tile.h - 16));
+    ctx.fillRect(px, py, 2 + (i % 2), 2);
   }
-  ctx.stroke();
-}
-
-function drawMicroDetails(ctx, tile, size) {
-  const x = tile.x;
-  const y = tile.y;
-  ctx.fillStyle = "rgba(255,255,255,0.055)";
-  for (let i = 0; i < 3; i++) {
-    const px = x + 18 + ((tile.detail * 97 + i * 29 + tile.detailKind * 13) % (size - 36));
-    const py = y + 18 + ((tile.edgeWear * 103 + i * 37 + tile.rot * 17) % (size - 36));
-    ctx.fillRect(px, py, 3, 3);
-  }
-
-  ctx.strokeStyle = "rgba(0,0,0,0.18)";
-  ctx.lineWidth = 1;
-  if (tile.detailKind === 1) {
-    ctx.strokeRect(x + 44, y + 30, 38, 18);
-  } else if (tile.detailKind === 2) {
+  if (tile.detailKind === 4) {
+    ctx.strokeStyle = "rgba(0,0,0,0.16)";
     ctx.beginPath();
-    ctx.moveTo(x + 30, y + 90);
-    ctx.lineTo(x + 58, y + 90);
-    ctx.moveTo(x + 70, y + 90);
-    ctx.lineTo(x + 98, y + 90);
-    ctx.stroke();
-  } else if (tile.detailKind === 3) {
-    ctx.fillStyle = "rgba(0,0,0,0.13)";
-    ctx.fillRect(x + 88, y + 18, 18, 18);
-    ctx.fillRect(x + 96, y + 28, 10, 30);
-  } else if (tile.detailKind === 4) {
-    ctx.strokeStyle = hexToRgba(tile.accent, 0.08);
-    ctx.beginPath();
-    ctx.moveTo(x + 18, y + 18);
-    ctx.lineTo(x + 42, y + 18);
-    ctx.lineTo(x + 42, y + 42);
+    ctx.moveTo(tile.x + tile.w * 0.2, tile.y + tile.h * 0.78);
+    ctx.lineTo(tile.x + tile.w * 0.75, tile.y + tile.h * 0.78);
     ctx.stroke();
   }
 }
 
-function drawTileNode(ctx, tile, size, time) {
-  const cx = tile.x + size * (0.33 + (tile.rot % 2) * 0.34);
-  const cy = tile.y + size * (0.38 + (tile.rot > 1 ? 0.22 : 0));
-  const pulse = 0.34 + Math.max(0, Math.sin(time * 2.8 + tile.phase)) * 0.38;
-  ctx.fillStyle = hexToRgba(tile.node, 0.16 * pulse);
-  ctx.beginPath();
-  ctx.arc(cx, cy, 18, 0, TAU);
-  ctx.fill();
-  ctx.strokeStyle = hexToRgba(tile.node, 0.36 + pulse * 0.18);
+function drawTileGlow(ctx, tile, time) {
+  const alpha = 0.14 + Math.max(0, Math.sin(time * 2.4 + tile.phase)) * 0.12;
+  ctx.strokeStyle = hexToRgba(tile.glow, alpha);
   ctx.lineWidth = 2;
-  ctx.strokeRect(cx - 6, cy - 6, 12, 12);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(cx - 2, cy - 2, 4, 4);
+  ctx.strokeRect(tile.x + 5, tile.y + 5, tile.w - 10, tile.h - 10);
+  ctx.fillStyle = hexToRgba(tile.glow, alpha * 0.08);
+  ctx.fillRect(tile.x + 6, tile.y + 6, tile.w - 12, tile.h - 12);
 }
 
 function drawFloorDecals(ctx, map, camX, camY, viewW, viewH, time) {
-  for (const decal of map.floorDecals || []) {
-    if (!rectVisible(decal.x - decal.w, decal.y - decal.h, decal.w * 2, decal.h * 2, camX, camY, viewW, viewH, 80)) continue;
+  for (const d of map.floorDecals || []) {
+    if (!rectVisible(d.x - d.w, d.y - d.h, d.w * 2, d.h * 2, camX, camY, viewW, viewH, 90)) continue;
     ctx.save();
-    ctx.translate(decal.x, decal.y);
-    ctx.rotate(decal.rot);
-    if (decal.kind === 0) drawVentDecal(ctx, decal);
-    else if (decal.kind === 1) drawHazardDecal(ctx, decal, time);
-    else if (decal.kind === 2) drawHatchDecal(ctx, decal);
-    else if (decal.kind === 3) drawArrowDecal(ctx, decal);
-    else drawCircuitDecal(ctx, decal, time);
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    if (d.kind === "grate") drawVentDecal(ctx, d);
+    else if (d.kind === "arrow") drawArrowDecal(ctx, d);
+    else if (d.kind === "hatch") drawHatchDecal(ctx, d);
+    else if (d.kind === "reactorRing") drawReactorRingDecal(ctx, d, time);
+    else if (d.kind === "spill") drawSpillDecal(ctx, d, time);
+    else if (d.kind === "scratch") drawScratchDecal(ctx, d);
+    else drawScorchDecal(ctx, d);
     ctx.restore();
   }
 }
 
-function drawVentDecal(ctx, decal) {
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.fillRect(-decal.w * 0.5, -decal.h * 0.5, decal.w, decal.h);
-  ctx.strokeStyle = "rgba(255,255,255,0.075)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(-decal.w * 0.5, -decal.h * 0.5, decal.w, decal.h);
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  for (let x = -decal.w * 0.38; x < decal.w * 0.42; x += 10) {
+function drawVentDecal(ctx, d) {
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.fillRect(-d.w / 2, -d.h / 2, d.w, d.h);
+  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+  ctx.strokeRect(-d.w / 2, -d.h / 2, d.w, d.h);
+  for (let x = -d.w * 0.4; x < d.w * 0.42; x += 10) {
     ctx.beginPath();
-    ctx.moveTo(x, -decal.h * 0.4);
-    ctx.lineTo(x - 10, decal.h * 0.4);
+    ctx.moveTo(x, -d.h * 0.42);
+    ctx.lineTo(x - 8, d.h * 0.42);
     ctx.stroke();
   }
 }
 
-function drawHazardDecal(ctx, decal, time) {
-  const pulse = 0.12 + Math.max(0, Math.sin(time * 2 + decal.phase)) * 0.1;
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.fillRect(-decal.w * 0.5, -decal.h * 0.5, decal.w, decal.h);
-  for (let x = -decal.w; x < decal.w; x += 14) {
-    ctx.fillStyle = hexToRgba(decal.color, pulse);
+function drawArrowDecal(ctx, d) {
+  ctx.fillStyle = hexToRgba(d.color, 0.14);
+  for (let i = 0; i < 3; i++) {
+    const off = i * 22 - 22;
     ctx.beginPath();
-    ctx.moveTo(x, -decal.h * 0.5);
-    ctx.lineTo(x + 8, -decal.h * 0.5);
-    ctx.lineTo(x + 2, decal.h * 0.5);
-    ctx.lineTo(x - 6, decal.h * 0.5);
+    ctx.moveTo(off - 9, -11);
+    ctx.lineTo(off + 7, 0);
+    ctx.lineTo(off - 9, 11);
+    ctx.lineTo(off - 3, 0);
     ctx.closePath();
     ctx.fill();
   }
 }
 
-function drawHatchDecal(ctx, decal) {
-  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+function drawHatchDecal(ctx, d) {
+  const s = Math.min(d.w, d.h);
+  ctx.fillStyle = "rgba(0,0,0,0.14)";
+  ctx.fillRect(-s * 0.42, -s * 0.42, s * 0.84, s * 0.84);
+  ctx.strokeStyle = "rgba(255,255,255,0.1)";
   ctx.lineWidth = 2;
-  ctx.strokeRect(-decal.w * 0.44, -decal.w * 0.44, decal.w * 0.88, decal.w * 0.88);
-  ctx.strokeStyle = hexToRgba(decal.color, 0.12);
-  ctx.strokeRect(-decal.w * 0.28, -decal.w * 0.28, decal.w * 0.56, decal.w * 0.56);
-  ctx.fillStyle = "rgba(0,0,0,0.13)";
-  ctx.fillRect(-decal.w * 0.16, -decal.w * 0.16, decal.w * 0.32, decal.w * 0.32);
+  ctx.strokeRect(-s * 0.42, -s * 0.42, s * 0.84, s * 0.84);
+  ctx.strokeStyle = hexToRgba(d.color, 0.14);
+  ctx.strokeRect(-s * 0.25, -s * 0.25, s * 0.5, s * 0.5);
 }
 
-function drawArrowDecal(ctx, decal) {
-  ctx.fillStyle = hexToRgba(decal.color, 0.12);
-  for (let i = 0; i < 2; i++) {
-    const off = i * 18 - 8;
+function drawReactorRingDecal(ctx, d, time) {
+  const pulse = 0.18 + Math.max(0, Math.sin(time * 2 + d.phase)) * 0.14;
+  ctx.strokeStyle = hexToRgba(d.color, pulse);
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.moveTo(off - 10, -10);
-    ctx.lineTo(off + 4, 0);
-    ctx.lineTo(off - 10, 10);
-    ctx.lineTo(off - 5, 0);
-    ctx.closePath();
-    ctx.fill();
+    ctx.arc(0, 0, d.w * (0.24 + i * 0.1), time * 0.4 + i, time * 0.4 + i + Math.PI * 1.35);
+    ctx.stroke();
   }
 }
 
-function drawCircuitDecal(ctx, decal, time) {
-  const pulse = 0.12 + Math.max(0, Math.sin(time * 2.6 + decal.phase)) * 0.16;
-  ctx.strokeStyle = hexToRgba(decal.color, pulse);
-  ctx.lineWidth = 2;
+function drawSpillDecal(ctx, d, time) {
+  ctx.fillStyle = hexToRgba(d.color, 0.045 + Math.sin(time * 1.5 + d.phase) * 0.012);
   ctx.beginPath();
-  ctx.moveTo(-decal.w * 0.42, 0);
-  ctx.lineTo(-decal.w * 0.12, 0);
-  ctx.lineTo(-decal.w * 0.02, -decal.h * 0.35);
-  ctx.lineTo(decal.w * 0.38, -decal.h * 0.35);
-  ctx.moveTo(-decal.w * 0.02, 0);
-  ctx.lineTo(decal.w * 0.28, decal.h * 0.32);
-  ctx.stroke();
-  ctx.fillStyle = hexToRgba(decal.color, pulse + 0.08);
-  ctx.fillRect(decal.w * 0.32, -decal.h * 0.42, 5, 5);
-  ctx.fillRect(decal.w * 0.24, decal.h * 0.25, 5, 5);
+  ctx.ellipse(0, 0, d.w * 0.5, d.h * 0.45, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = hexToRgba("#ffffff", 0.025);
+  ctx.beginPath();
+  ctx.ellipse(-d.w * 0.12, -d.h * 0.12, d.w * 0.14, d.h * 0.09, 0, 0, TAU);
+  ctx.fill();
+}
+
+function drawScratchDecal(ctx, d) {
+  ctx.strokeStyle = "rgba(255,255,255,0.055)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-d.w * 0.5 + i * d.w * 0.18, -d.h * 0.35 + i * 2);
+    ctx.lineTo(d.w * 0.45 - i * d.w * 0.1, d.h * 0.2 + i * 2);
+    ctx.stroke();
+  }
+}
+
+function drawScorchDecal(ctx, d) {
+  const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, Math.max(d.w, d.h));
+  grad.addColorStop(0, "rgba(0,0,0,0.18)");
+  grad.addColorStop(0.55, hexToRgba(d.color, 0.035));
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, d.w * 0.5, d.h * 0.5, 0, 0, TAU);
+  ctx.fill();
 }
 
 function drawCableRuns(ctx, map, camX, camY, viewW, viewH, time) {
-  for (const cable of map.cableRuns || []) {
-    if (!rectVisible(cable.x - cable.length, cable.y - cable.length, cable.length * 2, cable.length * 2, camX, camY, viewW, viewH, 100)) continue;
-    const dir = cable.horizontal ? 0 : Math.PI / 2;
-    const pulse = 0.18 + Math.max(0, Math.sin(time * 3.2 + cable.phase)) * 0.26;
+  for (const c of map.cableRuns || []) {
+    if (!rectVisible(c.x - c.length, c.y - c.length, c.length * 2, c.length * 2, camX, camY, viewW, viewH, 120)) continue;
     ctx.save();
-    ctx.translate(cable.x, cable.y);
-    ctx.rotate(dir);
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.horizontal ? 0 : Math.PI / 2);
     ctx.lineCap = "round";
-    ctx.strokeStyle = "rgba(0,0,0,0.38)";
-    ctx.lineWidth = 12;
+    ctx.strokeStyle = "rgba(0,0,0,0.42)";
+    ctx.lineWidth = 11;
     ctx.beginPath();
-    ctx.moveTo(-cable.length * 0.5, 0);
-    if (cable.bend) {
-      ctx.lineTo(0, 0);
-      ctx.lineTo(0, cable.length * 0.32);
-      ctx.lineTo(cable.length * 0.44, cable.length * 0.32);
-    } else {
-      ctx.lineTo(cable.length * 0.5, 0);
+    ctx.moveTo(-c.length / 2, 0);
+    if (c.bend) {
+      ctx.lineTo(-c.length * 0.12, 0);
+      ctx.lineTo(-c.length * 0.12, 34);
+      ctx.lineTo(c.length / 2, 34);
+    } else ctx.lineTo(c.length / 2, 0);
+    ctx.stroke();
+    ctx.strokeStyle = hexToRgba(c.color, c.broken ? 0.1 : 0.2 + Math.max(0, Math.sin(time * 3 + c.phase)) * 0.2);
+    ctx.lineWidth = c.broken ? 2 : 3;
+    ctx.stroke();
+    if (c.broken && Math.sin(time * 18 + c.phase) > 0.78) {
+      ctx.fillStyle = hexToRgba("#ffffff", 0.45);
+      ctx.fillRect(-3, -3, 6, 6);
     }
-    ctx.stroke();
-    ctx.strokeStyle = hexToRgba(cable.color, pulse);
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.11)";
-    ctx.fillRect(-8, -8, 16, 16);
     ctx.lineCap = "butt";
     ctx.restore();
   }
@@ -450,195 +519,162 @@ function drawCableRuns(ctx, map, camX, camY, viewW, viewH, time) {
 
 function drawEnergyLines(ctx, map, camX, camY, viewW, viewH, time) {
   ctx.lineCap = "round";
-  for (const line of map.energyLines) {
+  for (const line of map.energyLines || []) {
     const minX = Math.min(line.x1, line.x2);
     const minY = Math.min(line.y1, line.y2);
     const w = Math.abs(line.x2 - line.x1) || 20;
     const h = Math.abs(line.y2 - line.y1) || 20;
     if (!rectVisible(minX, minY, w, h, camX, camY, viewW, viewH, 120)) continue;
-    const k = 0.35 + Math.max(0, Math.sin(time * 3 + line.phase)) * 0.45;
-    ctx.strokeStyle = hexToRgba(line.color, 0.12);
-    ctx.lineWidth = 10;
+    const k = 0.24 + Math.max(0, Math.sin(time * 2.6 + line.phase)) * 0.38;
+    ctx.strokeStyle = hexToRgba(line.color, 0.08);
+    ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.moveTo(line.x1, line.y1);
     ctx.lineTo(line.x2, line.y2);
     ctx.stroke();
     ctx.strokeStyle = hexToRgba(line.color, k);
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(line.x1, line.y1);
-    ctx.lineTo(line.x2, line.y2);
     ctx.stroke();
   }
   ctx.lineCap = "butt";
 }
 
-function drawGrid(ctx, map, camX, camY, viewW, viewH, time) {
-  const step = 64;
-  const startX = Math.floor(camX / step) * step;
-  const startY = Math.floor(camY / step) * step;
-  ctx.strokeStyle = hexToRgba(map.palette.line, 0.055 + Math.sin(time * 0.8) * 0.015);
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = startX; x < camX + viewW + step; x += step) {
-    ctx.moveTo(x, camY - step);
-    ctx.lineTo(x, camY + viewH + step);
+function drawRoomBorders(ctx, map, camX, camY, viewW, viewH) {
+  ctx.strokeStyle = "rgba(255,255,255,0.075)";
+  ctx.lineWidth = 4;
+  for (const room of map.rooms || []) {
+    if (!rectVisible(room.x, room.y, room.w, room.h, camX, camY, viewW, viewH, 80)) continue;
+    ctx.strokeRect(room.x, room.y, room.w, room.h);
+    ctx.strokeStyle = "rgba(0,0,0,0.28)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(room.x + 8, room.y + 8, room.w - 16, room.h - 16);
+    ctx.strokeStyle = "rgba(255,255,255,0.075)";
+    ctx.lineWidth = 4;
   }
-  for (let y = startY; y < camY + viewH + step; y += step) {
-    ctx.moveTo(camX - step, y);
-    ctx.lineTo(camX + viewW + step, y);
-  }
-  ctx.stroke();
 }
 
 function drawProps(ctx, map, camX, camY, viewW, viewH, time) {
-  for (const prop of map.props) {
-    if (!rectVisible(prop.x - 80, prop.y - 80, 160, 160, camX, camY, viewW, viewH, 80)) continue;
+  for (const prop of map.props || []) {
+    if (!rectVisible(prop.x - 100, prop.y - 100, 200, 200, camX, camY, viewW, viewH, 90)) continue;
     ctx.save();
     ctx.translate(prop.x, prop.y);
     ctx.rotate(prop.rot);
-    if (prop.kind === "crystalCluster") drawCrystalCluster(ctx, prop, time);
-    else if (prop.kind === "pylon") drawPylon(ctx, prop, time);
-    else if (prop.kind === "beacon") drawBeacon(ctx, prop, time);
-    else if (prop.kind === "dataCore") drawDataCore(ctx, prop, time);
-    else if (prop.kind === "relayPad") drawRelayPad(ctx, prop, time);
-    else if (prop.kind === "conduit") drawConduit(ctx, prop, time);
-    else drawRubble(ctx, prop);
+    if (prop.kind === "wallLight") drawWallLight(ctx, prop, time);
+    else if (prop.kind === "reactorCore") drawReactorCore(ctx, prop, time);
+    else if (prop.kind === "specimenTank" || prop.kind === "cryoPod") drawTank(ctx, prop, time);
+    else if (prop.kind === "terminal") drawTerminal(ctx, prop, time);
+    else if (prop.kind === "brokenRack" || prop.kind === "crateStack") drawStorageProp(ctx, prop);
+    else if (prop.kind === "ventPipe") drawVentPipe(ctx, prop, time);
+    else drawStorageProp(ctx, prop);
     ctx.restore();
   }
 }
 
-function drawCrystalCluster(ctx, prop, time) {
-  const pulse = 0.7 + Math.sin(time * 2.4 + prop.phase) * 0.22;
-  glow(ctx, 0, 0, prop.size * 1.5, prop.color, 0.12 * pulse);
-  for (let i = 0; i < 4; i++) {
-    const a = i * TAU / 4 + 0.4;
-    const r = prop.size * (0.45 + i * 0.12);
-    ctx.save();
-    ctx.translate(Math.cos(a) * prop.size * 0.24, Math.sin(a) * prop.size * 0.18);
-    ctx.rotate(a);
-    ctx.fillStyle = hexToRgba(prop.color, 0.36);
-    diamond(ctx, r + 8);
-    ctx.fillStyle = i % 2 ? prop.alt : prop.color;
-    diamond(ctx, r);
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }
+function drawWallLight(ctx, prop, time) {
+  const s = prop.size;
+  const flicker = 0.48 + Math.max(0, Math.sin(time * 4.8 + prop.phase)) * 0.35;
+  glow(ctx, 0, 0, s * 2.4, prop.color, 0.12 * flicker);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(-s * 1.2, -s * 0.32, s * 2.4, s * 0.64);
+  ctx.fillStyle = hexToRgba(prop.color, 0.52 * flicker);
+  ctx.fillRect(-s, -s * 0.12, s * 2, s * 0.24);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(-s * 0.82, -1, s * 0.22, 2);
 }
 
-function drawPylon(ctx, prop, time) {
+function drawReactorCore(ctx, prop, time) {
   const s = prop.size;
-  glow(ctx, 0, 0, s * 1.8, prop.color, 0.1 + Math.max(0, Math.sin(time * 3 + prop.phase)) * 0.12);
-  ctx.fillStyle = "rgba(3,6,12,0.54)";
-  ctx.fillRect(-s * 0.48, s * 0.34, s * 0.96, s * 0.24);
-  ctx.fillStyle = "rgba(10,16,28,0.92)";
-  ctx.fillRect(-s * 0.32, -s * 0.9, s * 0.64, s * 1.3);
-  ctx.strokeStyle = prop.color;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-s * 0.32, -s * 0.9, s * 0.64, s * 1.3);
-  ctx.fillStyle = prop.color;
-  ctx.fillRect(-s * 0.14, -s * 0.58, s * 0.28, s * 0.68);
-}
-
-function drawBeacon(ctx, prop, time) {
-  const s = prop.size;
-  const spin = time * 1.8 + prop.phase;
-  glow(ctx, 0, 0, s * 2, prop.color, 0.16);
-  ctx.strokeStyle = hexToRgba(prop.color, 0.7);
-  ctx.lineWidth = 2;
+  const pulse = 0.65 + Math.sin(time * 2.2 + prop.phase) * 0.24;
+  glow(ctx, 0, 0, s * 2.1, prop.color, 0.15 * pulse);
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
   ctx.beginPath();
-  ctx.arc(0, 0, s * 0.78, 0, TAU);
+  ctx.arc(0, 0, s * 0.95, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(prop.color, 0.52);
+  ctx.lineWidth = 4;
   ctx.stroke();
-  for (let i = 0; i < 3; i++) {
-    const a = spin + i * TAU / 3;
+  ctx.save();
+  ctx.rotate(time * 0.8);
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * TAU;
+    ctx.strokeStyle = i % 2 ? hexToRgba("#ffffff", 0.28) : hexToRgba(prop.color, 0.52);
     ctx.beginPath();
     ctx.moveTo(Math.cos(a) * s * 0.35, Math.sin(a) * s * 0.35);
-    ctx.lineTo(Math.cos(a) * s * 1.15, Math.sin(a) * s * 1.15);
+    ctx.lineTo(Math.cos(a) * s * 0.92, Math.sin(a) * s * 0.92);
     ctx.stroke();
   }
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(-3, -3, 6, 6);
-  ctx.fillStyle = prop.color;
-  diamond(ctx, s * 0.34);
-}
-
-function drawDataCore(ctx, prop, time) {
-  const s = prop.size;
-  const pulse = 0.62 + Math.sin(time * 2.8 + prop.phase) * 0.24;
-  glow(ctx, 0, 0, s * 1.85, prop.color, 0.12 * pulse);
-  ctx.fillStyle = "rgba(3,6,12,0.72)";
-  ctx.fillRect(-s * 0.78, -s * 0.58, s * 1.56, s * 1.16);
-  ctx.strokeStyle = hexToRgba(prop.color, 0.42 + pulse * 0.16);
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-s * 0.78, -s * 0.58, s * 1.56, s * 1.16);
-
-  ctx.fillStyle = hexToRgba(prop.color, 0.22 + pulse * 0.12);
-  for (let i = 0; i < 3; i++) {
-    ctx.fillRect(-s * 0.52 + i * s * 0.36, -s * 0.28, s * 0.18, s * 0.56);
-  }
-
-  ctx.strokeStyle = hexToRgba(prop.alt, 0.32);
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 4; i++) {
-    const a = time * 0.8 + prop.phase + i * TAU / 4;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * s * 0.9, Math.sin(a) * s * 0.72);
-    ctx.lineTo(Math.cos(a) * s * 1.2, Math.sin(a) * s * 0.98);
-    ctx.stroke();
-  }
-}
-
-function drawRelayPad(ctx, prop, time) {
-  const s = prop.size;
-  const pulse = 0.48 + Math.max(0, Math.sin(time * 3.5 + prop.phase)) * 0.36;
-  glow(ctx, 0, 0, s * 1.35, prop.color, 0.08 * pulse);
-  ctx.fillStyle = "rgba(3,6,12,0.5)";
+  ctx.restore();
+  ctx.fillStyle = hexToRgba("#ffffff", 0.5);
   ctx.beginPath();
-  ctx.ellipse(0, 0, s * 1.08, s * 0.54, 0, 0, TAU);
+  ctx.arc(0, 0, s * 0.18, 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = hexToRgba(prop.color, 0.32 + pulse * 0.22);
+}
+
+function drawTank(ctx, prop, time) {
+  const s = prop.size;
+  const pulse = 0.2 + Math.max(0, Math.sin(time * 2 + prop.phase)) * 0.18;
+  glow(ctx, 0, 0, s * 1.5, prop.color, pulse * 0.4);
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(-s * 0.46, -s * 0.85, s * 0.92, s * 1.7);
+  ctx.fillStyle = hexToRgba(prop.color, prop.kind === "cryoPod" ? 0.2 : 0.16);
+  ctx.fillRect(-s * 0.32, -s * 0.66, s * 0.64, s * 1.22);
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, s * 0.86, s * 0.42, 0, 0, TAU);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(0, 0, s * 0.58, time + prop.phase, time + prop.phase + Math.PI * 0.9);
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(-2, -2, 4, 4);
-}
-
-function drawConduit(ctx, prop, time) {
-  const s = prop.size;
-  ctx.strokeStyle = "rgba(3,6,12,0.55)";
-  ctx.lineWidth = s * 0.42;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(-s * 1.4, 0);
-  ctx.lineTo(s * 1.4, 0);
-  ctx.stroke();
-  ctx.strokeStyle = hexToRgba(prop.color, 0.34 + Math.max(0, Math.sin(time * 4 + prop.phase)) * 0.28);
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.lineCap = "butt";
+  ctx.strokeRect(-s * 0.46, -s * 0.85, s * 0.92, s * 1.7);
   ctx.fillStyle = "rgba(255,255,255,0.12)";
-  ctx.fillRect(-s * 0.25, -s * 0.25, s * 0.5, s * 0.5);
+  ctx.fillRect(-s * 0.23, -s * 0.58, s * 0.13, s * 0.92);
 }
 
-function drawRubble(ctx, prop) {
+function drawTerminal(ctx, prop, time) {
   const s = prop.size;
-  ctx.fillStyle = "rgba(3,6,12,0.5)";
-  ctx.fillRect(-s * 0.75, -s * 0.34, s * 1.5, s * 0.68);
-  ctx.fillStyle = hexToRgba(prop.color, 0.24);
-  ctx.fillRect(-s * 0.48, -s * 0.2, s * 0.78, s * 0.38);
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  ctx.fillRect(s * 0.1, -s * 0.4, s * 0.46, s * 0.26);
+  const pulse = 0.25 + Math.max(0, Math.sin(time * 5 + prop.phase)) * 0.28;
+  ctx.fillStyle = "rgba(0,0,0,0.58)";
+  ctx.fillRect(-s * 0.9, -s * 0.55, s * 1.8, s * 1.1);
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.strokeRect(-s * 0.9, -s * 0.55, s * 1.8, s * 1.1);
+  ctx.fillStyle = hexToRgba(prop.color, pulse);
+  ctx.fillRect(-s * 0.62, -s * 0.32, s * 1.18, s * 0.38);
+  ctx.fillStyle = hexToRgba("#ffffff", 0.18);
+  ctx.fillRect(-s * 0.56, -s * 0.22, s * 0.22, 2);
+  ctx.fillRect(-s * 0.18, -s * 0.22, s * 0.34, 2);
+}
+
+function drawStorageProp(ctx, prop) {
+  const s = prop.size;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(-s * 0.85, -s * 0.45, s * 1.7, s * 0.9);
+  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+  ctx.strokeRect(-s * 0.85, -s * 0.45, s * 1.7, s * 0.9);
+  ctx.fillStyle = hexToRgba(prop.color, prop.kind === "brokenRack" ? 0.08 : 0.14);
+  ctx.fillRect(-s * 0.62, -s * 0.28, s * 0.48, s * 0.55);
+  ctx.fillRect(s * 0.1, -s * 0.28, s * 0.45, s * 0.55);
+}
+
+function drawVentPipe(ctx, prop, time) {
+  const s = prop.size;
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(0,0,0,0.58)";
+  ctx.lineWidth = s * 0.34;
+  ctx.beginPath();
+  ctx.moveTo(-s * 1.35, 0);
+  ctx.lineTo(s * 1.35, 0);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.11)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.1)";
+  for (let i = -1; i <= 1; i++) ctx.fillRect(i * s * 0.55 - 4, -s * 0.23, 8, s * 0.46);
+  if (Math.sin(time * 1.3 + prop.phase) > 0.2) {
+    ctx.fillStyle = hexToRgba(prop.color, 0.06);
+    ctx.beginPath();
+    ctx.ellipse(s * 1.2, 0, s * 0.7, s * 0.24, 0, 0, TAU);
+    ctx.fill();
+  }
+  ctx.lineCap = "butt";
 }
 
 function drawFog(ctx, map, camX, camY, viewW, viewH, time) {
-  for (const fog of map.fogBanks) {
+  for (const fog of map.fogBanks || []) {
     if (!rectVisible(fog.x - fog.rx, fog.y - fog.ry, fog.rx * 2, fog.ry * 2, camX, camY, viewW, viewH, 120)) continue;
     drawFogBank(ctx, fog, time);
   }
@@ -646,24 +682,21 @@ function drawFog(ctx, map, camX, camY, viewW, viewH, time) {
 
 function drawFogBank(ctx, fog, time) {
   ctx.save();
-  ctx.translate(fog.x + Math.sin(time * 0.18 + fog.phase) * 22, fog.y + Math.cos(time * 0.13 + fog.phase) * 18);
-  ctx.rotate(Math.sin(fog.phase) * 0.32);
+  ctx.translate(fog.x + Math.sin(time * 0.16 + fog.phase) * 20, fog.y + Math.cos(time * 0.12 + fog.phase) * 14);
   ctx.globalCompositeOperation = "screen";
   for (let i = 0; i < 3; i++) {
-    const a = fog.phase + i * 1.73;
-    const drift = Math.sin(time * (0.11 + i * 0.025) + a);
-    const ox = Math.cos(a) * fog.rx * (0.08 + i * 0.025) + drift * 18;
-    const oy = Math.sin(a * 1.4) * fog.ry * 0.22 + Math.cos(time * 0.09 + a) * 12;
-    const rx = fog.rx * (0.38 + i * 0.095);
-    const ry = fog.ry * (0.34 + (2 - i) * 0.06);
-    const alpha = fog.alpha * (0.42 - i * 0.04);
+    const a = fog.phase + i * 1.91;
+    const ox = Math.cos(a) * fog.rx * 0.13 + Math.sin(time * 0.12 + a) * 16;
+    const oy = Math.sin(a) * fog.ry * 0.24;
+    const rx = fog.rx * (0.42 + i * 0.08);
+    const ry = fog.ry * (0.36 + (2 - i) * 0.05);
     const grad = ctx.createRadialGradient(ox, oy, 2, ox, oy, Math.max(rx, ry));
-    grad.addColorStop(0, hexToRgba(fog.color, alpha));
-    grad.addColorStop(0.58, hexToRgba(fog.color, alpha * 0.32));
+    grad.addColorStop(0, hexToRgba(fog.color, fog.alpha * (0.44 - i * 0.06)));
+    grad.addColorStop(0.6, hexToRgba(fog.color, fog.alpha * 0.12));
     grad.addColorStop(1, hexToRgba(fog.color, 0));
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.ellipse(ox, oy, rx, ry, Math.sin(a) * 0.38, 0, TAU);
+    ctx.ellipse(ox, oy, rx, ry, Math.sin(a) * 0.3, 0, TAU);
     ctx.fill();
   }
   ctx.globalCompositeOperation = "source-over";
@@ -678,15 +711,5 @@ function glow(ctx, x, y, r, color, alpha) {
   ctx.fillStyle = hexToRgba(color, alpha);
   ctx.beginPath();
   ctx.arc(x, y, r, 0, TAU);
-  ctx.fill();
-}
-
-function diamond(ctx, r) {
-  ctx.beginPath();
-  ctx.moveTo(0, -r);
-  ctx.lineTo(r, 0);
-  ctx.lineTo(0, r);
-  ctx.lineTo(-r, 0);
-  ctx.closePath();
   ctx.fill();
 }

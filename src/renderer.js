@@ -659,9 +659,71 @@ function drawEnemyProjectiles(ctx) {
       drawEnemyBolt(ctx, b);
       continue;
     }
+    if (b.shape === "arcaneOrb" || b.shape === "starShard" || b.shape === "phaseShard" || b.shape === "razorBoomerang" || b.shape === "fastGear") {
+      drawSpecialEnemyProjectile(ctx, b);
+      continue;
+    }
     ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
   }
+}
+
+function drawSpecialEnemyProjectile(ctx, b) {
+  const angle = Math.atan2(b.vy, b.vx);
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate((b.spin || 0) + (b.shape === "razorBoomerang" ? angle : 0));
+  glow(ctx, 0, 0, b.r * 2.2, 0.42, b.color);
+  if (b.shape === "arcaneOrb") {
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(0, 0, b.r * 1.55, 0, TAU);
+    ctx.stroke();
+    ctx.rotate(TAU / 8);
+    ctx.strokeRect(-b.r, -b.r, b.r * 2, b.r * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, 0, b.r * 0.62, 0, TAU);
+    ctx.fill();
+  } else if (b.shape === "starShard") {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = i * TAU / 10 - Math.PI / 2;
+      const r = i % 2 ? b.r * 0.55 : b.r * 1.75;
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  } else if (b.shape === "phaseShard") {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.moveTo(b.r * 2, 0);
+    ctx.lineTo(-b.r * 0.9, -b.r * 0.9);
+    ctx.lineTo(-b.r * 0.35, 0);
+    ctx.lineTo(-b.r * 0.9, b.r * 0.9);
+    ctx.closePath();
+    ctx.fill();
+  } else if (b.shape === "razorBoomerang") {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.2;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.moveTo(-b.r * 2.2, -b.r * 0.35);
+    ctx.quadraticCurveTo(0, -b.r * 2.2, b.r * 2.2, -b.r * 0.25);
+    ctx.lineTo(b.r * 1.2, b.r * 0.6);
+    ctx.quadraticCurveTo(0, -b.r * 0.25, -b.r * 1.2, b.r * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (b.shape === "fastGear") {
+    drawMiniGear(ctx, 0, 0, b.r * 1.8, 10, b.color);
+  }
+  ctx.restore();
 }
 
 function drawEnemyBolt(ctx, b) {
@@ -796,11 +858,79 @@ function drawHazards(ctx) {
       drawArtilleryHazard(ctx, h, alpha);
       continue;
     }
+    if (h.kind === "gear_trap") {
+      drawGearTrapHazard(ctx, h, alpha);
+      continue;
+    }
+    if (h.kind === "magma_crack") {
+      drawMagmaCrackHazard(ctx, h, alpha);
+      continue;
+    }
     ctx.fillStyle = hexToRgba(h.color, alpha * 0.18);
     ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
     ctx.strokeStyle = hexToRgba(h.color, alpha * 0.7);
     ctx.lineWidth = 2; ctx.stroke();
   }
+}
+
+function drawGearTrapHazard(ctx, h, alpha) {
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  drawMiniGear(ctx, 0, 0, h.r * 0.8, 14, h.color, (h.spin || 0) + state.time * 7);
+  ctx.strokeStyle = hexToRgba(h.color, alpha * 0.52);
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, h.r, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawMagmaCrackHazard(ctx, h, alpha) {
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.rotate(h.angle || 0);
+  glow(ctx, 0, 0, h.r * 0.9, alpha * 0.38, h.color);
+  ctx.fillStyle = hexToRgba(h.color, alpha * 0.2);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, h.r * 1.45, h.r * 0.42, 0, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba("#fff2a8", alpha * 0.72);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-h.r * 1.2, 0);
+  ctx.lineTo(-h.r * 0.35, -h.r * 0.16);
+  ctx.lineTo(h.r * 0.15, h.r * 0.18);
+  ctx.lineTo(h.r * 1.2, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawMiniGear(ctx, x, y, r, teeth, color, spin = state.time * 10) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const a = i * TAU / (teeth * 2);
+    const rr = i % 2 ? r * 0.72 : r;
+    const px = Math.cos(a) * rr;
+    const py = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#0b1020";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.32, 0, TAU);
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawArtilleryHazard(ctx, h, alpha) {

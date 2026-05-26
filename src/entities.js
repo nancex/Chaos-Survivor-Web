@@ -251,6 +251,7 @@ function updateEnemyProjectiles(dt) {
   const p = state.player;
   for (let i = world.enemyProjectiles.length - 1; i >= 0; i--) {
     const b = world.enemyProjectiles[i];
+    updateSpecialEnemyProjectile(b, dt);
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= dt;
@@ -279,7 +280,9 @@ function updateHazards(dt) {
     const canDamage =
       !h.kind ||
       (h.kind === "ember_mine" && h.triggered) ||
-      (h.kind === "artillery_blast" && h.exploding);
+      (h.kind === "artillery_blast" && h.exploding) ||
+      h.kind === "gear_trap" ||
+      h.kind === "magma_crack";
     if (distSq(h.x, h.y, p.x, p.y) < (h.r + p.r) ** 2 && p.invuln <= 0 && canDamage) {
       p.hp -= h.damage;
       p.invuln = 0.35;
@@ -333,6 +336,22 @@ function updateEnemyKnockback(e, dt) {
   const half = WORLD_SIZE / 2;
   e.x = clamp(e.x, -half + e.r, half - e.r);
   e.y = clamp(e.y, -half + e.r, half - e.r);
+}
+
+function updateSpecialEnemyProjectile(b, dt) {
+  if (b.shape === "razorBoomerang") {
+    b.spin = (b.spin || 0) + dt * 16;
+    if (b.owner && !b.owner.dead && b.life < (b.returnAt || 1.4)) {
+      const dx = b.owner.x - b.x;
+      const dy = b.owner.y - b.y;
+      const d = Math.max(1, Math.hypot(dx, dy));
+      const speed = 285;
+      b.vx += (dx / d * speed - b.vx) * Math.min(1, dt * 3.2);
+      b.vy += (dy / d * speed - b.vy) * Math.min(1, dt * 3.2);
+    }
+  } else if (b.shape === "fastGear" || b.shape === "starShard" || b.shape === "phaseShard" || b.shape === "arcaneOrb") {
+    b.spin = (b.spin || 0) + dt * (b.shape === "fastGear" ? 18 : 6);
+  }
 }
 
 function snapshotCooldowns(e) {

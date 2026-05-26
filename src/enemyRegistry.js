@@ -19,6 +19,12 @@ import { BroodSeeder } from "./enemies/brood_seeder.js";
 import { LineRaider } from "./enemies/line_raider.js";
 import { ShieldCaster } from "./enemies/shield_caster.js";
 import { Wizard } from "./enemies/wizard.js";
+import { Pentastar } from "./enemies/pentastar.js";
+import { Gearfiend } from "./enemies/gearfiend.js";
+import { PrismMedic } from "./enemies/prism_medic.js";
+import { PhaseMirage } from "./enemies/phase_mirage.js";
+import { MagnetRaider } from "./enemies/magnet_raider.js";
+import { MagmaBeetle } from "./enemies/magma_beetle.js";
 import { Exploder } from "./enemies/exploder.js";
 import { Tank } from "./enemies/tank.js";
 import { Pyromancer } from "./enemies/pyromancer.js";
@@ -52,6 +58,12 @@ const classes = {
   line_raider: LineRaider,
   shield_caster: ShieldCaster,
   wizard: Wizard,
+  pentastar: Pentastar,
+  gearfiend: Gearfiend,
+  prism_medic: PrismMedic,
+  phase_mirage: PhaseMirage,
+  magnet_raider: MagnetRaider,
+  magma_beetle: MagmaBeetle,
   exploder: Exploder,
   tank: Tank,
   pyromancer: Pyromancer,

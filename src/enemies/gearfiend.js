@@ -1,0 +1,139 @@
+import { TAU, WORLD_SIZE } from "../constants.js";
+import { state, world } from "../state.js";
+import { burst, pulse } from "../effects.js";
+import { clamp } from "../utils.js";
+import { BaseEnemy } from "./BaseEnemy.js";
+
+const KEEP_DISTANCE = 410;
+
+export class Gearfiend extends BaseEnemy {
+  constructor(config, x, y) {
+    super(config, x, y);
+    this.behavior = "gearfiend";
+    this.cooldown = 0.9 + Math.random() * 0.7;
+    this.windup = 0;
+    this.mode = "fast";
+    this.angle = 0;
+    this.spin = Math.random() * TAU;
+    this.knockbackResistance = Math.max(this.knockbackResistance, 0.48);
+  }
+
+  update(dt) {
+    const p = state.player;
+    const dx = p.x - this.x;
+    const dy = p.y - this.y;
+    const d = Math.max(1, Math.hypot(dx, dy));
+    this.anim += dt * 5.5;
+    this.spin += dt * 8;
+    this.cooldown -= dt;
+    this.flash = Math.max(0, this.flash - dt * 8);
+    this.hitTimer = Math.max(0, this.hitTimer - dt);
+    this.flip = dx < 0 ? -1 : 1;
+
+    if (this.windup > 0) {
+      this.windup -= dt;
+      this.angle = Math.atan2(dy, dx);
+      if (this.windup <= 0) this.fireGear();
+    } else {
+      const dir = d < KEEP_DISTANCE ? -0.7 : d > KEEP_DISTANCE * 1.25 ? 0.35 : 0;
+      const strafe = Math.sin(this.anim * 0.72) * 0.36;
+      this.x += (dx / d * dir + -dy / d * strafe) * this.speed * dt;
+      this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
+      if (this.cooldown <= 0 && d < 760) {
+        this.windup = 0.42;
+        this.mode = Math.random() < 0.56 ? "fast" : "slow";
+        pulse(this.x, this.y, this.mode === "fast" ? 28 : 40, this.color, 0.2);
+      }
+    }
+
+    const half = WORLD_SIZE / 2;
+    this.x = clamp(this.x, -half + this.r, half - this.r);
+    this.y = clamp(this.y, -half + this.r, half - this.r);
+  }
+
+  fireGear() {
+    if (this.mode === "fast") {
+      const a = this.angle + (Math.random() - 0.5) * 0.08;
+      world.enemyProjectiles.push({
+        x: this.x + Math.cos(a) * (this.r + 8),
+        y: this.y + Math.sin(a) * (this.r + 8),
+        vx: Math.cos(a) * 330,
+        vy: Math.sin(a) * 330,
+        r: 7,
+        color: this.color,
+        damage: this.damage * 0.64,
+        life: 2.4,
+        shape: "fastGear",
+        spin: Math.random() * TAU,
+      });
+      this.cooldown = 1.1;
+    } else {
+      const a = this.angle;
+      const x = clamp(this.x + Math.cos(a) * 180, -WORLD_SIZE / 2 + 80, WORLD_SIZE / 2 - 80);
+      const y = clamp(this.y + Math.sin(a) * 180, -WORLD_SIZE / 2 + 80, WORLD_SIZE / 2 - 80);
+      world.hazards.push({
+        kind: "gear_trap",
+        x,
+        y,
+        r: 38,
+        color: this.color,
+        damage: this.damage * 0.82,
+        life: 3.4,
+        maxLife: 3.4,
+        spin: Math.random() * TAU,
+      });
+      this.cooldown = 1.8;
+    }
+    burst(this.x, this.y, 6, this.color, 140);
+  }
+
+  draw(ctx) {
+    const flash = this.flash > 0;
+    const z = this.r / 16;
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.fillStyle = "rgba(0,0,0,0.29)";
+    ctx.beginPath();
+    ctx.ellipse(0, this.r + 7, this.r * 1.05, this.r * 0.24, 0, 0, TAU);
+    ctx.fill();
+    drawGear(ctx, 0, 0, 19 * z, 12, this.spin, flash ? "#ffffff" : "#7b8798", flash ? "#ffffff" : this.color);
+    ctx.fillStyle = flash ? "#ffffff" : "#101827";
+    ctx.beginPath();
+    ctx.arc(0, 0, 10 * z, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = this.windup > 0 ? "#fff2a8" : "#ff7a1a";
+    ctx.beginPath();
+    ctx.arc(Math.cos(this.angle) * 3 * z, Math.sin(this.angle) * 3 * z, 4.5 * z, 0, TAU);
+    ctx.fill();
+    for (const side of [-1, 1]) {
+      drawGear(ctx, side * 20 * z, 5 * z, 7 * z, 8, -this.spin * 1.6, flash ? "#ffffff" : "#3f4a5f", flash ? "#ffffff" : this.color);
+    }
+    ctx.restore();
+  }
+}
+
+export function drawGear(ctx, x, y, r, teeth, spin, fill, stroke) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const a = i * TAU / (teeth * 2);
+    const rr = i % 2 === 0 ? r : r * 0.76;
+    const px = Math.cos(a) * rr;
+    const py = Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#0b1020";
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.34, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}

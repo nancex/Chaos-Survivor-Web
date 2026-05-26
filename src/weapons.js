@@ -4,7 +4,7 @@ import { angleDiff, circleHit, clamp, distSq } from "./utils.js";
 import { applyKnockback, damageEnemy, nearestEnemy, queryEnemies } from "./entities.js";
 import { burst, pulse, trail } from "./effects.js";
 import { playSfx } from "./audio.js";
-import { addWeaponToInventory, WEAPON_INFO } from "./inventory.js";
+import { addWeaponToInventory, QUALITY_ORDER, WEAPON_INFO } from "./inventory.js";
 
 export const STARTER_WEAPONS = ["arc", "ice", "missile", "boomerang", "drone"].map((id) => ({ id, ...WEAPON_INFO[id] }));
 
@@ -35,6 +35,23 @@ export function updateWeapons(dt) {
   updateWeaponFx(dt);
 }
 
+const QUALITY_COLORS = {
+  common: "#cbd5e1",
+  uncommon: "#77ff8a",
+  rare: "#42e8ff",
+  epic: "#b48cff",
+  legendary: "#ffd166",
+};
+
+function qualityRank(w) {
+  return Math.max(0, QUALITY_ORDER.indexOf(w?.quality || "common"));
+}
+
+function qualityColor(w, fallback = "#42e8ff") {
+  const quality = w?.quality || "common";
+  return quality === "common" ? fallback : QUALITY_COLORS[quality] || fallback;
+}
+
 function weaponPower(w, value) {
   return value * (w.qualityMult || 1);
 }
@@ -46,28 +63,80 @@ function updateArcWeapon(dt) {
   const first = nearestEnemy(p.x, p.y, w.range);
   if (!first) return;
 
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#42e8ff");
   const visited = new Set();
   const segments = [];
   let source = { x: p.x, y: p.y };
   let target = first;
   let damage = weaponPower(w, w.damage);
+  const chains = w.chains + (rank >= 1 ? 1 : 0);
 
-  for (let i = 0; i < w.chains && target; i++) {
+  for (let i = 0; i < chains && target; i++) {
     visited.add(target);
     const dx = target.x - source.x;
     const dy = target.y - source.y;
     segments.push({ x1: source.x, y1: source.y, x2: target.x, y2: target.y, seed: Math.random() * 999 });
     damageEnemy(target, damage, target.x, target.y);
     applyKnockback(target, dx, dy, 70);
-    burst(target.x, target.y, 6, "#42e8ff", 150);
+    burst(target.x, target.y, 6, color, 150);
+    if (rank >= 2) arcMicroBurst(target, damage * 0.22, color, visited);
+    if (rank >= 3 && i === 0) arcShockBurst(target, damage * 0.34, color);
     source = target;
     damage *= w.falloff;
     target = nextChainTarget(source, w.chainRange, visited);
   }
 
-  world.weaponFx.push({ kind: "arc", segments, life: 0.18, maxLife: 0.18, color: "#42e8ff" });
-  pulse(first.x, first.y, 30, "#42e8ff", 0.12);
+  if (rank >= 4 && segments.length) arcPrismBurst(source, damage * 0.52, color, visited);
+  world.weaponFx.push({ kind: "arc", segments, life: 0.18, maxLife: 0.18, color });
+  pulse(first.x, first.y, rank >= 3 ? 42 : 30, color, 0.12);
   playSfx("shoot");
+}
+
+function arcMicroBurst(source, damage, color, visited) {
+  const hits = [];
+  queryEnemies(source.x, source.y, 86, hits);
+  let count = 0;
+  for (const e of hits) {
+    if (count >= 2 || visited.has(e) || e.dead) continue;
+    visited.add(e);
+    count++;
+    damageEnemy(e, damage, source.x, source.y);
+    applyKnockback(e, e.x - source.x, e.y - source.y, 54);
+    world.weaponFx.push({
+      kind: "arc",
+      segments: [{ x1: source.x, y1: source.y, x2: e.x, y2: e.y, seed: Math.random() * 999 }],
+      life: 0.12,
+      maxLife: 0.12,
+      color,
+    });
+  }
+}
+
+function arcShockBurst(source, damage, color) {
+  const hits = [];
+  queryEnemies(source.x, source.y, 96, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    damageEnemy(e, damage, source.x, source.y);
+    applyKnockback(e, e.x - source.x, e.y - source.y, 118);
+  }
+  world.weaponFx.push({ kind: "shockRing", x: source.x, y: source.y, radius: 96, life: 0.28, maxLife: 0.28, color });
+}
+
+function arcPrismBurst(source, damage, color, visited) {
+  const hits = [];
+  queryEnemies(source.x, source.y, 150, hits);
+  const points = [];
+  let count = 0;
+  for (const e of hits) {
+    if (count >= 3 || visited.has(e) || e.dead) continue;
+    count++;
+    damageEnemy(e, damage, source.x, source.y);
+    applyKnockback(e, e.x - source.x, e.y - source.y, 72);
+    points.push({ x: e.x, y: e.y });
+  }
+  if (points.length) world.weaponFx.push({ kind: "prismBurst", x: source.x, y: source.y, points, life: 0.24, maxLife: 0.24, color });
 }
 
 function nextChainTarget(source, range, visited) {
@@ -90,19 +159,26 @@ function updateIceWeapon(dt) {
   const w = state.weapons.ice;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#9ff4ff");
   const target = nearestEnemy(p.x, p.y, 860);
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
-  for (let i = 0; i < w.count; i++) {
-    fireProjectile(base + (i - (w.count - 1) / 2) * 0.24, w, {
+  const count = w.count + (rank >= 1 ? 1 : 0);
+  for (let i = 0; i < count; i++) {
+    fireProjectile(base + (i - (count - 1) / 2) * 0.24, w, {
       shape: "ice",
-      color: "#9ff4ff",
+      variant: rank >= 2 ? "iceShard" : "ice",
+      quality: w.quality,
+      color,
       tracking: true,
       turnSpeed: w.turnSpeed,
-      pierce: 1,
-      radius: 5,
+      pierce: rank >= 3 ? 2 : 1,
+      radius: rank >= 1 ? 5.8 : 5,
       life: 2.4,
-      freezeDuration: w.freezeDuration,
+      freezeDuration: w.freezeDuration + rank * 0.05,
       knockback: 92,
+      iceRing: rank >= 2,
+      frostZone: rank >= 4,
     });
   }
   playSfx("shoot");
@@ -112,20 +188,27 @@ function updateMissileWeapon(dt) {
   const w = state.weapons.missile;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#ffb347");
   const target = nearestEnemy(p.x, p.y, 960);
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   fireProjectile(base, w, {
     shape: "missile",
-    color: "#ffb347",
+    variant: rank >= 4 ? "legendMissile" : rank >= 1 ? "burnMissile" : "missile",
+    quality: w.quality,
+    color,
     tracking: true,
     turnSpeed: w.turnSpeed,
     pierce: 1,
-    radius: 6,
+    radius: rank >= 1 ? 7 : 6,
     life: 18,
     noLifeExpire: true,
-    explodeRadius: w.explodeRadius,
+    explodeRadius: w.explodeRadius + (rank >= 1 ? 12 : 0),
     explodeDamage: w.explodeDamage,
     knockback: 145,
+    splitOnHit: rank >= 2 ? 2 : 0,
+    secondaryBurst: rank >= 3 ? 1 : 0,
+    microMissiles: rank >= 4 ? 3 : 0,
   });
   playSfx("shoot");
 }
@@ -134,20 +217,26 @@ function updateBoomerangWeapon(dt) {
   const w = state.weapons.boomerang;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#ff65d8");
   const target = nearestEnemy(p.x, p.y, 720);
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   for (let i = 0; i < w.count; i++) {
     fireProjectile(base + (i - (w.count - 1) / 2) * 0.34, w, {
       shape: "boomerang",
-      color: "#ff65d8",
+      variant: rank >= 1 ? "dualBoomerang" : "boomerang",
+      quality: w.quality,
+      color,
       returning: true,
-      returnAfter: w.returnAfter,
+      returnAfter: w.returnAfter + (rank >= 1 ? 0.18 : 0),
       returnSpeed: w.returnSpeed,
-      pierce: 7,
-      radius: 7,
+      pierce: 7 + (rank >= 2 ? 2 : 0),
+      radius: rank >= 1 ? 8 : 7,
       speed: w.speed,
-      life: 2.35,
-      knockback: 118,
+      life: rank >= 4 ? 3.2 : 2.35,
+      knockback: rank >= 2 ? 154 : 118,
+      farBurst: rank >= 3,
+      returnBounceLeft: rank >= 4 ? 1 : 0,
     });
   }
   playSfx("shoot");
@@ -157,7 +246,12 @@ function updateDroneWeapon(dt) {
   const w = state.weapons.drone;
   if (!w || w.level <= 0) return;
   const p = state.player;
-  syncDrones(w);
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#77ff8a");
+  const batteryMax = w.batteryMax + rank * 10;
+  const rechargeRate = w.rechargeRate * (1 + rank * 0.12);
+  w.beamTimer = Math.max(0, (w.beamTimer || 0) - dt);
+  syncDrones(w, batteryMax);
   w.angle += dt * (1.85 + w.level * 0.12);
 
   for (let i = 0; i < w.drones.length; i++) {
@@ -168,17 +262,19 @@ function updateDroneWeapon(dt) {
     const target = nearestEnemy(d.x, d.y, w.acquireRange);
     d.fireTimer = Math.max(0, d.fireTimer - dt);
     d.anim += dt;
-    d.energy = Math.min(w.batteryMax, d.energy ?? w.batteryMax);
+    d.energy = Math.min(batteryMax, d.energy ?? batteryMax);
+    d.legendReady = d.legendReady ?? true;
 
     const shouldRecharge = !target || d.energy < w.shotCost || d.mode === "recharge";
     if (shouldRecharge) {
-      d.mode = d.energy >= w.batteryMax && target ? "attack" : "recharge";
+      d.mode = d.energy >= batteryMax && target ? "attack" : "recharge";
       d.targetId = null;
       moveDrone(d, orbitX, orbitY, dt, 460);
       if (distSq(d.x, d.y, orbitX, orbitY) < 28 * 28) {
-        d.energy = Math.min(w.batteryMax, d.energy + w.rechargeRate * dt);
+        d.energy = Math.min(batteryMax, d.energy + rechargeRate * dt);
+        if (rank >= 4 && d.energy >= batteryMax) d.legendReady = true;
       }
-      if (d.energy < w.batteryMax || !target) {
+      if (d.energy < batteryMax || !target) {
         trail(d.x, d.y, d.prevX, d.prevY, "#ffd166", 5);
         continue;
       }
@@ -194,17 +290,26 @@ function updateDroneWeapon(dt) {
         d.fireTimer = w.fireCooldown;
         d.energy = Math.max(0, d.energy - w.shotCost);
         const a = Math.atan2(target.y - d.y, target.x - d.x);
-        fireDroneBullet(d.x, d.y, a, w);
-        world.weaponFx.push({ kind: "muzzle", x: d.x, y: d.y, angle: a, life: 0.1, maxLife: 0.1, color: "#77ff8a" });
+        if (rank >= 4 && d.legendReady) {
+          fireDroneBeam(d, target, w, color, true);
+          d.legendReady = false;
+        } else {
+          fireDroneBullet(d.x, d.y, a, w);
+          if (rank >= 3 && w.beamTimer <= 0) {
+            fireDroneBeam(d, target, w, color, false);
+            w.beamTimer = 1.45;
+          }
+        }
+        world.weaponFx.push({ kind: "muzzle", x: d.x, y: d.y, angle: a, life: 0.1, maxLife: 0.1, color });
         playSfx("shoot");
       }
     }
 
-    trail(d.x, d.y, d.prevX, d.prevY, d.mode === "attack" ? "#77ff8a" : "#ffd166", 5);
+    trail(d.x, d.y, d.prevX, d.prevY, d.mode === "attack" ? color : "#ffd166", 5);
   }
 }
 
-function syncDrones(w) {
+function syncDrones(w, batteryMax = w.batteryMax) {
   const p = state.player;
   while (w.drones.length < w.count) {
     const a = w.angle + (w.drones.length / Math.max(1, w.count)) * TAU;
@@ -215,13 +320,14 @@ function syncDrones(w) {
       prevY: p.y,
       mode: "orbit",
       fireTimer: Math.random() * w.fireCooldown,
-      energy: w.batteryMax,
+      energy: batteryMax,
       anim: Math.random() * TAU,
       targetId: null,
+      legendReady: true,
     });
   }
   if (w.drones.length > w.count) w.drones.length = w.count;
-  for (const d of w.drones) d.energy = Math.min(w.batteryMax, d.energy ?? w.batteryMax);
+  for (const d of w.drones) d.energy = Math.min(batteryMax, d.energy ?? batteryMax);
 }
 
 function moveDrone(d, x, y, dt, speed) {
@@ -237,6 +343,8 @@ function moveDrone(d, x, y, dt, speed) {
 
 function fireDroneBullet(x, y, angle, w) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#77ff8a");
   const speed = w.bulletSpeed;
   world.projectiles.push({
     x,
@@ -252,10 +360,12 @@ function fireDroneBullet(x, y, angle, w) {
     r: 4,
     life: 0.95,
     maxLife: 0.95,
-    color: "#77ff8a",
+    color,
     shape: "droneBolt",
-    tracking: false,
-    turnSpeed: 0,
+    variant: rank >= 2 ? "homingDroneBolt" : "droneBolt",
+    quality: w.quality || "common",
+    tracking: rank >= 2,
+    turnSpeed: rank >= 2 ? 2.6 : 0,
     returning: false,
     returnAfter: 0,
     returnSpeed: 1,
@@ -270,17 +380,58 @@ function fireDroneBullet(x, y, angle, w) {
   });
 }
 
+function fireDroneBeam(drone, target, w, color, legendary) {
+  const damage = weaponPower(w, w.bulletDamage) * (legendary ? 3.4 : 1.45);
+  damageEnemy(target, damage, drone.x, drone.y);
+  applyKnockback(target, target.x - drone.x, target.y - drone.y, legendary ? 180 : 95);
+  const hits = [];
+  queryEnemies(target.x, target.y, legendary ? 160 : 92, hits);
+  let extra = 0;
+  for (const e of hits) {
+    if (e === target || e.dead || extra >= (legendary ? 4 : 2)) continue;
+    extra++;
+    damageEnemy(e, damage * 0.38, target.x, target.y);
+    applyKnockback(e, e.x - target.x, e.y - target.y, 70);
+  }
+  world.weaponFx.push({
+    kind: "droneBeam",
+    x1: drone.x,
+    y1: drone.y,
+    x2: target.x,
+    y2: target.y,
+    radius: legendary ? 20 : 12,
+    life: legendary ? 0.28 : 0.18,
+    maxLife: legendary ? 0.28 : 0.18,
+    color,
+  });
+}
+
 function updatePulseWeapon(dt) {
   const w = state.weapons.pulse;
   if (!tickWeapon(w, dt)) return;
+  const rank = qualityRank(w);
+  const color = qualityColor(w, "#77ff8a");
+  const radius = w.radius + (rank >= 1 ? 18 : 0);
   const hits = [];
-  queryEnemies(state.player.x, state.player.y, w.radius, hits);
+  queryEnemies(state.player.x, state.player.y, radius, hits);
   for (const e of hits) {
     damageEnemy(e, weaponPower(w, w.damage), e.x, e.y);
     applyKnockback(e, e.x - state.player.x, e.y - state.player.y, 105);
   }
-  pulse(state.player.x, state.player.y, w.radius, "#77ff8a", 0.34);
-  world.weaponFx.push({ kind: "pulse", x: state.player.x, y: state.player.y, radius: w.radius, life: 0.32, maxLife: 0.32, color: "#77ff8a" });
+  if (rank >= 2) {
+    const outer = [];
+    queryEnemies(state.player.x, state.player.y, radius + 42, outer);
+    for (const e of outer) {
+      if (hits.includes(e)) continue;
+      damageEnemy(e, weaponPower(w, w.damage) * 0.42, state.player.x, state.player.y);
+      applyKnockback(e, e.x - state.player.x, e.y - state.player.y, 82);
+    }
+  }
+  if (rank >= 3 && hits.length >= 5) w.timer = Math.max(0.55, w.timer - Math.min(0.42, hits.length * 0.025));
+  w.pulseCount = (w.pulseCount || 0) + 1;
+  const doublePulse = rank >= 4 && w.pulseCount % 3 === 0;
+  pulse(state.player.x, state.player.y, radius, color, 0.34);
+  world.weaponFx.push({ kind: doublePulse ? "doublePulse" : "pulse", x: state.player.x, y: state.player.y, radius, life: 0.36, maxLife: 0.36, color });
   playSfx("explode");
 }
 
@@ -314,6 +465,8 @@ function fireProjectile(angle, w, opt) {
     maxLife: opt.life,
     color: opt.color,
     shape: opt.shape,
+    variant: opt.variant || opt.shape,
+    quality: opt.quality || w.quality || "common",
     tracking: opt.tracking,
     turnSpeed: opt.turnSpeed || 3,
     returning: opt.returning,
@@ -325,6 +478,14 @@ function fireProjectile(angle, w, opt) {
     freezeDuration: opt.freezeDuration || 0,
     noLifeExpire: opt.noLifeExpire || false,
     knockback: opt.knockback || 80,
+    iceRing: opt.iceRing || false,
+    frostZone: opt.frostZone || false,
+    splitOnHit: opt.splitOnHit || 0,
+    secondaryBurst: opt.secondaryBurst || 0,
+    microMissiles: opt.microMissiles || 0,
+    farBurst: opt.farBurst || false,
+    farBurstDone: false,
+    returnBounceLeft: opt.returnBounceLeft || 0,
     hitIds: new Set(),
     spin: Math.random() * TAU,
     trailTimer: 0,
@@ -348,6 +509,10 @@ function updateProjectiles(dt) {
       b.trailTimer = b.shape === "missile" ? 0.026 : 0.035;
       trail(b.x, b.y, b.px, b.py, b.color, b.shape === "droneBolt" ? 3 : 5);
     }
+    if (b.shape === "boomerang" && b.farBurst && !b.farBurstDone && b.returnTimer >= b.returnAfter) {
+      b.farBurstDone = true;
+      bladeBloom(b);
+    }
 
     const hits = [];
     queryEnemies(b.x, b.y, b.r + 30, hits);
@@ -361,6 +526,8 @@ function updateProjectiles(dt) {
       if (b.freezeDuration > 0 && !e.dead && !e.boss) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration);
       burst(b.x, b.y, b.shape === "ice" ? 12 : 8, b.color, b.shape === "missile" ? 220 : 170);
       world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, life: 0.18, maxLife: 0.18, color: b.color });
+      if (b.shape === "ice" && b.iceRing) iceRingBurst(b);
+      if (b.shape === "ice" && b.frostZone && !e.dead) frostZone(b);
       playSfx("hit");
       if (b.explodeRadius) {
         explode(b);
@@ -369,9 +536,55 @@ function updateProjectiles(dt) {
       }
     }
 
+    if (b.shape === "boomerang" && b.returnBounceLeft > 0 && b.returnTimer > b.returnAfter && distSq(b.x, b.y, state.player.x, state.player.y) < 34 * 34) {
+      b.returnBounceLeft--;
+      b.returnTimer = 0;
+      b.farBurstDone = false;
+      const a = Math.atan2(state.player.dirY, state.player.dirX) + 0.7;
+      b.vx = Math.cos(a) * b.speed;
+      b.vy = Math.sin(a) * b.speed;
+      b.life = Math.max(b.life, 1.25);
+      b.hitIds.clear();
+    }
+
     const expired = !b.noLifeExpire && b.life <= 0;
     if (expired || b.pierce <= 0 || Math.abs(b.x) > half || Math.abs(b.y) > half) world.projectiles.splice(i, 1);
   }
+}
+
+function iceRingBurst(b) {
+  const hits = [];
+  queryEnemies(b.x, b.y, 78, hits);
+  for (const e of hits) {
+    if (b.hitIds.has(e) || e.dead) continue;
+    damageEnemy(e, b.damage * 0.28, b.x, b.y);
+    applyKnockback(e, e.x - b.x, e.y - b.y, 52);
+    if (!e.boss) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.55);
+  }
+  world.weaponFx.push({ kind: "shockRing", x: b.x, y: b.y, radius: 78, life: 0.24, maxLife: 0.24, color: b.color });
+}
+
+function frostZone(b) {
+  const radius = 92;
+  const hits = [];
+  queryEnemies(b.x, b.y, radius, hits);
+  for (const e of hits) {
+    if (e.dead || e.boss) continue;
+    e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.75);
+  }
+  world.weaponFx.push({ kind: "frostZone", x: b.x, y: b.y, radius, life: 0.75, maxLife: 0.75, color: b.color });
+}
+
+function bladeBloom(b) {
+  const radius = 88;
+  const hits = [];
+  queryEnemies(b.x, b.y, radius, hits);
+  for (const e of hits) {
+    if (e.dead || b.hitIds.has(e)) continue;
+    damageEnemy(e, b.damage * 0.36, b.x, b.y);
+    applyKnockback(e, e.x - b.x, e.y - b.y, b.knockback * 0.65);
+  }
+  world.weaponFx.push({ kind: "bladeBloom", x: b.x, y: b.y, radius, life: 0.24, maxLife: 0.24, color: b.color, spin: b.spin });
 }
 
 function steer(b, dt) {
@@ -406,6 +619,80 @@ function explode(b) {
   }
   pulse(b.x, b.y, b.explodeRadius, b.color, 0.3);
   world.weaponFx.push({ kind: "explosion", x: b.x, y: b.y, radius: b.explodeRadius, life: 0.38, maxLife: 0.38, color: b.color, seed: Math.random() * 999 });
+  if (b.splitOnHit) splitMissileBlast(b);
+  if (b.secondaryBurst) {
+    world.weaponFx.push({ kind: "shockRing", x: b.x, y: b.y, radius: b.explodeRadius * 1.34, life: 0.42, maxLife: 0.42, color: b.color });
+    const outer = [];
+    queryEnemies(b.x, b.y, b.explodeRadius * 1.34, outer);
+    for (const e of outer) {
+      if (e.dead) continue;
+      damageEnemy(e, b.explodeDamage * 0.22, b.x, b.y);
+      applyKnockback(e, e.x - b.x, e.y - b.y, 72);
+    }
+  }
+  if (b.microMissiles) spawnMicroMissiles(b);
+}
+
+function splitMissileBlast(b) {
+  for (let i = 0; i < b.splitOnHit; i++) {
+    const a = b.angle + (i ? 1 : -1) * 1.25;
+    const x = b.x + Math.cos(a) * b.explodeRadius * 0.48;
+    const y = b.y + Math.sin(a) * b.explodeRadius * 0.48;
+    const radius = b.explodeRadius * 0.42;
+    const hits = [];
+    queryEnemies(x, y, radius, hits);
+    for (const e of hits) {
+      if (e.dead) continue;
+      damageEnemy(e, b.explodeDamage * 0.32, x, y);
+      applyKnockback(e, e.x - x, e.y - y, 70);
+    }
+    world.weaponFx.push({ kind: "explosion", x, y, radius, life: 0.28, maxLife: 0.28, color: b.color, seed: Math.random() * 999 });
+  }
+}
+
+function spawnMicroMissiles(b) {
+  const hits = [];
+  queryEnemies(b.x, b.y, 520, hits);
+  let count = 0;
+  for (const e of hits) {
+    if (count >= b.microMissiles || e.dead) continue;
+    const a = Math.atan2(e.y - b.y, e.x - b.x);
+    if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+    count++;
+    world.projectiles.push({
+      x: b.x,
+      y: b.y,
+      px: b.x,
+      py: b.y,
+      vx: Math.cos(a) * 560,
+      vy: Math.sin(a) * 560,
+      speed: 560,
+      angle: a,
+      damage: b.damage * 0.46,
+      pierce: 1,
+      r: 4,
+      life: 1.15,
+      maxLife: 1.15,
+      color: b.color,
+      shape: "missile",
+      variant: "microMissile",
+      quality: b.quality,
+      tracking: true,
+      turnSpeed: 4.4,
+      returning: false,
+      returnAfter: 0,
+      returnSpeed: 1,
+      returnTimer: 0,
+      explodeRadius: b.explodeRadius * 0.34,
+      explodeDamage: b.explodeDamage * 0.34,
+      freezeDuration: 0,
+      noLifeExpire: false,
+      knockback: 80,
+      hitIds: new Set(),
+      spin: Math.random() * TAU,
+      trailTimer: 0,
+    });
+  }
 }
 
 function updateWeaponFx(dt) {

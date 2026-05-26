@@ -7,6 +7,18 @@ import { renderLighting } from "./lighting.js";
 
 export const viewport = { width: 1, height: 1, dpr: 1 };
 
+const QUALITY_COLORS = {
+  common: "#cbd5e1",
+  uncommon: "#77ff8a",
+  rare: "#42e8ff",
+  epic: "#b48cff",
+  legendary: "#ffd166",
+};
+
+function qualityColor(quality, fallback) {
+  return !quality || quality === "common" ? fallback : QUALITY_COLORS[quality] || fallback;
+}
+
 export function resizeCanvas(canvas, ctx) {
   viewport.dpr = Math.min(window.devicePixelRatio || 1, 2);
   viewport.width = Math.max(320, Math.floor(window.innerWidth));
@@ -151,18 +163,19 @@ function drawPlayerMouth(ctx, mood) {
 function drawProjectiles(ctx) {
   for (const b of world.projectiles) {
     if (!inView(b.x, b.y, 60)) continue;
-    const tail = b.shape === "missile" ? 64 : b.shape === "droneBolt" ? 28 : 48;
+    const boosted = b.quality === "epic" || b.quality === "legendary";
+    const tail = b.shape === "missile" ? (boosted ? 82 : 64) : b.shape === "droneBolt" ? (boosted ? 38 : 28) : 48;
     const tx = b.x - Math.cos(b.angle) * tail;
     const ty = b.y - Math.sin(b.angle) * tail;
     const grad = ctx.createLinearGradient(tx, ty, b.x, b.y);
     grad.addColorStop(0, hexToRgba(b.color, 0));
     grad.addColorStop(1, "#fff");
-    ctx.strokeStyle = grad; ctx.lineWidth = b.shape === "droneBolt" ? 4 : 6; ctx.lineCap = "round";
+    ctx.strokeStyle = grad; ctx.lineWidth = b.shape === "droneBolt" ? (boosted ? 5 : 4) : (boosted ? 8 : 6); ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.lineCap = "butt";
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.rotate(b.angle + (b.shape === "boomerang" ? b.spin : 0));
-    glow(ctx, 0, 0, b.r * 1.7, 0.36, b.color);
+    glow(ctx, 0, 0, b.r * (boosted ? 2.15 : 1.7), boosted ? 0.48 : 0.36, b.color);
     if (b.shape === "boomerang") drawBoomerangProjectile(ctx, b);
     else if (b.shape === "missile") drawMissileProjectile(ctx, b);
     else if (b.shape === "ice") drawIceProjectile(ctx, b);
@@ -175,9 +188,11 @@ function drawProjectiles(ctx) {
 function drawDrones(ctx) {
   const w = state.weapons.drone;
   if (!w || w.level <= 0) return;
+  const color = qualityColor(w.quality, "#77ff8a");
+  const maxEnergy = w.batteryMax + Math.max(0, ["common", "uncommon", "rare", "epic", "legendary"].indexOf(w.quality || "common")) * 10;
   for (const d of w.drones) {
     if (!inView(d.x, d.y, 60)) continue;
-    drawDrone(ctx, d.x, d.y, d.anim, d.mode === "attack", d.energy, w.batteryMax);
+    drawDrone(ctx, d.x, d.y, d.anim, d.mode === "attack", d.energy, maxEnergy, color, w.quality);
   }
 }
 
@@ -198,6 +213,18 @@ function drawWeaponFx(ctx) {
       ctx.beginPath();
       ctx.arc(fx.x, fx.y, fx.radius * (1 - k), 0, TAU);
       ctx.stroke();
+    } else if (fx.kind === "doublePulse") {
+      drawDoublePulseFx(ctx, fx, k);
+    } else if (fx.kind === "shockRing") {
+      drawShockRingFx(ctx, fx, k);
+    } else if (fx.kind === "frostZone") {
+      drawFrostZoneFx(ctx, fx, k);
+    } else if (fx.kind === "prismBurst") {
+      drawPrismBurstFx(ctx, fx, k);
+    } else if (fx.kind === "bladeBloom") {
+      drawBladeBloomFx(ctx, fx, k);
+    } else if (fx.kind === "droneBeam") {
+      drawDroneBeamFx(ctx, fx, k);
     } else {
       ctx.strokeStyle = hexToRgba(fx.color, k);
       ctx.lineWidth = 2;
@@ -223,6 +250,16 @@ function drawIceProjectile(ctx, b) {
   ctx.strokeStyle = b.color;
   ctx.lineWidth = 2;
   ctx.stroke();
+  if (b.variant === "iceShard" || b.quality === "legendary") {
+    ctx.strokeStyle = hexToRgba(b.color, 0.9);
+    ctx.lineWidth = 1.4;
+    for (const s of [-0.75, 0.75]) {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35, 0);
+      ctx.lineTo(r * 1.4, r * s);
+      ctx.stroke();
+    }
+  }
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -248,13 +285,20 @@ function drawMissileProjectile(ctx, b) {
   ctx.stroke();
   ctx.fillStyle = "#42e8ff";
   ctx.fillRect(-r * 0.45, -r * 0.45, r * 0.9, r * 0.9);
-  ctx.fillStyle = "#ff4d6d";
+  ctx.fillStyle = b.variant === "legendMissile" ? "#ffd166" : "#ff4d6d";
   ctx.beginPath();
   ctx.moveTo(-r * 2.3, -r * 0.65);
-  ctx.lineTo(-r * 3.8, 0);
+  ctx.lineTo(-r * (b.variant === "microMissile" ? 3.1 : 3.8), 0);
   ctx.lineTo(-r * 2.3, r * 0.65);
   ctx.closePath();
   ctx.fill();
+  if (b.variant === "legendMissile") {
+    ctx.strokeStyle = "#ffd166";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 2.2, 0, TAU);
+    ctx.stroke();
+  }
 }
 
 function drawBoomerangProjectile(ctx, b) {
@@ -276,6 +320,13 @@ function drawBoomerangProjectile(ctx, b) {
   ctx.beginPath();
   ctx.arc(0, 0, r * 1.1, 0, TAU);
   ctx.stroke();
+  if (b.variant === "dualBoomerang" || b.quality === "legendary") {
+    ctx.strokeStyle = hexToRgba(b.color, 0.78);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 2.55, 0, TAU);
+    ctx.stroke();
+  }
 }
 
 function drawDroneBolt(ctx, b) {
@@ -289,29 +340,42 @@ function drawDroneBolt(ctx, b) {
   ctx.lineTo(r * 1.7, 0);
   ctx.lineTo(-r * 1.2, r * 0.95);
   ctx.stroke();
+  if (b.variant === "homingDroneBolt") {
+    ctx.strokeStyle = hexToRgba(b.color, 0.85);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.8, -0.9, 0.9);
+    ctx.stroke();
+  }
 }
 
-function drawDrone(ctx, x, y, t, attacking, energy = 1, maxEnergy = 1) {
+function drawDrone(ctx, x, y, t, attacking, energy = 1, maxEnergy = 1, color = "#77ff8a", quality = "common") {
   ctx.save();
   ctx.translate(x, y + Math.sin(t * 9) * 1.5);
   ctx.rotate(Math.sin(t * 3) * 0.1);
-  glow(ctx, 0, 0, attacking ? 20 : 16, attacking ? 0.55 : 0.38, attacking ? "#77ff8a" : "#ffd166");
-  ctx.strokeStyle = attacking ? "#77ff8a" : "#42e8ff";
+  glow(ctx, 0, 0, attacking ? 20 : 16, attacking ? 0.55 : 0.38, attacking ? color : "#ffd166");
+  ctx.strokeStyle = attacking ? color : "#42e8ff";
   ctx.lineWidth = 2;
   ctx.fillStyle = "rgba(10,16,28,0.92)";
   ctx.beginPath();
   ctx.roundRect(-12, -8, 24, 16, 4);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = attacking ? "#77ff8a" : "#ffd166";
+  ctx.fillStyle = attacking ? color : "#ffd166";
   ctx.fillRect(-4, -3, 8, 6);
+  if (quality === "epic" || quality === "legendary") {
+    ctx.strokeStyle = quality === "legendary" ? "#ffd166" : color;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, TAU);
+    ctx.stroke();
+  }
   for (const sx of [-17, 17]) {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     ctx.arc(sx, 0, 5 + Math.sin(t * 18) * 1.2, 0, TAU);
     ctx.stroke();
-    ctx.fillStyle = attacking ? "rgba(119,255,138,0.75)" : "rgba(66,232,255,0.75)";
+    ctx.fillStyle = attacking ? hexToRgba(color, 0.75) : "rgba(66,232,255,0.75)";
     ctx.fillRect(sx - 2, -2, 4, 4);
   }
   const ratio = Math.max(0, Math.min(1, energy / Math.max(1, maxEnergy)));
@@ -387,6 +451,104 @@ function drawMuzzleFx(ctx, fx, k) {
   ctx.closePath();
   ctx.fill();
   ctx.restore();
+}
+
+function drawDoublePulseFx(ctx, fx, k) {
+  const progress = 1 - k;
+  for (let i = 0; i < 2; i++) {
+    ctx.strokeStyle = hexToRgba(i ? "#ffffff" : fx.color, k * (i ? 0.55 : 0.85));
+    ctx.lineWidth = i ? 2 : 3;
+    ctx.beginPath();
+    ctx.arc(fx.x, fx.y, fx.radius * (progress * (i ? 0.72 : 1.08)), 0, TAU);
+    ctx.stroke();
+  }
+}
+
+function drawShockRingFx(ctx, fx, k) {
+  const r = fx.radius * (1 - k);
+  glow(ctx, fx.x, fx.y, r * 0.36, k * 0.22, fx.color);
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.82);
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(fx.x, fx.y, r, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.8);
+  ctx.lineWidth = 1.6;
+  for (let i = 0; i < 12; i++) {
+    const a = i * TAU / 12 + state.time;
+    ctx.beginPath();
+    ctx.moveTo(fx.x + Math.cos(a) * r * 0.72, fx.y + Math.sin(a) * r * 0.72);
+    ctx.lineTo(fx.x + Math.cos(a) * r, fx.y + Math.sin(a) * r);
+    ctx.stroke();
+  }
+}
+
+function drawFrostZoneFx(ctx, fx, k) {
+  const r = fx.radius * (0.92 + Math.sin(state.time * 5) * 0.02);
+  ctx.fillStyle = hexToRgba(fx.color, k * 0.08);
+  ctx.beginPath();
+  ctx.arc(fx.x, fx.y, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba("#dffcff", k * 0.55);
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.arc(fx.x, fx.y, r, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8 + state.time * 0.7;
+    const x = fx.x + Math.cos(a) * r * 0.55;
+    const y = fx.y + Math.sin(a) * r * 0.55;
+    ctx.fillStyle = hexToRgba("#ffffff", k * 0.62);
+    ctx.fillRect(x - 1, y - 1, 2, 2);
+  }
+}
+
+function drawPrismBurstFx(ctx, fx, k) {
+  glow(ctx, fx.x, fx.y, 22, k * 0.34, fx.color);
+  for (const p of fx.points || []) {
+    const points = jaggedLine(fx.x, fx.y, p.x, p.y, 4, 7, state.time * 120 + p.x);
+    ctx.strokeStyle = hexToRgba("#ffffff", k);
+    ctx.lineWidth = 3.5 * k;
+    strokePolyline(ctx, points);
+    ctx.strokeStyle = hexToRgba(fx.color, k);
+    ctx.lineWidth = 1.6;
+    strokePolyline(ctx, points);
+  }
+}
+
+function drawBladeBloomFx(ctx, fx, k) {
+  const r = fx.radius * (1 - k);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.spin || 0) + state.time * 7);
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.9);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) {
+    ctx.rotate(TAU / 6);
+    ctx.beginPath();
+    ctx.moveTo(r * 0.18, 0);
+    ctx.lineTo(r, 0);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.65);
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.58, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDroneBeamFx(ctx, fx, k) {
+  const points = jaggedLine(fx.x1, fx.y1, fx.x2, fx.y2, 6, fx.radius * 0.22, state.time * 110);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = hexToRgba("#ffffff", k);
+  ctx.lineWidth = Math.max(2, fx.radius * 0.24) * k;
+  strokePolyline(ctx, points);
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.92);
+  ctx.lineWidth = Math.max(1, fx.radius * 0.1);
+  strokePolyline(ctx, points);
+  ctx.lineCap = "butt";
 }
 
 function jaggedLine(x1, y1, x2, y2, steps, amp, seed) {

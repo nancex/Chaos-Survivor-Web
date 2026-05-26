@@ -11,28 +11,38 @@
       <canvas id="gameCanvas" aria-label="晶格幸存者游戏区域"></canvas>
 
       <section id="hud" class="hud" aria-live="polite">
-        <div class="hud-left">
-          <div class="meter">
+        <div id="hudVitals" class="hud-left">
+          <div id="hpMeter" class="meter hp-meter">
             <span>生命</span>
-            <div class="bar"><i id="hpBar"></i></div>
+            <div class="bar bar-track">
+              <i id="hpBar" class="bar-fill"></i>
+              <b class="bar-shine"></b>
+              <em class="bar-ticks"></em>
+            </div>
             <strong id="hpText">100</strong>
           </div>
-          <div class="meter xp">
+          <div id="xpMeter" class="meter xp xp-meter">
             <span>经验</span>
-            <div class="bar"><i id="xpBar"></i></div>
+            <div class="bar bar-track">
+              <i id="xpBar" class="bar-fill"></i>
+              <b class="bar-shine"></b>
+              <em class="bar-ticks"></em>
+            </div>
             <strong id="levelText">Lv.1</strong>
           </div>
         </div>
 
-        <div class="hud-center">
+        <div id="wavePanel" class="hud-center">
           <strong id="timerText">00:30</strong>
           <span id="waveText">第 1/20 波</span>
         </div>
 
         <div class="hud-right">
-          <span id="killText">击败 0</span>
-          <span id="coinText">碎片 0</span>
-          <span id="fpsText">60 fps</span>
+          <span id="killText" class="hud-chip kill-chip"><i>x</i><b>击败</b><strong>0</strong></span>
+          <span id="coinText" class="sr-only">金币 0 · 碎片 0</span>
+          <span id="goldText" class="hud-chip gold-chip"><i>G</i><b>金币</b><strong>0</strong></span>
+          <span id="shardText" class="hud-chip shard-chip"><i>*</i><b>碎片</b><strong>0</strong></span>
+          <span id="fpsText" class="hud-chip fps-chip fps-good"><i>F</i><b>FPS</b><strong>60</strong></span>
         </div>
       </section>
 

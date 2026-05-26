@@ -14,18 +14,24 @@ import {
 import { startWeaponPreview } from "./weaponPreview.js";
 
 let stopPreview = null;
+const hudLast = { hp: null, xp: null, kills: null, gold: null, shards: null, level: null };
 
 export const ui = {
   canvas: document.getElementById("gameCanvas"),
   quickActions: document.querySelector(".quick-actions"),
   hpBar: document.getElementById("hpBar"),
   hpText: document.getElementById("hpText"),
+  hpMeter: document.getElementById("hpMeter"),
   xpBar: document.getElementById("xpBar"),
+  xpMeter: document.getElementById("xpMeter"),
   levelText: document.getElementById("levelText"),
+  wavePanel: document.getElementById("wavePanel"),
   timerText: document.getElementById("timerText"),
   waveText: document.getElementById("waveText"),
   killText: document.getElementById("killText"),
   coinText: document.getElementById("coinText"),
+  goldText: document.getElementById("goldText"),
+  shardText: document.getElementById("shardText"),
   fpsText: document.getElementById("fpsText"),
   startOverlay: document.getElementById("startOverlay"),
   levelOverlay: document.getElementById("levelOverlay"),
@@ -61,15 +67,60 @@ export const ui = {
 export function updateHud(fps) {
   const p = state.player;
   if (!p) return;
-  ui.hpBar.style.transform = `scaleX(${Math.max(0, p.hp / p.maxHp)})`;
-  ui.xpBar.style.transform = `scaleX(${Math.max(0, p.xp / p.xpNeed)})`;
-  ui.hpText.textContent = `${Math.max(0, Math.ceil(p.hp))}`;
+  const hp = Math.max(0, Math.ceil(p.hp));
+  const xp = Math.max(0, Math.floor(p.xp));
+  const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
+  const xpRatio = Math.max(0, Math.min(1, p.xp / p.xpNeed));
+  ui.hpBar.style.transform = `scaleX(${hpRatio})`;
+  ui.xpBar.style.transform = `scaleX(${xpRatio})`;
+  ui.hpBar.parentElement?.style.setProperty("--value", hpRatio);
+  ui.xpBar.parentElement?.style.setProperty("--value", xpRatio);
+  ui.hpText.textContent = `${hp}`;
   ui.levelText.textContent = `Lv.${p.level}`;
   ui.timerText.textContent = state.bossWaveActive ? "BOSS" : formatTime(state.waveTimeLeft);
+  ui.wavePanel?.classList.toggle("boss-active", state.bossWaveActive);
   ui.waveText.textContent = `第 ${state.wave}/${TOTAL_WAVES} 波`;
-  ui.killText.textContent = `击败 ${state.kills}`;
+  renderChip(ui.killText, "×", "击败", state.kills);
+  renderChip(ui.goldText, "G", "金币", state.gold);
+  renderChip(ui.shardText, "◆", "碎片", state.shards);
+  renderChip(ui.fpsText, "F", "FPS", Math.round(fps));
   ui.coinText.textContent = `金币 ${state.gold} · 碎片 ${state.shards}`;
-  ui.fpsText.textContent = `${Math.round(fps)} fps`;
+  setFpsClass(fps);
+  ui.hpMeter?.classList.toggle("low", hpRatio < 0.3);
+  ui.xpMeter?.classList.toggle("near-level", xpRatio > 0.82);
+
+  if (hudLast.hp !== null && hp < hudLast.hp) flashHudValue(ui.hpMeter, "damage");
+  if (hudLast.xp !== null && xp > hudLast.xp) flashHudValue(ui.xpMeter, "gain");
+  if (hudLast.level !== null && p.level > hudLast.level) flashHudValue(ui.xpMeter, "pulse");
+  if (hudLast.kills !== null && state.kills > hudLast.kills) flashHudValue(ui.killText, "gain");
+  if (hudLast.gold !== null && state.gold > hudLast.gold) flashHudValue(ui.goldText, "gain");
+  if (hudLast.shards !== null && state.shards > hudLast.shards) flashHudValue(ui.shardText, "gain");
+  hudLast.hp = hp;
+  hudLast.xp = xp;
+  hudLast.kills = state.kills;
+  hudLast.gold = state.gold;
+  hudLast.shards = state.shards;
+  hudLast.level = p.level;
+}
+
+function renderChip(element, icon, label, value) {
+  if (!element) return;
+  element.classList.add("hud-chip");
+  element.innerHTML = `<i>${icon}</i><b>${label}</b><strong>${value}</strong>`;
+}
+
+function flashHudValue(element, className) {
+  if (!element) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  window.setTimeout(() => element.classList.remove(className), 360);
+}
+
+function setFpsClass(fps) {
+  if (!ui.fpsText) return;
+  ui.fpsText.classList.remove("fps-good", "fps-warn", "fps-bad");
+  ui.fpsText.classList.add(fps < 30 ? "fps-bad" : fps < 45 ? "fps-warn" : "fps-good");
 }
 
 export function updateBestText() {

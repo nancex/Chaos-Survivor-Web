@@ -237,19 +237,31 @@ function drawWeaponFx(ctx) {
 
 function drawIceProjectile(ctx, b) {
   const r = b.r;
+  const bladeLen = r * 4.15;
+  const tang = r * 0.95;
   ctx.fillStyle = "#dffcff";
   ctx.beginPath();
-  ctx.moveTo(r * 3.2, 0);
-  ctx.lineTo(r * 0.4, r * 1.15);
-  ctx.lineTo(-r * 1.1, r * 0.42);
-  ctx.lineTo(-r * 1.45, 0);
-  ctx.lineTo(-r * 1.1, -r * 0.42);
-  ctx.lineTo(r * 0.4, -r * 1.15);
+  ctx.moveTo(bladeLen, 0);
+  ctx.lineTo(r * 0.85, tang);
+  ctx.lineTo(-r * 1.15, r * 0.45);
+  ctx.lineTo(-r * 1.72, 0);
+  ctx.lineTo(-r * 1.15, -r * 0.45);
+  ctx.lineTo(r * 0.85, -tang);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = b.color;
   ctx.lineWidth = 2;
   ctx.stroke();
+  ctx.fillStyle = hexToRgba(b.color, 0.28);
+  ctx.beginPath();
+  ctx.moveTo(r * 0.25, 0);
+  ctx.lineTo(r * 2.8, -r * 0.42);
+  ctx.lineTo(r * 1.75, 0);
+  ctx.lineTo(r * 2.8, r * 0.42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(-r * 1.55, -r * 0.32, r * 0.8, r * 0.64);
   if (b.variant === "iceShard" || b.quality === "legendary") {
     ctx.strokeStyle = hexToRgba(b.color, 0.9);
     ctx.lineWidth = 1.4;
@@ -263,8 +275,8 @@ function drawIceProjectile(ctx, b) {
   ctx.strokeStyle = "#ffffff";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(-r * 0.9, 0);
-  ctx.lineTo(r * 2.2, 0);
+  ctx.moveTo(-r * 0.75, 0);
+  ctx.lineTo(r * 3.15, 0);
   ctx.stroke();
 }
 
@@ -303,23 +315,31 @@ function drawMissileProjectile(ctx, b) {
 
 function drawBoomerangProjectile(ctx, b) {
   const r = b.r;
+  const t = Math.sin(b.spin * 0.7) * 0.08;
   ctx.fillStyle = b.color;
   ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const a = i * TAU / 4;
-    const long = i % 2 === 0 ? r * 3.2 : r * 1.35;
-    ctx.lineTo(Math.cos(a) * long, Math.sin(a) * long);
-  }
+  ctx.moveTo(-r * 2.8, -r * 0.72);
+  ctx.quadraticCurveTo(-r * 0.35, -r * 2.35, r * 2.9, -r * 0.36 + t * r);
+  ctx.quadraticCurveTo(r * 1.25, r * 0.35, r * 0.18, r * 0.58);
+  ctx.quadraticCurveTo(-r * 0.82, r * 0.78, -r * 2.05, r * 1.42);
+  ctx.lineTo(-r * 2.75, r * 0.65);
+  ctx.quadraticCurveTo(-r * 1.25, r * 0.1, -r * 0.18, -r * 0.08);
+  ctx.quadraticCurveTo(-r * 1.26, -r * 0.18, -r * 2.8, -r * 0.72);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.6;
+  ctx.lineWidth = 1.8;
   ctx.stroke();
-  ctx.strokeStyle = "#42e8ff";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = hexToRgba("#42e8ff", 0.82);
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.arc(0, 0, r * 1.1, 0, TAU);
+  ctx.moveTo(-r * 1.85, -r * 0.42);
+  ctx.quadraticCurveTo(-r * 0.1, -r * 1.55, r * 1.75, -r * 0.28);
   ctx.stroke();
+  ctx.fillStyle = hexToRgba("#ffffff", 0.72);
+  ctx.beginPath();
+  ctx.arc(-r * 0.28, -r * 0.15, r * 0.42, 0, TAU);
+  ctx.fill();
   if (b.variant === "dualBoomerang" || b.quality === "legendary") {
     ctx.strokeStyle = hexToRgba(b.color, 0.78);
     ctx.lineWidth = 1.2;
@@ -352,37 +372,53 @@ function drawDroneBolt(ctx, b) {
 function drawDrone(ctx, x, y, t, attacking, energy = 1, maxEnergy = 1, color = "#77ff8a", quality = "common") {
   ctx.save();
   ctx.translate(x, y + Math.sin(t * 9) * 1.5);
-  ctx.rotate(Math.sin(t * 3) * 0.1);
-  glow(ctx, 0, 0, attacking ? 20 : 16, attacking ? 0.55 : 0.38, attacking ? color : "#ffd166");
-  ctx.strokeStyle = attacking ? color : "#42e8ff";
+  ctx.rotate(Math.sin(t * 3) * 0.12);
+  const core = attacking ? color : "#42e8ff";
+  glow(ctx, 0, 0, attacking ? 27 : 20, attacking ? 0.6 : 0.38, attacking ? color : "#ffd166");
+  ctx.strokeStyle = core;
   ctx.lineWidth = 2;
+  for (const sx of [-18, 18]) {
+    ctx.save();
+    ctx.translate(sx, 0);
+    ctx.rotate(t * 18 * (sx < 0 ? -1 : 1));
+    ctx.strokeStyle = hexToRgba("#ffffff", 0.85);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = hexToRgba(core, 0.92);
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(8, 0);
+    ctx.moveTo(0, -8);
+    ctx.lineTo(0, 8);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.fillStyle = "rgba(10,16,28,0.92)";
   ctx.beginPath();
-  ctx.roundRect(-12, -8, 24, 16, 4);
+  ctx.roundRect(-13, -9, 26, 18, 5);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = attacking ? color : "#ffd166";
-  ctx.fillRect(-4, -3, 8, 6);
+  ctx.fillStyle = hexToRgba(core, attacking ? 0.95 : 0.7);
+  ctx.beginPath();
+  ctx.moveTo(0, -5);
+  ctx.lineTo(7, 0);
+  ctx.lineTo(0, 5);
+  ctx.lineTo(-7, 0);
+  ctx.closePath();
+  ctx.fill();
   if (quality === "epic" || quality === "legendary") {
     ctx.strokeStyle = quality === "legendary" ? "#ffd166" : color;
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, TAU);
+    ctx.arc(0, 0, 10, 0, TAU);
     ctx.stroke();
-  }
-  for (const sx of [-17, 17]) {
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.arc(sx, 0, 5 + Math.sin(t * 18) * 1.2, 0, TAU);
-    ctx.stroke();
-    ctx.fillStyle = attacking ? hexToRgba(color, 0.75) : "rgba(66,232,255,0.75)";
-    ctx.fillRect(sx - 2, -2, 4, 4);
   }
   const ratio = Math.max(0, Math.min(1, energy / Math.max(1, maxEnergy)));
   ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.fillRect(-12, 11, 24, 3);
+  ctx.fillRect(-13, 12, 26, 3);
   ctx.fillStyle = ratio > 0.35 ? "#77ff8a" : "#ff4d6d";
-  ctx.fillRect(-12, 11, 24 * ratio, 3);
+  ctx.fillRect(-13, 12, 26 * ratio, 3);
   ctx.restore();
 }
 

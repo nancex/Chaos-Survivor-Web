@@ -269,16 +269,24 @@ function lightning(ctx, x1, y1, x2, y2, t, color = "#42e8ff", alpha = 1) {
 function crystal(ctx, r, color = "#9ff4ff", rank = 0) {
   ctx.fillStyle = "#dffcff";
   ctx.beginPath();
-  ctx.moveTo(r * 1.8, 0);
-  ctx.lineTo(r * 0.3, r * 0.8);
-  ctx.lineTo(-r * 0.9, r * 0.25);
-  ctx.lineTo(-r * 1.1, 0);
-  ctx.lineTo(-r * 0.9, -r * 0.25);
-  ctx.lineTo(r * 0.3, -r * 0.8);
+  ctx.moveTo(r * 2.35, 0);
+  ctx.lineTo(r * 0.48, r * 0.78);
+  ctx.lineTo(-r * 0.72, r * 0.34);
+  ctx.lineTo(-r * 1.12, 0);
+  ctx.lineTo(-r * 0.72, -r * 0.34);
+  ctx.lineTo(r * 0.48, -r * 0.78);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = color;
   ctx.stroke();
+  ctx.fillStyle = colorWithAlpha(color, 0.28);
+  ctx.beginPath();
+  ctx.moveTo(r * 0.2, 0);
+  ctx.lineTo(r * 1.75, -r * 0.33);
+  ctx.lineTo(r * 1.1, 0);
+  ctx.lineTo(r * 1.75, r * 0.33);
+  ctx.closePath();
+  ctx.fill();
   if (rank >= 2) {
     ctx.strokeStyle = colorWithAlpha(color, 0.8);
     ctx.beginPath();
@@ -316,15 +324,21 @@ function missile(ctx, r, color = "#ffb347", rank = 0) {
 function starBlade(ctx, r, color = "#ff65d8", rank = 0) {
   ctx.fillStyle = color;
   ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const a = i * TAU / 4;
-    const rr = i % 2 ? r * 0.5 : r * 1.55;
-    if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
-    else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-  }
+  ctx.moveTo(-r * 1.75, -r * 0.52);
+  ctx.quadraticCurveTo(-r * 0.05, -r * 1.7, r * 1.85, -r * 0.28);
+  ctx.quadraticCurveTo(r * 0.92, r * 0.26, r * 0.1, r * 0.48);
+  ctx.quadraticCurveTo(-r * 0.75, r * 0.68, -r * 1.46, r * 1.05);
+  ctx.lineTo(-r * 1.78, r * 0.48);
+  ctx.quadraticCurveTo(-r * 0.8, r * 0.1, -r * 0.15, -r * 0.06);
+  ctx.quadraticCurveTo(-r, -r * 0.18, -r * 1.75, -r * 0.52);
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+  ctx.strokeStyle = colorWithAlpha("#42e8ff", 0.8);
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.1, -r * 0.32);
+  ctx.quadraticCurveTo(0, -r * 1.05, r * 1.05, -r * 0.18);
   ctx.stroke();
   if (rank >= 1) {
     ctx.strokeStyle = colorWithAlpha(color, 0.72);
@@ -341,22 +355,39 @@ function drone(ctx, x, y, t, attacking, color = "#77ff8a", rank = 0) {
   ctx.fillStyle = "rgba(10,16,28,0.95)";
   ctx.strokeStyle = attacking ? color : "#42e8ff";
   ctx.lineWidth = 2;
+  for (const sx of [-19, 19]) {
+    ctx.save();
+    ctx.translate(sx, 0);
+    ctx.rotate(t * 18 * (sx < 0 ? -1 : 1));
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, 0, 7, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = colorWithAlpha(attacking ? color : "#42e8ff", 0.85);
+    ctx.beginPath();
+    ctx.moveTo(-8, 0);
+    ctx.lineTo(8, 0);
+    ctx.moveTo(0, -8);
+    ctx.lineTo(0, 8);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.beginPath();
-  ctx.roundRect(-13, -8, 26, 16, 4);
+  ctx.roundRect(-14, -9, 28, 18, 5);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = attacking ? color : "#ffd166";
-  ctx.fillRect(-4, -3, 8, 6);
+  ctx.beginPath();
+  ctx.moveTo(0, -5);
+  ctx.lineTo(7, 0);
+  ctx.lineTo(0, 5);
+  ctx.lineTo(-7, 0);
+  ctx.closePath();
+  ctx.fill();
   if (rank >= 3) {
     ctx.strokeStyle = rank >= 4 ? "#ffd166" : color;
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, TAU);
-    ctx.stroke();
-  }
-  for (const sx of [-18, 18]) {
-    ctx.strokeStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(sx, 0, 5 + Math.sin(t * 18) * 1.2, 0, TAU);
     ctx.stroke();
   }
   ctx.restore();

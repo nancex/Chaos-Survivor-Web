@@ -61,7 +61,11 @@ export function render(ctx) {
   drawGems(ctx);
   drawCoins(ctx);
   drawProjectiles(ctx);
-  for (const e of world.enemies) if (inView(e.x, e.y, e.r + 80)) e.draw(ctx);
+  for (const e of world.enemies) {
+    if (!inView(e.x, e.y, e.r + 80)) continue;
+    e.draw(ctx);
+    if (e.shielded) drawEnemyShield(ctx, e);
+  }
   drawDrones(ctx);
   drawPlayer(ctx);
   drawEnemyProjectiles(ctx);
@@ -651,9 +655,38 @@ function drawEnemyProjectiles(ctx) {
       drawStormProjectile(ctx, b);
       continue;
     }
+    if (b.shape === "pylonBolt" || b.shape === "gunnerShot") {
+      drawEnemyBolt(ctx, b);
+      continue;
+    }
     ctx.fillStyle = b.color; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, TAU); ctx.fill();
     ctx.fillStyle = "#fff"; ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
   }
+}
+
+function drawEnemyBolt(ctx, b) {
+  const angle = Math.atan2(b.vy, b.vx);
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(angle);
+  const long = b.shape === "pylonBolt";
+  glow(ctx, 0, 0, b.r * (long ? 2.5 : 1.7), long ? 0.45 : 0.25, b.color);
+  ctx.strokeStyle = long ? "#ffffff" : b.color;
+  ctx.lineWidth = long ? 3.5 : 2.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-b.r * (long ? 3.2 : 2), 0);
+  ctx.lineTo(b.r * (long ? 2.6 : 1.8), 0);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+  ctx.fillStyle = long ? b.color : "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(b.r * 2.5, 0);
+  ctx.lineTo(-b.r * 0.45, -b.r * 0.7);
+  ctx.lineTo(-b.r * 0.45, b.r * 0.7);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawFireballProjectile(ctx, b) {
@@ -759,11 +792,75 @@ function drawHazards(ctx) {
       drawEmberMineHazard(ctx, h, alpha);
       continue;
     }
+    if (h.kind === "artillery_blast") {
+      drawArtilleryHazard(ctx, h, alpha);
+      continue;
+    }
     ctx.fillStyle = hexToRgba(h.color, alpha * 0.18);
     ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, TAU); ctx.fill();
     ctx.strokeStyle = hexToRgba(h.color, alpha * 0.7);
     ctx.lineWidth = 2; ctx.stroke();
   }
+}
+
+function drawArtilleryHazard(ctx, h, alpha) {
+  const armed = (h.armTime || 0) <= 0;
+  const warn = Math.max(0, h.armTime || 0) / 0.82;
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  if (!armed) {
+    ctx.fillStyle = hexToRgba(h.color, 0.08 + (1 - warn) * 0.14);
+    ctx.beginPath();
+    ctx.arc(0, 0, h.r, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba("#ffffff", 0.38 + Math.sin(state.time * 18) * 0.12);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, h.r * (0.86 + (1 - warn) * 0.18), 0, TAU);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = hexToRgba(h.color, 0.74);
+    for (let i = 0; i < 4; i++) {
+      const a = i * TAU / 4 + state.time * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * h.r * 0.62, Math.sin(a) * h.r * 0.62);
+      ctx.lineTo(Math.cos(a) * h.r, Math.sin(a) * h.r);
+      ctx.stroke();
+    }
+  } else {
+    const k = Math.max(0, h.life / 0.26);
+    glow(ctx, 0, 0, h.r * 0.72, k * 0.5, h.color);
+    ctx.fillStyle = hexToRgba(h.color, k * 0.22);
+    ctx.beginPath();
+    ctx.arc(0, 0, h.r, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = hexToRgba("#fff2a8", k);
+    ctx.lineWidth = 4 * k;
+    ctx.beginPath();
+    ctx.arc(0, 0, h.r * (1.05 - k * 0.2), 0, TAU);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawEnemyShield(ctx, e) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  const r = e.r + 8 + Math.sin(state.time * 6 + e.x * 0.01) * 2;
+  ctx.strokeStyle = hexToRgba("#7dd3fc", 0.34);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = i * TAU / 6 + Math.PI / 6;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawEmberMineHazard(ctx, h, alpha) {

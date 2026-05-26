@@ -270,12 +270,18 @@ function updateHazards(dt) {
     const h = world.hazards[i];
     h.life -= dt;
     if (h.kind === "ember_mine") updateEmberMine(h, dt);
+    if (h.kind === "artillery_blast") updateArtilleryBlast(h, dt);
     if (distSq(h.x, h.y, p.x, p.y) < ((h.triggerRadius || h.r) + p.r) ** 2 && h.kind === "ember_mine") h.triggered = true;
-    if (distSq(h.x, h.y, p.x, p.y) < (h.r + p.r) ** 2 && p.invuln <= 0 && (!h.kind || h.kind !== "ember_mine" || h.triggered)) {
+    const canDamage =
+      !h.kind ||
+      (h.kind === "ember_mine" && h.triggered) ||
+      (h.kind === "artillery_blast" && h.exploding);
+    if (distSq(h.x, h.y, p.x, p.y) < (h.r + p.r) ** 2 && p.invuln <= 0 && canDamage) {
       p.hp -= h.damage;
       p.invuln = 0.35;
       playSfx("hurt");
       if (h.kind === "ember_mine") h.life = 0;
+      if (h.kind === "artillery_blast") h.life = Math.min(h.life, 0.12);
     }
     if (h.life <= 0) world.hazards.splice(i, 1);
   }
@@ -291,6 +297,20 @@ function updateEmberMine(h, dt) {
     return;
   }
   h.r = h.baseRadius || h.r;
+}
+
+function updateArtilleryBlast(h, dt) {
+  h.armTime = Math.max(0, (h.armTime || 0) - dt);
+  h.pulse = (h.pulse || 0) + dt;
+  if (h.armTime > 0) return;
+  if (!h.exploding) {
+    h.exploding = true;
+    h.life = Math.min(h.life, 0.26);
+    h.maxLife = Math.max(h.maxLife, 1.28);
+    burst(h.x, h.y, 18, h.color, 190);
+    state.shake = Math.max(state.shake, 5);
+  }
+  h.r = Math.min(h.finalRadius || h.r, h.r + dt * 190);
 }
 
 function updateEnemyKnockback(e, dt) {

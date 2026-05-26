@@ -709,7 +709,7 @@ h2 {
 
 .shop-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
   gap: 14px;
   max-height: calc(min(820px, 100vh - 28px) - 150px);
   overflow: hidden;
@@ -883,7 +883,12 @@ h2 {
   gap: 12px;
   min-height: 0;
   overflow: auto;
-  padding-right: 3px;
+  border: 1px solid rgba(255, 209, 102, 0.16);
+  border-radius: 6px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(66, 232, 255, 0.06), rgba(255, 209, 102, 0.035)),
+    rgba(3, 8, 16, 0.3);
 }
 
 .shop-inventory-section {
@@ -972,6 +977,12 @@ h2 {
   color: #ffd166;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.shop-slot-row button:hover {
+  border-color: rgba(255, 209, 102, 0.65);
+  background: rgba(255, 209, 102, 0.16);
 }
 
 .shop-panel > .subtle {

@@ -46,6 +46,7 @@ export function render(ctx) {
   drawMap(ctx, state.map, camX, camY, viewW, viewH, state.time);
   drawBounds(ctx);
   drawGems(ctx);
+  drawCoins(ctx);
   drawProjectiles(ctx);
   for (const e of world.enemies) if (inView(e.x, e.y, e.r + 80)) e.draw(ctx);
   drawDrones(ctx);
@@ -415,6 +416,26 @@ function drawGems(ctx) {
     if (!inView(g.x, g.y, 40)) continue;
     ctx.fillStyle = g.value >= 15 ? "#b48cff" : g.value >= 8 ? "#77ff8a" : "#42e8ff";
     diamondAt(ctx, g.x, g.y + Math.sin(state.time * 6 + g.phase) * 2, 6);
+  }
+}
+
+function drawCoins(ctx) {
+  for (const c of world.coins) {
+    if (!inView(c.x, c.y, 40)) continue;
+    const bob = Math.sin(state.time * 7 + c.phase) * 2;
+    const r = c.value >= 5 ? 6 : 5;
+    glow(ctx, c.x, c.y + bob, r * 2.2, 0.34, "#ffd166");
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath();
+    ctx.arc(c.x, c.y + bob, r, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = "#fff3b0";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y + bob, r * 0.62, 0, TAU);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(3,6,12,0.45)";
+    ctx.fillRect(c.x - 1, c.y + bob - r * 0.45, 2, r * 0.9);
   }
 }
 

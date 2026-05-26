@@ -29,6 +29,7 @@ export const ui = {
   fpsText: document.getElementById("fpsText"),
   startOverlay: document.getElementById("startOverlay"),
   levelOverlay: document.getElementById("levelOverlay"),
+  shopOverlay: document.getElementById("shopOverlay"),
   pauseOverlay: document.getElementById("pauseOverlay"),
   inventoryOverlay: document.getElementById("inventoryOverlay"),
   endOverlay: document.getElementById("endOverlay"),
@@ -67,7 +68,7 @@ export function updateHud(fps) {
   ui.timerText.textContent = state.bossWaveActive ? "BOSS" : formatTime(state.waveTimeLeft);
   ui.waveText.textContent = `第 ${state.wave}/${TOTAL_WAVES} 波`;
   ui.killText.textContent = `击败 ${state.kills}`;
-  ui.coinText.textContent = `碎片 ${state.shards}`;
+  ui.coinText.textContent = `金币 ${state.gold} · 碎片 ${state.shards}`;
   ui.fpsText.textContent = `${Math.round(fps)} fps`;
 }
 
@@ -205,6 +206,7 @@ export function hideAllOverlays() {
   ui.quickActions?.classList.remove("blocked");
   ui.startOverlay.classList.remove("active");
   ui.levelOverlay.classList.remove("active");
+  ui.shopOverlay?.classList.remove("active");
   ui.pauseOverlay.classList.remove("active");
   ui.inventoryOverlay.classList.remove("active");
   ui.endOverlay.classList.remove("active");
@@ -219,7 +221,7 @@ export function showEnd(victory) {
   ui.endEyebrow.textContent = victory ? "VICTORY" : "RUN COMPLETE";
   ui.endTitle.textContent = victory ? "20 波已完成" : "生存结束";
   ui.endStats.innerHTML = "";
-  [`时间 ${formatTime(state.time)}`, `等级 ${p.level}`, `击败 ${state.kills}`, `碎片 ${state.shards}`].forEach((text) => {
+  [`时间 ${formatTime(state.time)}`, `等级 ${p.level}`, `击败 ${state.kills}`, `金币 ${state.gold}`, `碎片 ${state.shards}`].forEach((text) => {
     const item = document.createElement("span");
     item.textContent = text;
     ui.endStats.appendChild(item);
@@ -238,6 +240,7 @@ function renderInventoryStats() {
     ["移动速度", Math.round(p.speed)],
     ["拾取半径", Math.round(p.magnet)],
     ["伤害倍率", `${Math.round(p.damageScale * 100)}%`],
+    ["金币", state.gold],
     ["碎片", state.shards],
   ].forEach(([label, value]) => {
     const row = document.createElement("span");

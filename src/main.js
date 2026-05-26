@@ -16,9 +16,11 @@ import {
 import { generateMap } from "./map.js";
 import { bindInput } from "./input.js";
 import { closeInventory, initInventoryUi, isInventoryOpen } from "./inventoryUi.js";
+import { closeShop, initShopUi, openShop } from "./shopUi.js";
 import { isBossWave, setupEnemyRegistry } from "./enemyRegistry.js";
-import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, collectAllExperience, clearEnemies } from "./entities.js";
+import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, updateCoins, collectAllExperience, collectAllCoins, clearEnemies } from "./entities.js";
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
+import { createShopState } from "./shop.js";
 import * as effects from "./effects.js";
 import { resizeCanvas, updateCamera, render } from "./renderer.js";
 import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "./audio.js";
@@ -27,6 +29,7 @@ import { CAMERA_ZOOM } from "./constants.js";
 export async function bootGame() {
   const ctx = ui.canvas.getContext("2d", { alpha: false });
   initInventoryUi();
+  initShopUi({ continueToNextWave: finishWaveTransition });
   await setupEnemyRegistry();
   let lastTime = 0;
   let fps = 60;
@@ -35,6 +38,7 @@ export async function bootGame() {
 
   function start() {
     resetRun(generateMap());
+    state.shop = createShopState();
     hideAllOverlays();
     showStarterChoices();
     playSfx("start");
@@ -47,6 +51,7 @@ export async function bootGame() {
       title: "选择开局武器",
       items: STARTER_WEAPONS,
       onPick: (item) => {
+        state.initialWeaponId = item.id;
         activateWeapon(item.id);
         hideChoices();
         state.mode = "playing";
@@ -67,8 +72,7 @@ export async function bootGame() {
         hideChoices();
         state.flash = 0.18;
         if (!checkLevelUps()) {
-          state.mode = "playing";
-          finishWaveTransition();
+          finishPostLevelFlow();
         }
       },
     });
@@ -91,8 +95,23 @@ export async function bootGame() {
     state.pendingVictory = state.wave >= TOTAL_WAVES;
     state.pendingNextWave = !state.pendingVictory;
     collectAllExperience();
+    collectAllCoins();
     clearEnemies();
-    if (!checkLevelUps()) finishWaveTransition();
+    if (!checkLevelUps()) openShopAfterWave();
+  }
+
+  function finishPostLevelFlow() {
+    if (state.pendingVictory || state.pendingNextWave) openShopAfterWave();
+    else state.mode = "playing";
+  }
+
+  function openShopAfterWave() {
+    if (state.pendingVictory) return endGame(true);
+    if (!state.pendingNextWave) {
+      state.mode = "playing";
+      return;
+    }
+    openShop();
   }
 
   function finishWaveTransition() {
@@ -114,6 +133,7 @@ export async function bootGame() {
     if (state.time > best) localStorage.setItem(SAVE_KEY, String(Math.floor(state.time)));
     hidePauseMenu();
     closeInventory();
+    closeShop();
     showEnd(victory);
     playSfx(victory ? "victory" : "defeat");
     stopMusic();
@@ -148,6 +168,7 @@ export async function bootGame() {
   function returnToMenu() {
     stopMusic();
     resetRun(generateMap());
+    state.shop = createShopState();
     state.mode = "menu";
     hideAllOverlays();
     ui.startOverlay.classList.add("active");
@@ -169,6 +190,7 @@ export async function bootGame() {
     rebuildGrid();
     updateWeapons(dt);
     updateGems(dt);
+    updateCoins(dt);
     effects.updateAmbientParticles?.(dt, ui.canvas.clientWidth / CAMERA_ZOOM, ui.canvas.clientHeight / CAMERA_ZOOM);
     effects.updateEffects(dt);
     updateCamera(dt);
@@ -198,6 +220,7 @@ export async function bootGame() {
   window.addEventListener("resize", () => resizeCanvas(ui.canvas, ctx));
   bindInput({ start, restart: start, togglePause, resume: resumeGame, returnToMenu });
   resetRun(generateMap());
+  state.shop = createShopState();
   state.mode = "menu";
   updateBestText();
   requestAnimationFrame(loop);

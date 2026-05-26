@@ -15,6 +15,7 @@ export function initInventoryUi() {
   dom.closeButton = document.getElementById("inventoryCloseButton");
   dom.stats = document.getElementById("inventoryStats");
   dom.weaponCount = document.getElementById("inventoryWeaponCount");
+  dom.goldCount = document.getElementById("inventoryGoldCount");
   dom.shardCount = document.getElementById("inventoryShardCount");
   dom.slots = document.getElementById("weaponSlotList");
   dom.detail = document.getElementById("weaponDetail");
@@ -96,6 +97,7 @@ function renderStats() {
     ["移动速度", Math.round(p.speed)],
     ["拾取半径", Math.round(p.magnet)],
     ["伤害倍率", `${Math.round(p.damageScale * 100)}%`],
+    ["金币", state.gold],
     ["碎片", state.shards],
   ].forEach(([label, value]) => {
     const row = document.createElement("span");
@@ -106,6 +108,7 @@ function renderStats() {
 
 function renderSummary() {
   if (dom.weaponCount) dom.weaponCount.textContent = `武器 ${state.inventory.weaponSlots.length}/6`;
+  if (dom.goldCount) dom.goldCount.textContent = `金币 ${state.gold}`;
   if (dom.shardCount) dom.shardCount.textContent = `碎片 ${state.shards}`;
 }
 

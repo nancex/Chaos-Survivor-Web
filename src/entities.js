@@ -78,6 +78,25 @@ export function dropGem(x, y, value) {
   world.gems.push({ x, y, value: Math.max(1, Math.round(value)), phase: Math.random() * TAU });
 }
 
+export function dropCoin(x, y, amount) {
+  const value = Math.max(1, Math.round(amount));
+  const count = Math.min(5, value);
+  let remaining = value;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * TAU;
+    const spread = 8 + Math.random() * 18;
+    const stack = i === count - 1 ? remaining : Math.max(1, Math.floor(value / count));
+    remaining -= stack;
+    world.coins.push({
+      x: x + Math.cos(angle) * spread,
+      y: y + Math.sin(angle) * spread,
+      value: stack,
+      phase: Math.random() * TAU,
+    });
+  }
+  while (world.coins.length > GEM_LIMIT) world.coins.shift();
+}
+
 export function updateGems(dt) {
   const p = state.player;
   for (let i = world.gems.length - 1; i >= 0; i--) {
@@ -95,6 +114,26 @@ export function updateGems(dt) {
       state.shards += g.value;
       world.gems.splice(i, 1);
       playSfx("gem");
+    }
+  }
+}
+
+export function updateCoins(dt) {
+  const p = state.player;
+  for (let i = world.coins.length - 1; i >= 0; i--) {
+    const c = world.coins[i];
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    const dist = Math.max(1, Math.hypot(dx, dy));
+    if (dist < p.magnet * 0.92) {
+      const pull = (1 - dist / (p.magnet * 0.92)) * 440 + 105;
+      c.x += (dx / dist) * pull * dt;
+      c.y += (dy / dist) * pull * dt;
+    }
+    if (dist < p.r + 12) {
+      state.gold += c.value;
+      world.coins.splice(i, 1);
+      playSfx("coin");
     }
   }
 }
@@ -146,6 +185,11 @@ export function collectAllExperience() {
     p.xp += Math.max(1, Math.round(e.xp || 1));
     state.shards += Math.max(1, Math.round(e.xp || 1));
   }
+}
+
+export function collectAllCoins() {
+  for (const c of world.coins) state.gold += Math.max(1, Math.round(c.value || 1));
+  world.coins.length = 0;
 }
 
 export function clearEnemies() {

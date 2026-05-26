@@ -67,6 +67,27 @@
         </div>
       </section>
 
+      <section id="shopOverlay" class="overlay">
+        <div class="panel shop-panel">
+          <div class="shop-head">
+            <div>
+              <p class="eyebrow">WAVE SHOP</p>
+              <h2>波次商店</h2>
+            </div>
+            <div class="shop-wallet">
+              <span>金币</span>
+              <strong id="shopGoldText">0</strong>
+            </div>
+          </div>
+          <div id="shopOfferList" class="shop-offer-list"></div>
+          <div class="shop-actions">
+            <button id="shopRefreshButton" type="button">刷新商品</button>
+            <button id="shopContinueButton" type="button" class="primary">进入下一波</button>
+          </div>
+          <p id="shopHint" class="subtle">锁定的商品不会在刷新或下次进入商店时变化。</p>
+        </div>
+      </section>
+
       <section id="pauseOverlay" class="overlay">
         <div class="panel pause-menu">
           <p class="eyebrow">PAUSED</p>
@@ -89,6 +110,7 @@
             </div>
             <div class="inventory-summary" aria-label="背包摘要">
               <span id="inventoryWeaponCount">武器 0/6</span>
+              <span id="inventoryGoldCount">金币 0</span>
               <span id="inventoryShardCount">碎片 0</span>
             </div>
             <button id="inventoryCloseButton" type="button" title="关闭背包">×</button>

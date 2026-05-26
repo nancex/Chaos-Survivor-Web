@@ -12,6 +12,7 @@ export const state = {
   bossWaveActive: false,
   kills: 0,
   shards: 0,
+  gold: 0,
   spawnBudget: 0,
   victory: false,
   shake: 0,
@@ -22,6 +23,8 @@ export const state = {
   player: null,
   weapons: null,
   inventory: null,
+  initialWeaponId: null,
+  shop: null,
 };
 
 export const world = {
@@ -30,6 +33,7 @@ export const world = {
   enemyProjectiles: [],
   hazards: [],
   gems: [],
+  coins: [],
   particles: [],
   weaponFx: [],
   grid: new Map(),
@@ -94,6 +98,7 @@ export function resetRun(map) {
   world.enemyProjectiles.length = 0;
   world.hazards.length = 0;
   world.gems.length = 0;
+  world.coins.length = 0;
   world.particles.length = 0;
   world.weaponFx.length = 0;
   world.grid.clear();
@@ -110,6 +115,7 @@ export function resetRun(map) {
   state.bossWaveActive = false;
   state.kills = 0;
   state.shards = 0;
+  state.gold = 0;
   state.spawnBudget = 0;
   state.victory = false;
   state.shake = 0;
@@ -120,4 +126,6 @@ export function resetRun(map) {
   state.player = createPlayer();
   state.weapons = createWeapons();
   state.inventory = createInventory();
+  state.initialWeaponId = null;
+  state.shop = null;
 }

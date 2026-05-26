@@ -26,6 +26,7 @@ export function particle(kind, x, y, options = {}) {
     spin: options.spin ?? 0,
     angle: options.angle ?? 0,
     length: options.length ?? 10,
+    seed: options.seed ?? Math.random() * 999,
     ambient: Boolean(options.ambient),
     t: 0,
   });
@@ -176,13 +177,14 @@ function spawnAmbientEmber(x, y, color) {
 
 function spawnAmbientMist(x, y, color) {
   particle("mist", x, y, {
-    vx: 10 + Math.random() * 18,
-    vy: (Math.random() - 0.5) * 8,
-    life: 3.2 + Math.random() * 2.2,
-    size: 24 + Math.random() * 46,
+    vx: 5 + Math.random() * 13,
+    vy: (Math.random() - 0.5) * 5,
+    life: 4.2 + Math.random() * 3.2,
+    size: 30 + Math.random() * 58,
     color,
-    alpha: 0.16,
-    drift: 10,
+    alpha: 0.11,
+    drift: 6,
+    angle: Math.random() * TAU,
     ambient: true,
   });
 }
@@ -279,10 +281,35 @@ function drawEmber(ctx, p, alpha) {
 
 function drawMist(ctx, p, alpha) {
   const a = alpha * p.alpha;
-  ctx.fillStyle = hexToRgba(p.color, a);
+  const wobble = Math.sin(p.t * 0.7 + p.seed) * 0.08;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.angle + wobble);
+  drawMistBlob(ctx, 0, 0, p.size * 1.9, p.size * 0.72, p.color, a * 0.42);
+  for (let i = 0; i < 6; i++) {
+    const localSeed = p.seed + i * 2.37;
+    const ox = Math.sin(localSeed + p.t * 0.18) * p.size * (0.34 + i * 0.035);
+    const oy = Math.cos(localSeed * 1.31 + p.t * 0.14) * p.size * 0.22;
+    const r = p.size * (0.28 + (i % 3) * 0.08);
+    drawMistBlob(ctx, ox, oy, r * 1.25, r * 0.82, p.color, a * (0.24 - i * 0.018));
+  }
+  ctx.restore();
+}
+
+function drawMistBlob(ctx, x, y, rx, ry, color, alpha) {
+  const radius = Math.max(rx, ry);
+  const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  g.addColorStop(0, hexToRgba(color, alpha));
+  g.addColorStop(0.45, hexToRgba(color, alpha * 0.42));
+  g.addColorStop(1, hexToRgba(color, 0));
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(rx / radius, ry / radius);
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.ellipse(p.x, p.y, p.size * 1.6, p.size * 0.55, Math.sin(p.t) * 0.18, 0, TAU);
+  ctx.arc(0, 0, radius, 0, TAU);
   ctx.fill();
+  ctx.restore();
 }
 
 function drawScan(ctx, p, alpha) {

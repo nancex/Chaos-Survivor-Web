@@ -366,11 +366,6 @@ button {
   color: var(--gold);
 }
 
-.shard-chip i,
-.shard-chip strong {
-  color: var(--cyan);
-}
-
 .kill-chip i,
 .kill-chip strong {
   color: #ff9f6e;

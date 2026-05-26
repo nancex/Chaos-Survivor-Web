@@ -90,21 +90,6 @@ const ITEM_POOL = [
       recordItem("damage_chip", "裂解芯片", "*", 1, "所有武器伤害倍率提高。");
     },
   },
-  {
-    id: "shard_pack",
-    icon: "◆",
-    name: "晶核碎片包",
-    category: "道具",
-    rarity: "common",
-    quantity: 18,
-    maxPurchases: 3,
-    basePrice: 14,
-    desc: "获得 18 个碎片，用于背包武器升级。",
-    apply: (offer) => {
-      state.shards += offer.quantity;
-      recordItem("shard_pack", "晶核碎片包", "◆", offer.quantity, "商店购买的升级材料。");
-    },
-  },
 ];
 
 export function createShopState() {
@@ -216,7 +201,7 @@ function createWeaponOffer() {
     purchaseCount: 0,
     quantity: 1,
     locked: false,
-    desc: `获得或强化 ${info.name}。已有同类武器时提升等级。`,
+    desc: `获得一把新的 ${info.name}。同类武器也会占用新的武器槽。`,
   };
 }
 

@@ -111,7 +111,6 @@ export function updateGems(dt) {
     }
     if (dist < p.r + 12) {
       p.xp += g.value;
-      state.shards += g.value;
       world.gems.splice(i, 1);
       playSfx("gem");
     }
@@ -199,12 +198,10 @@ export function collectAllExperience() {
   const p = state.player;
   for (const g of world.gems) {
     p.xp += g.value;
-    state.shards += g.value;
   }
   world.gems.length = 0;
   for (const e of world.enemies) {
     p.xp += Math.max(1, Math.round(e.xp || 1));
-    state.shards += Math.max(1, Math.round(e.xp || 1));
   }
 }
 

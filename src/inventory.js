@@ -60,17 +60,6 @@ export function addWeaponToInventory(id, quality = "common") {
   return slot;
 }
 
-export function upgradeWeaponSlot(uid) {
-  const slot = findWeaponSlot(uid);
-  if (!slot) return false;
-  const cost = weaponUpgradeCost(slot);
-  if (state.shards < cost) return false;
-  state.shards -= cost;
-  slot.level += 1;
-  recomputeAllWeapons();
-  return true;
-}
-
 export function fuseWeaponSlots(aUid, bUid) {
   if (aUid === bUid) return false;
   const a = findWeaponSlot(aUid);
@@ -94,11 +83,6 @@ export function selectWeaponSlot(uid) {
 export function selectedWeaponSlot() {
   const inv = state.inventory;
   return inv ? findWeaponSlot(inv.selectedWeaponUid) || inv.weaponSlots[0] || null : null;
-}
-
-export function weaponUpgradeCost(slot) {
-  const qualityRank = QUALITY_ORDER.indexOf(slot.quality) + 1;
-  return Math.floor(18 + slot.level * 12 + qualityRank * qualityRank * 8);
 }
 
 export function findFuseCandidate(slot) {

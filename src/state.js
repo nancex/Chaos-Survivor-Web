@@ -11,7 +11,6 @@ export const state = {
   spawnedBossWaves: new Set(),
   bossWaveActive: false,
   kills: 0,
-  shards: 0,
   gold: 0,
   spawnBudget: 0,
   victory: false,
@@ -85,9 +84,7 @@ export function createInventory() {
   return {
     selectedWeaponUid: null,
     weaponSlots: [],
-    items: [
-      { id: "shard_core", name: "晶核碎片", icon: "◆", qty: 0, desc: "击败敌人与拾取经验时获得的通用强化材料。" },
-    ],
+    items: [],
     nextUid: 1,
   };
 }
@@ -114,7 +111,6 @@ export function resetRun(map) {
   state.spawnedBossWaves = new Set();
   state.bossWaveActive = false;
   state.kills = 0;
-  state.shards = 0;
   state.gold = 0;
   state.spawnBudget = 0;
   state.victory = false;

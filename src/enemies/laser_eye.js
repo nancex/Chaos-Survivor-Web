@@ -90,7 +90,26 @@ export class LaserEye extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 8, this.r, this.r * 0.25, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(255,77,109,${aiming ? 0.42 : 0.2})`;
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.rotate(this.anim * (i ? -0.18 : 0.22));
+      ctx.beginPath();
+      ctx.ellipse(0, 0, (22 + i * 6) * z, (15 + i * 4) * z, 0, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.rotate(Math.sin(this.anim * 0.8) * 0.1);
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = flash ? "#ffffff" : "rgba(66,232,255,0.32)";
+      ctx.beginPath();
+      ctx.moveTo(side * 12 * z, -5 * z);
+      ctx.lineTo(side * 28 * z, -13 * z);
+      ctx.lineTo(side * 21 * z, 3 * z);
+      ctx.closePath();
+      ctx.fill();
+    }
     ctx.fillStyle = flash ? "#ffffff" : "#d7f8ff";
     ctx.beginPath();
     ctx.arc(0, 0, 16 * z, 0, TAU);
@@ -108,6 +127,11 @@ export class LaserEye extends BaseEnemy {
     ctx.beginPath();
     ctx.arc(ex, ey, 4 * z + (this.state === "aim" ? Math.sin(this.anim * 8) * 1.2 : 0), 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = this.state === "fire" ? "#ffffff" : this.color;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(ex, ey, (11 + Math.sin(this.anim * 5) * 1.5) * z, 0, TAU);
+    ctx.stroke();
     ctx.strokeStyle = "rgba(255,255,255,0.45)";
     for (let i = 0; i < 4; i++) {
       const a = i / 4 * TAU + this.anim * 0.35;

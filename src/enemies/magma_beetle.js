@@ -91,6 +91,11 @@ export class MagmaBeetle extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 22 * z, 27 * z, 7 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(255,122,26,${0.24 + hot * 0.14})`;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.ellipse(0, 1 * z, 31 * z, 20 * z, 0, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = flash ? "#ffffff" : "#1d1717";
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
@@ -99,6 +104,10 @@ export class MagmaBeetle extends BaseEnemy {
     ctx.ellipse(0, 0, 25 * z, 17 * z, 0, 0, TAU);
     ctx.fill();
     ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,209,102,0.16)";
+    ctx.beginPath();
+    ctx.ellipse(-6 * z, -1 * z, 15 * z, 9 * z, 0, 0, TAU);
+    ctx.fill();
     for (let i = -2; i <= 2; i++) {
       ctx.strokeStyle = flash ? "#ffffff" : `rgba(255,122,26,${0.35 + hot * 0.18})`;
       ctx.lineWidth = 2;
@@ -107,9 +116,24 @@ export class MagmaBeetle extends BaseEnemy {
       ctx.lineTo(i * 4 * z, 14 * z);
       ctx.stroke();
     }
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,209,102,0.62)";
+    ctx.lineWidth = 1.2;
+    for (let i = -2; i <= 2; i++) {
+      const x = i * 9 * z;
+      ctx.beginPath();
+      ctx.moveTo(x - 4 * z, -7 * z);
+      ctx.lineTo(x + 3 * z, -2 * z);
+      ctx.lineTo(x - 2 * z, 5 * z);
+      ctx.stroke();
+    }
     ctx.fillStyle = flash ? "#ffffff" : this.color;
     ctx.beginPath();
     ctx.ellipse(17 * z, -1 * z, 11 * z * hot, 9 * z, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = flash ? "#ffffff" : "#fff2a8";
+    ctx.beginPath();
+    ctx.arc(21 * z, -3 * z, 2.5 * z * hot, 0, TAU);
+    ctx.arc(21 * z, 3 * z, 2.5 * z * hot, 0, TAU);
     ctx.fill();
     ctx.strokeStyle = "#fff2a8";
     ctx.lineWidth = 2;
@@ -122,6 +146,18 @@ export class MagmaBeetle extends BaseEnemy {
     ctx.fillStyle = "#0b1020";
     for (const y of [-13, 0, 13]) {
       ctx.fillRect(-18 * z, y * z, 34 * z, 3 * z);
+    }
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,122,26,0.55)";
+    ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const x = (-10 + i * 9) * z;
+        const y = (-12 + i * 12) * z;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 13 * z, y + side * 8 * z);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }

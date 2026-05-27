@@ -195,7 +195,7 @@ export class TwinAbyssalEyes extends BaseEnemy {
       return;
     }
     if (this.mode === "laser_fire") {
-      this.angle += angleDiff(Math.atan2(dy, dx), this.angle) * Math.min(1, dt * (this.enraged ? 0.75 : 0.45));
+      this.angle = turnTowardLimited(this.angle, Math.atan2(dy, dx), dt * (this.enraged ? 0.38 : 0.26));
       this.damageLaser(dt, this.enraged ? 13 : 10);
       if (this.modeTimer <= 0) this.recover(0.48);
       return;
@@ -421,6 +421,10 @@ function crimsonConfig(config) {
 
 function azureConfig(config) {
   return { ...config, id: "twin_abyssal_eyes", hp: config.hp * 0.54, speed: config.speed * 0.88, damage: config.damage * 0.95, xp: Math.ceil(config.xp * 0.5), color: "#42e8ff" };
+}
+
+function turnTowardLimited(current, target, maxStep) {
+  return current + clamp(angleDiff(target, current), -maxStep, maxStep);
 }
 
 function drawCrimsonEye(ctx, e) {

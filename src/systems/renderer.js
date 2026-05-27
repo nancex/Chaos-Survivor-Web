@@ -254,31 +254,87 @@ function drawPlayer(ctx) {
   const low = p.hp / p.maxHp < 0.35;
   const mood = hurt ? "hurt" : low ? "worried" : moving ? "happy" : ["blink", "smile", "curious", "happy"][Math.floor(state.time * 1.15) % 4];
   const bob = Math.sin(state.time * 7) * (moving ? 2.2 : 1.1);
+  const breathe = Math.sin(state.time * 4.2);
+  const step = Math.sin(state.time * (moving ? 11 : 4.5));
   const squash = 1 + Math.sin(state.time * 5) * 0.025;
   ctx.save();
   ctx.translate(p.x, p.y + bob);
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   ctx.beginPath(); ctx.ellipse(0, 20, 24, 8, 0, 0, TAU); ctx.fill();
-  drawDashedCircle(ctx, 0, 0, p.magnet, "rgba(90,140,210,0.38)");
-  glow(ctx, 0, 0, 24, hurt ? 0.32 : 0.42, hurt ? "#ff9ab0" : "#ffd6a8");
-  ctx.scale(1.02, squash);
-  ctx.fillStyle = hurt ? "#ffd7dd" : "#ffd6a8";
-  ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill();
+  glow(ctx, 0, -1, 27, hurt ? 0.35 : 0.43, hurt ? "#ff9ab0" : "#ffd6a8");
+  glow(ctx, 0, 11, 20, 0.18, low ? "#ff4d6d" : "#42e8ff");
+  ctx.scale(1.02 + breathe * 0.01, squash);
+
+  ctx.fillStyle = "#121827";
+  ctx.strokeStyle = low ? "#ff4d6d" : "#42e8ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-15, 7, 30, 22, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = low ? "rgba(255,77,109,0.72)" : "rgba(66,232,255,0.72)";
+  ctx.fillRect(-8, 11, 16, 3);
+  ctx.fillRect(-5, 17, 10, 3);
+
+  ctx.strokeStyle = "#ffd166";
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 13, 13);
+    ctx.lineTo(side * (21 + step * 1.2), 21 + Math.abs(step) * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(side * 8, 27);
+    ctx.lineTo(side * (14 + step * 2), 35);
+    ctx.stroke();
+  }
+  ctx.lineCap = "butt";
+
+  const skin = hurt ? "#ffd7dd" : "#ffd6a8";
+  ctx.fillStyle = skin;
+  ctx.beginPath(); ctx.arc(0, -3, 22, 0, TAU); ctx.fill();
   ctx.fillStyle = "#ffbd8a";
-  ctx.beginPath(); ctx.arc(-13, 5, 5, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(13, 5, 5, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(-13, 2, 5, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(13, 2, 5, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#242033";
+  ctx.beginPath();
+  ctx.arc(0, -11, 21, Math.PI * 1.04, Math.PI * 1.96);
+  ctx.lineTo(18, -3);
+  ctx.quadraticCurveTo(0, -12, -18, -3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#42e8ff";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-17, -10);
+  ctx.quadraticCurveTo(0, -24 - breathe * 1.2, 17, -10);
+  ctx.stroke();
+  for (const side of [-1, 1]) {
+    const a = state.time * 2.4 + side;
+    ctx.fillStyle = side < 0 ? "#42e8ff" : "#ffd166";
+    ctx.fillRect(side * (19 + Math.cos(a) * 1.2) - 2, -16 + Math.sin(a) * 1.6, 4, 4);
+  }
   ctx.fillStyle = "#fff4d8";
-  ctx.beginPath(); ctx.arc(-7, -9, 7, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(7, -9, 7, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(-7, -10, 7, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, -10, 7, 0, TAU); ctx.fill();
+  ctx.save();
+  ctx.translate(0, -4);
   drawPlayerEyes(ctx, mood);
   drawPlayerMouth(ctx, mood);
+  ctx.restore();
   ctx.fillStyle = "rgba(255,255,255,0.65)";
-  ctx.beginPath(); ctx.arc(-8, -13, 4, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(-8, -16, 4, 0, TAU); ctx.fill();
   ctx.fillStyle = "#f3b05f";
-  ctx.beginPath(); ctx.arc(0, -1, 2.4, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -4, 2.4, 0, TAU); ctx.fill();
   ctx.strokeStyle = "#7b4a2b";
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -3, 22, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = hexToRgba(low ? "#ff4d6d" : "#42e8ff", 0.38 + Math.abs(breathe) * 0.18);
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.arc(0, -3, 25 + breathe * 1.2, Math.PI * 0.1, Math.PI * 0.9);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1483,8 +1539,30 @@ function drawTwinBossBar(ctx, b, x, y, w) {
   const members = [...b.shared.members];
   const crimson = members.find((e) => e.role === "crimson");
   const azure = members.find((e) => e.role === "azure");
+  const alive = members.filter((e) => !e.dead);
   const tag = b.shared.resonance ? " · 双瞳共鸣" : b.enraged ? " · 单眼暴走" : "";
   drawBossTitle(ctx, `裂渊双瞳${tag}`, x, y - 18, w);
+  if (alive.length === 1) {
+    const solo = alive[0];
+    const hpRatio = Math.max(0, solo.hp / solo.maxHp);
+    ctx.fillStyle = "rgba(6,9,18,0.9)";
+    ctx.fillRect(x, y + 10, w, 28);
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(x + 6, y + 15, w - 12, 18);
+    const fill = ctx.createLinearGradient(x, y, x + w, y);
+    fill.addColorStop(0, solo.role === "azure" ? "#42e8ff" : "#ff345f");
+    fill.addColorStop(1, solo.role === "azure" ? "#b48cff" : "#ff9f6e");
+    ctx.fillStyle = fill;
+    ctx.fillRect(x + 6, y + 15, (w - 12) * hpRatio, 18);
+    ctx.strokeStyle = "rgba(255,209,102,0.85)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1, y + 11, w - 2, 26);
+    ctx.fillStyle = "#f3f7ff";
+    ctx.font = `14px ${CANVAS_PIXEL_FONT}`;
+    ctx.textAlign = "center";
+    ctx.fillText(`${Math.ceil(solo.hp)} / ${Math.ceil(solo.maxHp)}`, viewport.width / 2, y + 30);
+    return;
+  }
   ctx.fillStyle = "rgba(6,9,18,0.9)";
   ctx.fillRect(x, y, w, 38);
   ctx.fillStyle = "rgba(255,255,255,0.08)";
@@ -1510,11 +1588,10 @@ function drawTwinBossBar(ctx, b, x, y, w) {
   ctx.fillStyle = "#f3f7ff";
   ctx.font = `12px ${CANVAS_PIXEL_FONT}`;
   ctx.textAlign = "center";
-  const leftHp = crimson && !crimson.dead ? Math.ceil(crimson.hp) : 0;
-  const rightHp = azure && !azure.dead ? Math.ceil(azure.hp) : 0;
-  ctx.fillText(`${leftHp} / ${rightHp}`, viewport.width / 2, y + 27);
+  const leftHp = crimson && !crimson.dead ? `${Math.ceil(crimson.hp)}/${Math.ceil(crimson.maxHp)}` : "绯裂已毁";
+  const rightHp = azure && !azure.dead ? `${Math.ceil(azure.hp)}/${Math.ceil(azure.maxHp)}` : "苍雷已毁";
+  ctx.fillText(`${leftHp}    ${rightHp}`, viewport.width / 2, y + 27);
 }
-
 function drawBossTitle(ctx, text, x, y, w) {
   ctx.save();
   const labelWidth = Math.max(220, Math.min(w - 24, 560));

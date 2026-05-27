@@ -80,7 +80,32 @@ export class Pentastar extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 8, this.r * 1.05, this.r * 0.22, 0, 0, TAU);
     ctx.fill();
+    const aura = 0.45 + Math.sin(this.anim * 2.4) * 0.15;
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(66,232,255,${0.18 + aura * 0.22})`;
+    ctx.lineWidth = 1.4 * z;
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.rotate(this.spin * (i ? -0.45 : 0.35) + i * 0.6);
+      ctx.beginPath();
+      for (let p = 0; p < 5; p++) {
+        const a = p * TAU / 5 - Math.PI / 2;
+        const x = Math.cos(a) * (27 + i * 7) * z;
+        const y = Math.sin(a) * (27 + i * 7) * z;
+        if (!p) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.rotate(this.spin);
+    for (let i = 0; i < 5; i++) {
+      const a = i * TAU / 5 - Math.PI / 2;
+      ctx.fillStyle = flash ? "#ffffff" : "rgba(255,255,255,0.24)";
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 18 * z, Math.sin(a) * 18 * z, 3.2 * z * hot, 0, TAU);
+      ctx.fill();
+    }
     ctx.fillStyle = flash ? "#ffffff" : "#101827";
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
     ctx.lineWidth = 2;
@@ -100,6 +125,16 @@ export class Pentastar extends BaseEnemy {
     ctx.beginPath();
     ctx.arc(0, 0, 6 * z * hot, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,209,102,0.85)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, 10 * z * hot, 0, TAU);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,209,102,0.35)";
+    for (let i = 0; i < 5; i++) {
+      const a = i * TAU / 5 + this.anim * 0.12;
+      ctx.fillRect(Math.cos(a) * 11 * z - 1.2 * z, Math.sin(a) * 11 * z - 1.2 * z, 2.4 * z, 2.4 * z);
+    }
     ctx.strokeStyle = "rgba(255,255,255,0.7)";
     ctx.lineWidth = 1.2;
     for (let i = 0; i < 5; i++) {

@@ -50,17 +50,22 @@ export function drawWeaponPreview(ctx, canvas, weapon, t) {
   drawGrid(ctx, w, h, t);
   const cx = w / 2;
   const cy = h / 2;
-  drawPlayerHead(ctx, cx, cy, t);
   if (!weapon) return;
   const rank = qualityRank(weapon);
   const baseColor = { arc: "#42e8ff", ice: "#9ff4ff", missile: "#ffb347", boomerang: "#ff65d8", drone: "#77ff8a", pulse: "#77ff8a" }[weapon.id] || "#42e8ff";
   const color = qualityColor(weapon, baseColor);
-  if (weapon.id === "arc") drawArc(ctx, cx, cy, t, rank, color);
-  else if (weapon.id === "ice") drawIce(ctx, cx, cy, t, rank, color);
-  else if (weapon.id === "missile") drawMissile(ctx, cx, cy, t, rank, color);
-  else if (weapon.id === "boomerang") drawBoomerang(ctx, cx, cy, t, rank, color);
-  else if (weapon.id === "drone") drawDrones(ctx, cx, cy, t, rank, color);
-  else if (weapon.id === "pulse") drawPulse(ctx, cx, cy, t, rank, color);
+  const scale = Math.min(1, Math.max(0.46, Math.min((w * 0.5 - 24) / 190, (h * 0.5 - 22) / 96)));
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  drawPlayerHead(ctx, 0, 0, t);
+  if (weapon.id === "arc") drawArc(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "ice") drawIce(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "missile") drawMissile(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "boomerang") drawBoomerang(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "drone") drawDrones(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "pulse") drawPulse(ctx, 0, 0, t, rank, color);
+  ctx.restore();
 }
 
 function drawGrid(ctx, w, h, t) {

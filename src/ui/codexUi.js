@@ -211,7 +211,9 @@ function drawEnemyPreview(ctx, canvas, enemy, entry, t) {
   enemy.flip = Math.sin(t * 1.4) < 0 ? -1 : 1;
   ctx.save();
   ctx.translate(w / 2, h / 2 + Math.sin(t * 3) * 8);
-  const scale = Math.min(2.6, Math.max(1.35, 54 / Math.max(18, enemy.r)));
+  const previewBudget = entry.raw?.boss ? Math.min(w, h) * 0.34 : 54;
+  const minScale = entry.raw?.boss ? 0.58 : 1.35;
+  const scale = Math.min(2.6, Math.max(minScale, previewBudget / Math.max(18, enemy.r)));
   ctx.scale(scale, scale);
   enemy.draw(ctx);
   ctx.restore();

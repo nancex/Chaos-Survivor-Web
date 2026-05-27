@@ -81,6 +81,11 @@ export class Razorbat extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 8, this.r * 1.1, this.r * 0.22, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(124,137,255,${0.22 + Math.abs(flap) * 0.08})`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.ellipse(0, 1 * z, 18 * z, 12 * z, 0, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = flash ? "#ffffff" : "#1f2440";
     ctx.beginPath();
@@ -93,6 +98,17 @@ export class Razorbat extends BaseEnemy {
     ctx.fill();
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
     ctx.lineWidth = 1.8;
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,255,255,0.16)";
+    ctx.fillRect(-4 * z, -6 * z, 8 * z, 3 * z);
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,77,109,0.72)";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(0, 8 * z);
+    ctx.lineTo(0, 17 * z);
+    ctx.lineTo(-4 * z, 21 * z);
+    ctx.moveTo(0, 17 * z);
+    ctx.lineTo(4 * z, 21 * z);
     ctx.stroke();
 
     for (const side of [-1, 1]) {
@@ -107,6 +123,14 @@ export class Razorbat extends BaseEnemy {
       ctx.lineTo(12 * z, 4 * z);
       ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,255,255,0.45)";
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(9 * z, (-2 + i * 2) * z);
+        ctx.quadraticCurveTo((17 + i * 5) * z, (-10 - flap * 4 + i * 5) * z, (28 + i * 3) * z, (-2 + i * 4) * z);
+        ctx.stroke();
+      }
       ctx.fillStyle = flash ? "#ffffff" : "#7c89ff";
       ctx.beginPath();
       ctx.moveTo(20 * z, 3 * z);
@@ -121,6 +145,11 @@ export class Razorbat extends BaseEnemy {
     ctx.beginPath();
     ctx.arc(0, -3 * z, 4 * z, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = this.throwWindup > 0 ? "#ffffff" : this.color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, -3 * z, (7 + Math.sin(this.anim * 0.8) * 1.2) * z, 0, TAU);
+    ctx.stroke();
     ctx.restore();
   }
 }

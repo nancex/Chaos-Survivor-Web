@@ -86,6 +86,11 @@ export class Wizard extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 8 - bob, this.r * 0.95, this.r * 0.24, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(180,140,255,${0.22 + (cast ? 0.18 : 0)})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, -4 * z, 24 * z, 30 * z, 0, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = flash ? "#ffffff" : "#241946";
     ctx.beginPath();
@@ -98,6 +103,15 @@ export class Wizard extends BaseEnemy {
     ctx.fill();
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
     ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,255,255,0.12)";
+    ctx.fillRect(-8 * z, -2 * z, 16 * z, 3 * z);
+    ctx.fillRect(-6 * z, 7 * z, 12 * z, 3 * z);
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,209,102,0.65)";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(-17 * z, -3 * z);
+    ctx.lineTo(17 * z, -3 * z);
     ctx.stroke();
 
     ctx.fillStyle = flash ? "#ffffff" : "#0f172a";
@@ -112,6 +126,25 @@ export class Wizard extends BaseEnemy {
     ctx.lineTo(-7 * z, -7 * z);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(217,251,255,0.72)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, -7 * z, 12 * z, 0, TAU);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.rotate(this.castAngle);
+    ctx.strokeStyle = flash ? "#ffffff" : this.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(12 * z, 10 * z);
+    ctx.lineTo(34 * z, 18 * z);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "#ffd166";
+    ctx.beginPath();
+    ctx.arc(37 * z, 19 * z, (3 + (cast ? Math.sin(this.anim * 8) : 0)) * z, 0, TAU);
+    ctx.fill();
+    ctx.restore();
 
     for (let i = 0; i < 3; i++) {
       const a = this.orbit + i * TAU / 3;
@@ -124,6 +157,17 @@ export class Wizard extends BaseEnemy {
       ctx.rotate(a + this.anim);
       ctx.fillRect(-3 * z, -3 * z, 6 * z, 6 * z);
       ctx.restore();
+    }
+    if (cast) {
+      ctx.strokeStyle = "rgba(255,209,102,0.5)";
+      ctx.lineWidth = 1.1;
+      for (let i = 0; i < 5; i++) {
+        const a = this.orbit * -0.6 + i * TAU / 5;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 12 * z, -7 * z + Math.sin(a) * 8 * z);
+        ctx.lineTo(Math.cos(a) * 30 * z, -7 * z + Math.sin(a) * 16 * z);
+        ctx.stroke();
+      }
     }
 
     if (cast) {

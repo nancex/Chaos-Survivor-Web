@@ -130,7 +130,7 @@ export function decorativeEnemyIds() {
 export function createDecorativeEnemy(id, x, y) {
   const cfg = enemyConfig[id];
   const Klass = classes[id];
-  if (!cfg || !Klass || cfg.boss) return null;
+  if (!cfg || !Klass) return null;
   const enemy = new Klass(cfg, x, y);
   enemy.dead = false;
   enemy.flash = 0;

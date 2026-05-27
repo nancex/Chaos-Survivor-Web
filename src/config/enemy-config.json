@@ -539,7 +539,7 @@
     "name": "雷铸吞星者",
     "category": "Boss",
     "trait": "雷轨巨蛇",
-    "archiveWave": 15,
+    "bossWave": 15,
     "hp": 100000,
     "speed": 78,
     "damage": 42,

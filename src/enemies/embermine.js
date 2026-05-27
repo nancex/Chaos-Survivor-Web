@@ -83,6 +83,11 @@ export class Embermine extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 15 * z, 18 * z, 5 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(255,122,26,${0.22 + Math.sin(this.anim * 3) * 0.08})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 2 * z, 21 * z, 16 * z, 0, 0, TAU);
+    ctx.stroke();
     ctx.fillStyle = flash ? "#ffffff" : "#23110a";
     ctx.beginPath();
     ctx.roundRect(-15 * z, -11 * z, 30 * z, 22 * z, 8 * z);
@@ -90,6 +95,19 @@ export class Embermine extends BaseEnemy {
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,209,102,0.18)";
+    ctx.fillRect(-10 * z, -5 * z, 20 * z, 4 * z);
+    ctx.fillRect(-8 * z, 3 * z, 16 * z, 3 * z);
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,209,102,0.75)";
+    ctx.lineWidth = 1.4;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 10 * z, -9 * z);
+      ctx.lineTo(side * 20 * z, -15 * z + Math.sin(this.anim * 4) * 2 * z);
+      ctx.stroke();
+      ctx.fillStyle = flash ? "#ffffff" : this.color;
+      ctx.fillRect(side * 20 * z - 2 * z, -17 * z, 4 * z, 4 * z);
+    }
     ctx.fillStyle = flash ? "#ffffff" : this.color;
     ctx.beginPath();
     ctx.arc(1 * z, -13 * z, 8 * z, 0, TAU);
@@ -100,6 +118,13 @@ export class Embermine extends BaseEnemy {
     ctx.fill();
     ctx.fillStyle = "#120805";
     for (const x of [-10, -2, 8, 14]) ctx.fillRect(x * z, 9 * z, 5 * z, 7 * z);
+    ctx.fillStyle = flash ? "#ffffff" : "#ff7a1a";
+    for (let i = 0; i < 3; i++) {
+      const x = (-8 + i * 8) * z;
+      ctx.beginPath();
+      ctx.arc(x, 12 * z, (1.6 + Math.sin(this.anim * 7 + i) * 0.4) * z, 0, TAU);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }

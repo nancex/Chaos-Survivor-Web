@@ -52,7 +52,7 @@ export function drawWeaponPreview(ctx, canvas, weapon, t) {
   const cy = h / 2;
   if (!weapon) return;
   const rank = qualityRank(weapon);
-  const baseColor = { arc: "#42e8ff", ice: "#9ff4ff", missile: "#ffb347", boomerang: "#ff65d8", drone: "#77ff8a", pulse: "#77ff8a", prism_railgun: "#7df9ff", void_singularity: "#8b5cf6", tesla_mine_chain: "#42e8ff" }[weapon.id] || "#42e8ff";
+  const baseColor = { arc: "#42e8ff", ice: "#9ff4ff", missile: "#ffb347", boomerang: "#ff65d8", drone: "#77ff8a", pulse: "#77ff8a", prism_railgun: "#7df9ff", void_singularity: "#8b5cf6", tesla_mine_chain: "#42e8ff", starfall_scepter: "#ffd166", phase_needler: "#b48cff" }[weapon.id] || "#42e8ff";
   const color = qualityColor(weapon, baseColor);
   const scale = Math.min(1, Math.max(0.46, Math.min((w * 0.5 - 24) / 190, (h * 0.5 - 22) / 96)));
   ctx.save();
@@ -68,6 +68,8 @@ export function drawWeaponPreview(ctx, canvas, weapon, t) {
   else if (weapon.id === "prism_railgun") drawPrismRailgun(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "void_singularity") drawVoidSingularity(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "tesla_mine_chain") drawTeslaMineChain(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "starfall_scepter") drawStarfallScepter(ctx, 0, 0, t, rank, color);
+  else if (weapon.id === "phase_needler") drawPhaseNeedler(ctx, 0, 0, t, rank, color);
   ctx.restore();
 }
 
@@ -430,6 +432,244 @@ function previewTeslaNode(ctx, x, y, t, rank, color, mini = false) {
   ctx.restore();
 }
 
+function drawStarfallScepter(ctx, cx, cy, t, rank, color) {
+  const targets = [
+    { x: cx + 96, y: cy - 26, p: 0 },
+    { x: cx + 142, y: cy + 28, p: 1.3 },
+    { x: cx + 58, y: cy + 54, p: 2.2 },
+  ];
+  for (const target of targets) drawDummy(ctx, target.x, target.y, color);
+
+  const cycle = (t % 2.4) / 2.4;
+  const impactPoints = [];
+  const starCount = 3 + (rank >= 1 ? 1 : 0);
+  for (let i = 0; i < starCount; i++) {
+    const a = i * TAU / starCount + 0.45;
+    const tx = cx + 108 + Math.cos(a) * (i ? 58 : 8);
+    const ty = cy + 10 + Math.sin(a) * (i ? 42 : 4);
+    impactPoints.push({ x: tx, y: ty });
+    if (cycle < 0.32) {
+      ring(ctx, tx, ty, 24 + cycle * 80, color, 0.52 * (1 - cycle));
+      previewStarGlyph(ctx, tx, ty, 9 + cycle * 8, color, rank, t + i);
+    } else if (cycle < 0.72) {
+      const k = (cycle - 0.32) / 0.4;
+      const sx = tx - 110 + i * 12;
+      const sy = ty - 130;
+      const x = sx + (tx - sx) * k;
+      const y = sy + (ty - sy) * k;
+      previewStarTrail(ctx, sx, sy, x, y, color, rank >= 4 && i === 0);
+      previewStarGlyph(ctx, x, y, rank >= 4 && i === 0 ? 17 : 12, color, rank, t * 5 + i);
+    } else {
+      const k = (cycle - 0.72) / 0.28;
+      ring(ctx, tx, ty, 24 + k * 62, i === 0 && rank >= 4 ? "#ffd166" : color, 0.72 * (1 - k));
+      previewStarScar(ctx, tx, ty, 36 + Math.sin(t * 7 + i) * 2, color, rank, t + i);
+    }
+  }
+  if (rank >= 3) {
+    ctx.lineCap = "round";
+    for (let i = 0; i < impactPoints.length; i++) {
+      const a = impactPoints[i];
+      const b = impactPoints[(i + 1) % impactPoints.length];
+      ctx.strokeStyle = colorWithAlpha("#ffffff", 0.36);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = colorWithAlpha(color, 0.54);
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+    ctx.lineCap = "butt";
+  }
+}
+
+function previewStarTrail(ctx, x1, y1, x2, y2, color, major) {
+  const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+  grad.addColorStop(0, "rgba(255,209,102,0)");
+  grad.addColorStop(0.55, colorWithAlpha(color, 0.28));
+  grad.addColorStop(1, colorWithAlpha("#ffffff", 0.9));
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = major ? 10 : 7;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+}
+
+function previewStarGlyph(ctx, x, y, r, color, rank, spin) {
+  glow(ctx, x, y, r * 2.7, color, 0.32);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(spin);
+  ctx.fillStyle = "#ffffff";
+  starPreviewShape(ctx, 0, 0, r, r * 0.42, 10);
+  ctx.fill();
+  ctx.strokeStyle = rank >= 4 ? "#ffd166" : color;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function previewStarScar(ctx, x, y, r, color, rank, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 0.8);
+  ctx.strokeStyle = colorWithAlpha(color, 0.42);
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate(TAU / 3);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r, r * 0.28, 0, 0, TAU);
+    ctx.stroke();
+  }
+  if (rank >= 2) {
+    ctx.strokeStyle = colorWithAlpha("#ffffff", 0.38);
+    for (let i = 0; i < 6; i++) {
+      const a = i * TAU / 6 - t;
+      starPreviewShape(ctx, Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6, 5, 2, 8);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawPhaseNeedler(ctx, cx, cy, t, rank, color) {
+  const targets = [
+    { x: cx + 92, y: cy - 34, p: 0.1 },
+    { x: cx + 138, y: cy + 4, p: 0.55 },
+    { x: cx + 88, y: cy + 48, p: 0.95 },
+  ];
+  for (const target of targets) drawDummy(ctx, target.x, target.y, color);
+
+  const cycle = (t % 1.85) / 1.85;
+  const count = 4 + (rank >= 1 ? 1 : 0);
+  for (let i = 0; i < count; i++) {
+    const lane = (i - (count - 1) / 2) * 12;
+    const angle = -0.04 + lane * 0.002;
+    const startX = cx + 18;
+    const startY = cy + lane * 0.72;
+    const endX = cx + 152;
+    const endY = cy + lane * 0.34;
+    const travel = Math.min(1, cycle / 0.42);
+    const x = startX + (endX - startX) * travel;
+    const y = startY + (endY - startY) * travel;
+    if (cycle < 0.48) previewPhaseNeedle(ctx, x, y, angle, color, rank, false, t + i);
+    const tailAlpha = cycle < 0.48 ? 0.46 : Math.max(0, 0.26 - (cycle - 0.48) * 0.6);
+    if (tailAlpha > 0) {
+      const grad = ctx.createLinearGradient(startX, startY, x, y);
+      grad.addColorStop(0, "rgba(66,232,255,0)");
+      grad.addColorStop(0.55, colorWithAlpha("#42e8ff", tailAlpha * 0.55));
+      grad.addColorStop(1, colorWithAlpha("#ffffff", tailAlpha));
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 3;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.lineCap = "butt";
+    }
+  }
+
+  if (rank >= 4) {
+    const travel = Math.min(1, cycle / 0.5);
+    previewPhaseNeedle(ctx, cx + 18 + 152 * travel, cy, 0, color, rank, true, t);
+  }
+
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    if (cycle > 0.36 && cycle < 0.72) {
+      const charge = (cycle - 0.36) / 0.36;
+      previewPhaseMark(ctx, target.x, target.y, color, rank, charge, t + target.p);
+    } else if (cycle >= 0.72) {
+      const burst = (cycle - 0.72) / 0.28;
+      ring(ctx, target.x, target.y, 18 + burst * 52, i === 0 && rank >= 4 ? "#ffd166" : color, 0.72 * Math.max(0, 1 - burst));
+      if (rank >= 2) previewPhaseRift(ctx, target.x, target.y, color, rank >= 4 && i === 0, t + i);
+    }
+  }
+}
+
+function previewPhaseNeedle(ctx, x, y, angle, color, rank, major, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  glow(ctx, 0, 0, major ? 18 : 12, color, major ? 0.28 : 0.2);
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(major ? 28 : 22, 0);
+  ctx.lineTo(4, major ? 6 : 4);
+  ctx.lineTo(major ? -16 : -12, 2);
+  ctx.lineTo(major ? -22 : -16, 0);
+  ctx.lineTo(major ? -16 : -12, -2);
+  ctx.lineTo(4, major ? -6 : -4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = major ? "#ffd166" : color;
+  ctx.lineWidth = major ? 2 : 1.4;
+  ctx.stroke();
+  ctx.strokeStyle = colorWithAlpha("#42e8ff", 0.74);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, major ? 14 : 10, t * 5, t * 5 + Math.PI * (rank >= 2 ? 1.55 : 1.05));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function previewPhaseMark(ctx, x, y, color, rank, charge, t) {
+  const r = 14 + charge * 14;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 4);
+  glow(ctx, 0, 0, r * 0.9, color, 0.16 + charge * 0.16);
+  ctx.strokeStyle = colorWithAlpha(color, 0.48 + charge * 0.34);
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r * 0.36, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r * 0.36, 0);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.strokeStyle = colorWithAlpha("#ffffff", 0.32 + charge * 0.34);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.58, 0);
+  ctx.lineTo(r * 0.58, 0);
+  ctx.moveTo(0, -r * 0.58);
+  ctx.lineTo(0, r * 0.58);
+  ctx.stroke();
+  if (rank >= 3) ring(ctx, 0, 0, r * 1.18, "#42e8ff", 0.22 + charge * 0.2);
+  ctx.restore();
+}
+
+function previewPhaseRift(ctx, x, y, color, major, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t);
+  ctx.globalCompositeOperation = "lighter";
+  const len = major ? 50 : 36;
+  for (let pass = 0; pass < (major ? 2 : 1); pass++) {
+    ctx.rotate(pass ? Math.PI / 2 : 0);
+    ctx.strokeStyle = colorWithAlpha(color, 0.36);
+    ctx.lineWidth = major ? 8 : 6;
+    ctx.beginPath();
+    ctx.moveTo(-len, Math.sin(t * 9) * 3);
+    ctx.lineTo(-len * 0.3, -5);
+    ctx.lineTo(len * 0.16, 6);
+    ctx.lineTo(len, Math.sin(t * 11) * -3);
+    ctx.stroke();
+    ctx.strokeStyle = colorWithAlpha("#ffffff", 0.7);
+    ctx.lineWidth = major ? 2.4 : 1.8;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawPreviewBlackHole(ctx, x, y, core, diskR, t, rank, color) {
   ctx.save();
   ctx.translate(x, y);
@@ -609,6 +849,19 @@ function starBlade(ctx, r, color = "#ff65d8", rank = 0) {
     ctx.arc(0, 0, r * 1.9, 0, TAU);
     ctx.stroke();
   }
+}
+
+function starPreviewShape(ctx, x, y, outer, inner, points = 10) {
+  ctx.beginPath();
+  for (let i = 0; i < points; i++) {
+    const a = -Math.PI / 2 + i * TAU / points;
+    const r = i % 2 ? inner : outer;
+    const px = x + Math.cos(a) * r;
+    const py = y + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
 }
 
 function drone(ctx, x, y, t, attacking, color = "#77ff8a", rank = 0) {

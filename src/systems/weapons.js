@@ -7,7 +7,7 @@ import { playSfx } from "../audio.js";
 import { addWeaponToInventory, QUALITY_INFO, QUALITY_ORDER, WEAPON_INFO } from "../economy/inventory.js";
 import { attackSpeedMultiplier, weaponProjectileBonus, weaponRangeBonus } from "./items.js";
 
-export const STARTER_WEAPONS = ["arc", "ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain"].map((id) => ({ id, ...WEAPON_INFO[id] }));
+export const STARTER_WEAPONS = ["arc", "ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain", "starfall_scepter", "phase_needler"].map((id) => ({ id, ...WEAPON_INFO[id] }));
 
 export const UPGRADE_DEFS = [
   {
@@ -150,6 +150,8 @@ export function updateWeapons(dt) {
   updateVoidSingularityWeapon(dt);
   updateTeslaMineChainWeapon(dt);
   updateTeslaNodes(dt);
+  updateStarfallScepterWeapon(dt);
+  updatePhaseNeedlerWeapon(dt);
   updateProjectiles(dt);
   updateWeaponFx(dt);
 }
@@ -999,6 +1001,245 @@ function teslaFieldDamage(node, visited) {
   world.weaponFx.push({ kind: "teslaField", x: node.x, y: node.y, radius: node.fieldRadius, color: node.color, rank: node.qualityRank, life: 0.62, maxLife: 0.62, seed: node.seed });
 }
 
+function updateStarfallScepterWeapon(dt) {
+  const w = state.weapons.starfall_scepter;
+  if (!tickWeapon(w, dt)) return;
+  const anchor = chooseStarfallAnchor(w);
+  if (!anchor) return;
+  const count = Math.max(1, w.count || 1);
+  const bonusStars = weaponProjectileBonus(w);
+  for (let i = 0; i < count; i++) {
+    const quality = weaponQualityAt(w, i);
+    const shot = weaponViewForQuality(w, quality);
+    const rank = qualityRank(shot);
+    const color = qualityColor(shot, "#ffd166");
+    const stars = w.stars + (rank >= 1 ? 1 : 0) + (i === 0 ? bonusStars : 0);
+    spawnStarfallVolley(w, shot, rank, color, anchor, stars, i);
+  }
+  playSfx("shoot");
+}
+
+function chooseStarfallAnchor(w) {
+  const p = state.player;
+  const range = w.range + weaponRangeBonus();
+  const candidates = [];
+  queryEnemies(p.x, p.y, range, candidates);
+  let best = null;
+  let bestScore = -Infinity;
+  for (const e of candidates) {
+    if (e.dead) continue;
+    const nearby = [];
+    queryEnemies(e.x, e.y, 190, nearby);
+    const density = nearby.filter((other) => !other.dead).length;
+    const d = Math.hypot(e.x - p.x, e.y - p.y);
+    const score = density * 190 + Math.min(360, d) * 0.18 - d * 0.32;
+    if (score > bestScore) {
+      bestScore = score;
+      best = e;
+    }
+  }
+  if (best) return { x: best.x, y: best.y };
+  return null;
+}
+
+function spawnStarfallVolley(base, shot, rank, color, anchor, stars, volleyIndex) {
+  const points = [];
+  const spread = 72 + rank * 7;
+  const total = Math.min(9, stars);
+  for (let i = 0; i < total; i++) {
+    const a = i * TAU / total + Math.random() * 0.35 + volleyIndex * 0.42;
+    const r = i === 0 ? 0 : spread * (0.45 + (i % 3) * 0.32 + Math.random() * 0.22);
+    const tx = anchor.x + Math.cos(a) * r;
+    const ty = anchor.y + Math.sin(a) * r * 0.72;
+    points.push({ x: tx, y: ty });
+    spawnStarfallProjectile(base, shot, rank, color, tx, ty, i, false);
+  }
+  if (rank >= 4) {
+    const tx = anchor.x + Math.cos(volleyIndex + 0.7) * 38;
+    const ty = anchor.y + Math.sin(volleyIndex + 0.7) * 28;
+    points.push({ x: tx, y: ty });
+    spawnStarfallProjectile(base, shot, rank, color, tx, ty, total, true);
+  }
+  if (rank >= 3 && points.length >= 3) {
+    const delay = base.warningTime + base.fallTime + 0.08 + volleyIndex * 0.04;
+    world.weaponFx.push({
+      kind: "starConstellation",
+      points,
+      x: anchor.x,
+      y: anchor.y,
+      radius: base.radius + 36 + rank * 7,
+      damage: weaponPower(shot, base.damage) * 0.32,
+      color,
+      rank,
+      delay,
+      life: 0.48,
+      maxLife: 0.48,
+      seed: Math.random() * 999,
+      damageDone: false,
+    });
+  }
+}
+
+function spawnStarfallProjectile(base, shot, rank, color, targetX, targetY, index, major) {
+  if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+  const fallTime = base.fallTime + (major ? 0.16 : 0) + Math.random() * 0.08;
+  const delay = base.warningTime + index * 0.055;
+  const startX = targetX - 210 - Math.random() * 120;
+  const startY = targetY - 640 - Math.random() * 130;
+  const vx = (targetX - startX) / fallTime;
+  const vy = (targetY - startY) / fallTime;
+  const radius = (base.radius + rank * 7 + (rank >= 1 ? 10 : 0)) * (major ? 1.42 : 1);
+  const scarRadius = (base.scarRadius + rank * 6) * (major ? 1.22 : 1);
+  const damage = weaponPower(shot, base.damage) * (major ? 1.8 : 1);
+  world.projectiles.push({
+    x: startX,
+    y: startY,
+    px: startX,
+    py: startY,
+    vx,
+    vy,
+    speed: Math.hypot(vx, vy),
+    angle: Math.atan2(vy, vx),
+    damage,
+    pierce: 999,
+    r: major ? 15 : 10 + rank * 0.8,
+    life: delay + fallTime + 0.45,
+    maxLife: delay + fallTime + 0.45,
+    color,
+    shape: "starfall",
+    variant: major ? "legendStarfall" : rank >= 3 ? "starConstellation" : "starfall",
+    quality: shot.quality || "common",
+    qualityRank: rank,
+    targetX,
+    targetY,
+    delay,
+    warningTime: delay,
+    impactRadius: radius,
+    scarRadius,
+    scarDuration: base.scarDuration + (rank >= 2 ? 0.45 : 0) + rank * 0.06,
+    scarDps: damage * (rank >= 2 ? 0.34 : 0.22),
+    major,
+    noLifeExpire: true,
+    knockback: major ? 165 : 105,
+    hitIds: new Set(),
+    spin: Math.random() * TAU,
+    trailTimer: 0,
+    seed: Math.random() * 999 + index * 19,
+  });
+  world.weaponFx.push({
+    kind: "starfallWarning",
+    x: targetX,
+    y: targetY,
+    radius,
+    color,
+    rank,
+    major,
+    life: delay,
+    maxLife: Math.max(0.1, delay),
+    seed: Math.random() * 999,
+  });
+}
+
+function updatePhaseNeedlerWeapon(dt) {
+  const w = state.weapons.phase_needler;
+  if (!tickWeapon(w, dt)) return;
+  const target = choosePhaseNeedlerTarget(w);
+  const p = state.player;
+  const baseAngle = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
+  const slots = Math.max(1, w.count || 1);
+  const bonus = weaponProjectileBonus(w);
+  const volleyId = Math.random().toString(36).slice(2);
+  for (let slot = 0; slot < slots; slot++) {
+    const quality = weaponQualityAt(w, slot);
+    const shot = weaponViewForQuality(w, quality);
+    const rank = qualityRank(shot);
+    const color = qualityColor(shot, "#b48cff");
+    const needleCount = Math.min(9, w.needles + (rank >= 1 ? 1 : 0) + (slot === 0 ? bonus : 0));
+    const spread = 0.32 + Math.min(0.18, needleCount * 0.018);
+    for (let i = 0; i < needleCount; i++) {
+      const step = needleCount <= 1 ? 0 : (i - (needleCount - 1) / 2) / (needleCount - 1);
+      const jitter = (Math.random() - 0.5) * 0.025;
+      firePhaseNeedle(baseAngle + step * spread + jitter, w, shot, rank, color, i + slot * 17, volleyId, false);
+    }
+    if (rank >= 4) firePhaseNeedle(baseAngle, w, shot, rank, color, 99 + slot, volleyId, true);
+  }
+  playSfx("shoot");
+}
+
+function choosePhaseNeedlerTarget(w) {
+  const p = state.player;
+  const range = w.range + weaponRangeBonus();
+  const candidates = [];
+  queryEnemies(p.x, p.y, range, candidates);
+  let best = null;
+  let bestScore = -Infinity;
+  for (const e of candidates) {
+    if (e.dead) continue;
+    const d = Math.hypot(e.x - p.x, e.y - p.y);
+    const cluster = [];
+    queryEnemies(e.x, e.y, 130, cluster);
+    const density = cluster.filter((other) => !other.dead).length;
+    const midRange = 1 - Math.abs(d - range * 0.58) / Math.max(1, range);
+    const score = density * 160 + midRange * 90 - d * 0.12;
+    if (score > bestScore) {
+      bestScore = score;
+      best = e;
+    }
+  }
+  return best || nearestEnemy(p.x, p.y, range);
+}
+
+function firePhaseNeedle(angle, base, shot, rank, color, index, volleyId, major) {
+  if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+  const p = state.player;
+  const speed = base.speed * (rank >= 1 ? 1.08 : 1) * (major ? 0.92 : 1);
+  const sx = p.x + Math.cos(angle) * 16 - Math.sin(angle) * (major ? 0 : (index % 3 - 1) * 5);
+  const sy = p.y + Math.sin(angle) * 16 + Math.cos(angle) * (major ? 0 : (index % 3 - 1) * 5);
+  const damage = weaponPower(shot, base.damage) * (major ? 1.45 : 1);
+  const phaseDamage = weaponPower(shot, base.phaseDamage) * (major ? 1.65 : 1);
+  world.projectiles.push({
+    x: sx,
+    y: sy,
+    px: p.x,
+    py: p.y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    speed,
+    angle,
+    damage,
+    pierce: base.pierce + (rank >= 1 ? 1 : 0) + (major ? 3 : 0),
+    r: major ? 7.5 : 4.4 + rank * 0.28,
+    life: major ? 0.82 : 0.68,
+    maxLife: major ? 0.82 : 0.68,
+    color,
+    shape: "phaseNeedle",
+    variant: major ? "legendPhaseNeedle" : rank >= 2 ? "riftPhaseNeedle" : "phaseNeedle",
+    quality: shot.quality || "common",
+    qualityRank: rank,
+    tracking: false,
+    turnSpeed: 0,
+    returning: false,
+    returnAfter: 0,
+    returnSpeed: 1,
+    returnTimer: 0,
+    explodeRadius: 0,
+    explodeDamage: 0,
+    freezeDuration: 0,
+    noLifeExpire: false,
+    knockback: major ? 132 : 86,
+    phaseDelay: Math.max(0.24, base.phaseDelay - rank * 0.025),
+    phaseRadius: (base.phaseRadius + (rank >= 2 ? 18 : 0) + rank * 4) * (major ? 1.28 : 1),
+    phaseDamage,
+    volleyId,
+    major,
+    hitIds: new Set(),
+    spin: Math.random() * TAU,
+    trailTimer: 0,
+    seed: Math.random() * 999 + index * 13,
+  });
+  pulse(sx, sy, major ? 26 : 18, color, 0.12);
+}
+
 function tickWeapon(w, dt) {
   if (!w || w.level <= 0) return false;
   w.timer -= dt;
@@ -1066,6 +1307,10 @@ function updateProjectiles(dt) {
       updateSingularityProjectile(b, i, dt);
       continue;
     }
+    if (b.shape === "starfall") {
+      updateStarfallProjectile(b, i, dt);
+      continue;
+    }
     b.px = b.x;
     b.py = b.y;
     steer(b, dt);
@@ -1075,8 +1320,8 @@ function updateProjectiles(dt) {
     b.spin += dt * (b.shape === "boomerang" ? 18 : 7);
     b.trailTimer -= dt;
     if (b.trailTimer <= 0) {
-      b.trailTimer = b.shape === "missile" ? 0.026 : 0.035;
-      trail(b.x, b.y, b.px, b.py, b.color, b.shape === "droneBolt" ? 3 : 5);
+      b.trailTimer = b.shape === "phaseNeedle" ? 0.014 : b.shape === "missile" ? 0.026 : 0.035;
+      trail(b.x, b.y, b.px, b.py, b.color, b.shape === "phaseNeedle" ? 4 : b.shape === "droneBolt" ? 3 : 5);
     }
     if (b.shape === "boomerang" && b.farBurst && !b.farBurstDone && b.returnTimer >= b.returnAfter) {
       b.farBurstDone = true;
@@ -1093,6 +1338,7 @@ function updateProjectiles(dt) {
       damageEnemy(e, b.damage, b.x, b.y);
       applyKnockback(e, b.vx, b.vy, b.knockback);
       addProjectileHitShake(b);
+      if (b.shape === "phaseNeedle") phaseNeedleHit(b, e);
       if (b.freezeDuration > 0 && !e.dead && !e.boss) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration);
       burst(b.x, b.y, b.shape === "ice" ? 12 : 8, b.color, b.shape === "missile" ? 220 : 170);
       world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, life: 0.18, maxLife: 0.18, color: b.color });
@@ -1245,6 +1491,84 @@ function collapseSingularity(b) {
   playSfx("explode");
 }
 
+function updateStarfallProjectile(b, index, dt) {
+  b.life -= dt;
+  b.spin += dt * (8 + b.qualityRank * 0.8);
+  if (b.delay > 0) {
+    b.delay -= dt;
+    return;
+  }
+
+  b.px = b.x;
+  b.py = b.y;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  b.angle = Math.atan2(b.vy, b.vx);
+  b.trailTimer -= dt;
+  if (b.trailTimer <= 0) {
+    b.trailTimer = b.major ? 0.018 : 0.026;
+    trail(b.x, b.y, b.px, b.py, b.color, b.major ? 9 : 7);
+  }
+
+  if (b.y >= b.targetY || b.life <= 0) {
+    impactStarfall(b);
+    world.projectiles.splice(index, 1);
+  }
+}
+
+function impactStarfall(b) {
+  const hits = [];
+  queryEnemies(b.targetX, b.targetY, b.impactRadius, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    const dx = e.x - b.targetX;
+    const dy = e.y - b.targetY;
+    const d = Math.max(1, Math.hypot(dx, dy));
+    const falloff = clamp(1 - d / b.impactRadius, 0.24, 1);
+    damageEnemy(e, b.damage * falloff, b.targetX, b.targetY);
+    applyKnockback(e, dx, dy, (e.boss ? 42 : b.knockback) * falloff);
+  }
+  addCameraShake(Math.min(8, 2.5 + b.impactRadius / 55 + (b.major ? 1.8 : 0)));
+  burst(b.targetX, b.targetY, b.major ? 30 : 18, b.color, b.major ? 260 : 210);
+  pulse(b.targetX, b.targetY, b.impactRadius, b.color, b.major ? 0.38 : 0.28);
+  world.weaponFx.push({
+    kind: "starfallImpact",
+    x: b.targetX,
+    y: b.targetY,
+    radius: b.impactRadius,
+    color: b.color,
+    rank: b.qualityRank,
+    major: b.major,
+    life: b.major ? 0.5 : 0.36,
+    maxLife: b.major ? 0.5 : 0.36,
+    seed: b.seed,
+  });
+  world.weaponFx.push({
+    kind: "starScar",
+    x: b.targetX,
+    y: b.targetY,
+    radius: b.scarRadius,
+    color: b.color,
+    rank: b.qualityRank,
+    damagePerSecond: b.scarDps,
+    tickTimer: 0,
+    life: b.scarDuration,
+    maxLife: b.scarDuration,
+    seed: b.seed + 41,
+  });
+  if (b.major) {
+    const radius = b.impactRadius * 0.68;
+    const outer = [];
+    queryEnemies(b.targetX, b.targetY, radius, outer);
+    for (const e of outer) {
+      if (e.dead) continue;
+      damageEnemy(e, b.damage * 0.42, b.targetX, b.targetY);
+    }
+    world.weaponFx.push({ kind: "starfallImpact", x: b.targetX, y: b.targetY, radius, color: "#ffd166", rank: b.qualityRank, major: true, life: 0.42, maxLife: 0.42, seed: b.seed + 17 });
+  }
+  playSfx("explode");
+}
+
 function iceRingBurst(b) {
   const hits = [];
   queryEnemies(b.x, b.y, 78, hits);
@@ -1346,11 +1670,48 @@ function splitMissileBlast(b) {
   if (b.splitOnHit) addCameraShake(3);
 }
 
+function phaseNeedleHit(b, e) {
+  if (e.phaseNeedleVolleyId !== b.volleyId) {
+    e.phaseNeedleVolleyId = b.volleyId;
+    e.phaseNeedleVolleyHits = 0;
+  }
+  e.phaseNeedleVolleyHits = (e.phaseNeedleVolleyHits || 0) + 1;
+  const stackBoost = b.qualityRank >= 3 ? 1 + Math.max(0, e.phaseNeedleVolleyHits - 1) * 0.35 : 1;
+  world.weaponFx.push({
+    kind: "phaseNeedleHit",
+    x: b.x,
+    y: b.y,
+    angle: b.angle,
+    color: b.color,
+    rank: b.qualityRank || 0,
+    major: b.major,
+    life: 0.2,
+    maxLife: 0.2,
+    seed: Math.random() * 999,
+  });
+  world.weaponFx.push({
+    kind: "phaseNeedleMark",
+    target: e,
+    x: e.x,
+    y: e.y,
+    radius: b.phaseRadius,
+    damage: b.phaseDamage * stackBoost,
+    color: b.color,
+    rank: b.qualityRank || 0,
+    major: b.major,
+    timer: b.phaseDelay,
+    life: b.phaseDelay,
+    maxLife: Math.max(0.1, b.phaseDelay),
+    seed: Math.random() * 999,
+  });
+}
+
 function addProjectileHitShake(b) {
   if (b.shape === "droneBolt") return addCameraShake(0.8);
   if (b.shape === "missile") return addCameraShake(4.5);
   if (b.shape === "boomerang") return addCameraShake(1.8);
   if (b.shape === "ice") return addCameraShake(1.2);
+  if (b.shape === "phaseNeedle") return addCameraShake(b.major ? 1.4 : 0.65);
   addCameraShake(1);
 }
 
@@ -1402,7 +1763,142 @@ function spawnMicroMissiles(b) {
 function updateWeaponFx(dt) {
   for (let i = world.weaponFx.length - 1; i >= 0; i--) {
     const fx = world.weaponFx[i];
+    if (fx.delay > 0) {
+      fx.delay -= dt;
+      if (fx.delay > 0) continue;
+      if (fx.kind === "starConstellation" && !fx.damageDone) damageStarConstellation(fx);
+    }
+    if (fx.kind === "phaseNeedleMark") {
+      updatePhaseNeedleMark(fx, dt);
+      if (fx.done) {
+        world.weaponFx.splice(i, 1);
+        continue;
+      }
+      continue;
+    }
+    if (fx.kind === "starScar") updateStarScarDamage(fx, dt);
     fx.life -= dt;
     if (fx.life <= 0) world.weaponFx.splice(i, 1);
+  }
+}
+
+function updatePhaseNeedleMark(fx, dt) {
+  if (fx.target && !fx.target.dead) {
+    fx.x = fx.target.x;
+    fx.y = fx.target.y;
+  }
+  fx.timer -= dt;
+  fx.life = Math.max(0, fx.timer);
+  if (fx.timer > 0) return;
+  detonatePhaseNeedleMark(fx);
+  fx.done = true;
+}
+
+function detonatePhaseNeedleMark(fx) {
+  addCameraShake(fx.major ? 4.2 : 2.4);
+  const hits = [];
+  queryEnemies(fx.x, fx.y, fx.radius, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    const dx = e.x - fx.x;
+    const dy = e.y - fx.y;
+    const d = Math.max(1, Math.hypot(dx, dy));
+    const falloff = clamp(1 - d / fx.radius, 0.25, 1);
+    damageEnemy(e, (fx.damage || 0) * falloff, fx.x, fx.y);
+    applyKnockback(e, dx, dy, e.boss ? 24 * falloff : 92 * falloff);
+  }
+  world.weaponFx.push({
+    kind: "phaseNeedleBurst",
+    x: fx.x,
+    y: fx.y,
+    radius: fx.radius,
+    color: fx.color,
+    rank: fx.rank || 0,
+    major: fx.major,
+    life: fx.major ? 0.46 : 0.36,
+    maxLife: fx.major ? 0.46 : 0.36,
+    seed: fx.seed || Math.random() * 999,
+  });
+  burst(fx.x, fx.y, fx.major ? 20 : 12, fx.color, fx.major ? 260 : 200);
+  if ((fx.rank || 0) >= 2) createPhaseNeedleRift(fx);
+  playSfx("explode");
+}
+
+function createPhaseNeedleRift(fx) {
+  const segments = [];
+  const count = fx.major ? 2 : 1;
+  const len = fx.radius * (fx.major ? 1.35 : 1.05);
+  for (let i = 0; i < count; i++) {
+    const a = (fx.seed || 0) + i * Math.PI / 2;
+    segments.push({
+      x1: fx.x - Math.cos(a) * len,
+      y1: fx.y - Math.sin(a) * len,
+      x2: fx.x + Math.cos(a) * len,
+      y2: fx.y + Math.sin(a) * len,
+      seed: (fx.seed || 0) + i * 41,
+    });
+  }
+  const hits = [];
+  queryEnemies(fx.x, fx.y, len + 52, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    let touched = false;
+    for (const seg of segments) {
+      if (pointSegmentInfo(e.x, e.y, seg.x1, seg.y1, seg.x2, seg.y2).distance <= (e.r || 0) + (fx.major ? 32 : 24)) {
+        touched = true;
+        break;
+      }
+    }
+    if (!touched) continue;
+    damageEnemy(e, (fx.damage || 0) * (fx.major ? 0.42 : 0.28), fx.x, fx.y);
+    applyKnockback(e, e.x - fx.x, e.y - fx.y, e.boss ? 16 : 52);
+  }
+  world.weaponFx.push({
+    kind: "phaseNeedleRift",
+    x: fx.x,
+    y: fx.y,
+    radius: fx.radius,
+    segments,
+    color: fx.color,
+    rank: fx.rank || 0,
+    major: fx.major,
+    life: 0.34,
+    maxLife: 0.34,
+    seed: fx.seed || Math.random() * 999,
+  });
+}
+
+function updateStarScarDamage(fx, dt) {
+  fx.tickTimer = (fx.tickTimer || 0) - dt;
+  if (fx.tickTimer > 0) return;
+  fx.tickTimer = 0.16;
+  const hits = [];
+  queryEnemies(fx.x, fx.y, fx.radius, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    const d = Math.max(1, Math.hypot(e.x - fx.x, e.y - fx.y));
+    const falloff = clamp(1 - d / fx.radius, 0.2, 1);
+    damageEnemy(e, (fx.damagePerSecond || 0) * 0.16 * falloff, fx.x, fx.y);
+  }
+}
+
+function damageStarConstellation(fx) {
+  fx.damageDone = true;
+  const hits = [];
+  queryEnemies(fx.x, fx.y, fx.radius, hits);
+  for (const e of hits) {
+    if (e.dead) continue;
+    let nearLine = false;
+    for (let i = 0; i < (fx.points?.length || 0); i++) {
+      const a = fx.points[i];
+      const b = fx.points[(i + 1) % fx.points.length];
+      if (pointSegmentInfo(e.x, e.y, a.x, a.y, b.x, b.y).distance <= (e.r || 0) + 28) {
+        nearLine = true;
+        break;
+      }
+    }
+    if (!nearLine) continue;
+    damageEnemy(e, fx.damage || 0, e.x, e.y);
+    applyKnockback(e, e.x - fx.x, e.y - fx.y, e.boss ? 20 : 58);
   }
 }

@@ -66,6 +66,18 @@ export const WEAPON_INFO = {
     desc: "在地面布置电磁节点，敌人靠近后触发多目标连锁放电。",
     tags: ["电磁节点", "连锁放电", "陷阱控场"],
   },
+  starfall_scepter: {
+    icon: "✦",
+    name: "星坠权杖",
+    desc: "锁定远处敌群召唤星雨轰击，命中后留下闪烁星痕。",
+    tags: ["远程锁定", "星雨轰击", "星痕残留"],
+  },
+  phase_needler: {
+    icon: "⌁",
+    name: "相位针雨",
+    desc: "发射高速穿刺针束，命中后植入延迟爆裂的相位标记。",
+    tags: ["高速穿刺", "延迟爆裂", "中距贯穿"],
+  },
 };
 
 export function addWeaponToInventory(id, quality = "common") {

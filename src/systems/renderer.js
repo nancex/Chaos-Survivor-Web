@@ -368,6 +368,14 @@ function drawProjectiles(ctx) {
       drawSingularityProjectile(ctx, b);
       continue;
     }
+    if (b.shape === "starfall") {
+      drawStarfallProjectile(ctx, b);
+      continue;
+    }
+    if (b.shape === "phaseNeedle") {
+      drawPhaseNeedleProjectile(ctx, b);
+      continue;
+    }
     const boosted = b.quality === "epic" || b.quality === "legendary";
     const tail = b.shape === "missile" ? (boosted ? 82 : 64) : b.shape === "droneBolt" ? (boosted ? 38 : 28) : 48;
     const tx = b.x - Math.cos(b.angle) * tail;
@@ -401,6 +409,7 @@ function drawDrones(ctx) {
 
 function drawWeaponFx(ctx) {
   for (const fx of world.weaponFx) {
+    if (fx.delay > 0) continue;
     const k = Math.max(0, fx.life / fx.maxLife);
     if (fx.kind === "arc") {
       drawArcFx(ctx, fx, k);
@@ -448,6 +457,22 @@ function drawWeaponFx(ctx) {
       drawItemMineBlastFx(ctx, fx, k);
     } else if (fx.kind === "starImpact") {
       drawStarImpactFx(ctx, fx, k);
+    } else if (fx.kind === "starfallWarning") {
+      drawStarfallWarningFx(ctx, fx, k);
+    } else if (fx.kind === "starfallImpact") {
+      drawStarfallImpactFx(ctx, fx, k);
+    } else if (fx.kind === "starScar") {
+      drawStarScarFx(ctx, fx, k);
+    } else if (fx.kind === "starConstellation") {
+      drawStarConstellationFx(ctx, fx, k);
+    } else if (fx.kind === "phaseNeedleHit") {
+      drawPhaseNeedleHitFx(ctx, fx, k);
+    } else if (fx.kind === "phaseNeedleMark") {
+      drawPhaseNeedleMarkFx(ctx, fx, k);
+    } else if (fx.kind === "phaseNeedleBurst") {
+      drawPhaseNeedleBurstFx(ctx, fx, k);
+    } else if (fx.kind === "phaseNeedleRift") {
+      drawPhaseNeedleRiftFx(ctx, fx, k);
     } else {
       ctx.strokeStyle = hexToRgba(fx.color, k);
       ctx.lineWidth = 2;
@@ -668,6 +693,105 @@ function drawSingularityProjectile(ctx, b) {
   ctx.beginPath();
   ctx.arc(0, 0, coreR * 1.18, -b.spin, -b.spin + Math.PI * 1.2);
   ctx.stroke();
+  ctx.restore();
+}
+
+function drawStarfallProjectile(ctx, b) {
+  if ((b.delay || 0) > 0) return;
+  const rank = b.qualityRank || 0;
+  const r = b.r || 10;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate((b.spin || 0) + b.angle);
+  ctx.globalCompositeOperation = "lighter";
+
+  const tail = b.major ? 118 : 82;
+  const grad = ctx.createLinearGradient(-tail, 0, r * 1.5, 0);
+  grad.addColorStop(0, hexToRgba(b.color, 0));
+  grad.addColorStop(0.55, hexToRgba(rank >= 4 ? "#ffd166" : b.color, 0.34));
+  grad.addColorStop(1, hexToRgba("#ffffff", 0.88));
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = b.major ? 12 : 8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-tail, 0);
+  ctx.lineTo(r * 1.4, 0);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+
+  glow(ctx, 0, 0, r * (b.major ? 4.2 : 3.2), b.major ? 0.5 : 0.36, b.color);
+  ctx.fillStyle = "#ffffff";
+  drawStarShape(ctx, 0, 0, r * (b.major ? 1.35 : 1.05), r * 0.42, 10);
+  ctx.fill();
+  ctx.strokeStyle = b.major ? "#ffd166" : b.color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba(rank >= 4 ? "#ffd166" : b.color, 0.72);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.75, state.time * 3, state.time * 3 + Math.PI * 1.4);
+  ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const a = i * TAU / 5 - state.time * 4;
+    ctx.fillStyle = hexToRgba(i % 2 ? "#ffffff" : b.color, 0.55);
+    ctx.fillRect(Math.cos(a) * r * 2.2 - 1.5, Math.sin(a) * r * 2.2 - 1.5, 3, 3);
+  }
+  ctx.restore();
+}
+
+function drawPhaseNeedleProjectile(ctx, b) {
+  const rank = b.qualityRank || 0;
+  const r = b.r || 5;
+  const tail = b.major ? 104 : 72;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(b.angle);
+  ctx.globalCompositeOperation = "lighter";
+
+  const trailGrad = ctx.createLinearGradient(-tail, 0, r * 3, 0);
+  trailGrad.addColorStop(0, hexToRgba("#42e8ff", 0));
+  trailGrad.addColorStop(0.35, hexToRgba("#42e8ff", 0.22));
+  trailGrad.addColorStop(0.72, hexToRgba(b.color, 0.42));
+  trailGrad.addColorStop(1, hexToRgba("#ffffff", 0.9));
+  ctx.strokeStyle = trailGrad;
+  ctx.lineWidth = b.major ? 7.5 : 4.8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-tail, Math.sin(state.time * 38 + b.seed) * 1.4);
+  ctx.lineTo(r * 3.4, 0);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+
+  glow(ctx, 0, 0, r * (b.major ? 4.6 : 3.4), b.major ? 0.42 : 0.32, b.color);
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(r * (b.major ? 5.4 : 4.4), 0);
+  ctx.lineTo(r * 0.7, r * (b.major ? 1.15 : 0.9));
+  ctx.lineTo(-r * 1.9, r * 0.42);
+  ctx.lineTo(-r * 2.8, 0);
+  ctx.lineTo(-r * 1.9, -r * 0.42);
+  ctx.lineTo(r * 0.7, -r * (b.major ? 1.15 : 0.9));
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = b.major ? "#ffd166" : b.color;
+  ctx.lineWidth = b.major ? 2.1 : 1.5;
+  ctx.stroke();
+
+  ctx.strokeStyle = hexToRgba("#42e8ff", 0.78);
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const off = (i - 1) * r * 0.78;
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.1, off);
+    ctx.lineTo(r * (2.4 + rank * 0.2), off * 0.22);
+    ctx.stroke();
+  }
+  if (rank >= 2) {
+    ctx.strokeStyle = hexToRgba(b.color, 0.68);
+    ctx.beginPath();
+    ctx.arc(r * 0.15, 0, r * 2.2, state.time * 7, state.time * 7 + Math.PI * 1.35);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -1383,6 +1507,237 @@ function drawStarImpactFx(ctx, fx, k) {
   ctx.beginPath();
   ctx.arc(fx.x, fx.y, r * 0.58, 0, TAU);
   ctx.stroke();
+}
+
+function drawStarfallWarningFx(ctx, fx, k) {
+  const charge = 1 - k;
+  const r = fx.radius * (0.9 + Math.sin(state.time * 8 + (fx.seed || 0)) * 0.025);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.seed || 0) + state.time * 1.8);
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, r * 0.38, (0.12 + charge * 0.18) * k, fx.color);
+  ctx.strokeStyle = hexToRgba(fx.major ? "#ffd166" : fx.color, 0.64 * k);
+  ctx.lineWidth = fx.major ? 2.4 : 1.7;
+  ctx.setLineDash([9, 8]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = hexToRgba("#ffffff", 0.46 * k);
+  ctx.lineWidth = 1.2;
+  for (let i = 0; i < 10; i++) {
+    const a = i * TAU / 10;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.42, Math.sin(a) * r * 0.42);
+    ctx.lineTo(Math.cos(a) * r * (0.82 + charge * 0.16), Math.sin(a) * r * (0.82 + charge * 0.16));
+    ctx.stroke();
+  }
+  drawStarShape(ctx, 0, 0, r * 0.22 * (0.7 + charge * 0.5), r * 0.08, 10);
+  ctx.strokeStyle = hexToRgba(fx.major ? "#ffd166" : fx.color, 0.76 * k);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStarfallImpactFx(ctx, fx, k) {
+  const progress = 1 - k;
+  const r = fx.radius * (0.18 + progress * 0.95);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.seed || 0) + state.time * 3);
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, fx.radius * 0.56, k * 0.48, fx.color);
+  const blast = ctx.createRadialGradient(0, 0, 3, 0, 0, Math.max(4, r));
+  blast.addColorStop(0, hexToRgba("#ffffff", k * 0.72));
+  blast.addColorStop(0.28, hexToRgba(fx.major ? "#ffd166" : fx.color, k * 0.48));
+  blast.addColorStop(0.78, hexToRgba("#ff65d8", k * 0.12));
+  blast.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = blast;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.86);
+  ctx.lineWidth = 3.5 * k;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.58, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba(fx.major ? "#ffd166" : fx.color, k * 0.86);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const a = i * TAU / 12;
+    const bend = a + Math.sin(state.time + i) * 0.08;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.16, Math.sin(a) * r * 0.16);
+    ctx.lineTo(Math.cos(bend) * r, Math.sin(bend) * r);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawStarScarFx(ctx, fx, k) {
+  const r = fx.radius * (0.96 + Math.sin(state.time * 7 + (fx.seed || 0)) * 0.025);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.seed || 0) + state.time * 0.55);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = hexToRgba(fx.color, k * 0.075);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.52);
+  ctx.lineWidth = 1.4;
+  for (let i = 0; i < 3; i++) {
+    ctx.rotate(TAU / 3);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.92, r * 0.28, 0, 0, TAU);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.34);
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8 - state.time;
+    drawStarShape(ctx, Math.cos(a) * r * 0.58, Math.sin(a) * r * 0.58, 5 + (i % 3), 2, 8);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawStarConstellationFx(ctx, fx, k) {
+  const points = fx.points || [];
+  if (points.length < 2) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const line = jaggedLine(a.x, a.y, b.x, b.y, 5, 5, (fx.seed || 0) + state.time * 80 + i);
+    ctx.strokeStyle = hexToRgba("#ffffff", k * 0.72);
+    ctx.lineWidth = 3 * k;
+    strokePolyline(ctx, line);
+    ctx.strokeStyle = hexToRgba(fx.color, k * 0.82);
+    ctx.lineWidth = 1.4;
+    strokePolyline(ctx, line);
+    glow(ctx, a.x, a.y, 18, k * 0.26, fx.color);
+  }
+  ctx.lineCap = "butt";
+  ctx.restore();
+}
+
+function drawPhaseNeedleHitFx(ctx, fx, k) {
+  const r = (fx.major ? 34 : 24) * (1 - k);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.angle || 0) + Math.PI / 2);
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, r * 0.72, k * 0.34, fx.color);
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.88);
+  ctx.lineWidth = fx.major ? 3 : 2;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(r * 0.15, 0);
+    ctx.lineTo(r, 0);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = hexToRgba(fx.color, k * 0.9);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.78, r * 0.26, 0, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPhaseNeedleMarkFx(ctx, fx, k) {
+  const charge = 1 - k;
+  const r = 18 + charge * 14 + Math.sin(state.time * 16 + (fx.seed || 0)) * 1.8;
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.seed || 0) + state.time * (fx.major ? 4.2 : 3.2));
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, r * 1.15, (0.14 + charge * 0.18) * k, fx.color);
+  ctx.strokeStyle = hexToRgba("#42e8ff", 0.52 * k);
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([5, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = hexToRgba(fx.color, 0.84 * k);
+  ctx.lineWidth = fx.major ? 2.3 : 1.6;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.78);
+    ctx.lineTo(r * 0.28, 0);
+    ctx.lineTo(0, r * 0.78);
+    ctx.lineTo(-r * 0.28, 0);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.strokeStyle = hexToRgba("#ffffff", (0.34 + charge * 0.46) * k);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.52, 0);
+  ctx.lineTo(r * 0.52, 0);
+  ctx.moveTo(0, -r * 0.52);
+  ctx.lineTo(0, r * 0.52);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPhaseNeedleBurstFx(ctx, fx, k) {
+  const progress = 1 - k;
+  const r = fx.radius * (0.2 + progress * 0.9);
+  ctx.save();
+  ctx.translate(fx.x, fx.y);
+  ctx.rotate((fx.seed || 0) + state.time * 5.2);
+  ctx.globalCompositeOperation = "lighter";
+  glow(ctx, 0, 0, fx.radius * 0.72, k * 0.5, fx.color);
+  const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, Math.max(5, r));
+  grad.addColorStop(0, hexToRgba("#ffffff", k * 0.72));
+  grad.addColorStop(0.32, hexToRgba("#42e8ff", k * 0.36));
+  grad.addColorStop(0.62, hexToRgba(fx.color, k * 0.24));
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba("#ffffff", k * 0.86);
+  ctx.lineWidth = 3 * k;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.58, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba(fx.major ? "#ffd166" : fx.color, k * 0.9);
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const a = i * TAU / 12;
+    const bend = a + Math.sin((fx.seed || 0) + i + state.time * 3) * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.16, Math.sin(a) * r * 0.16);
+    ctx.lineTo(Math.cos(bend) * r * (0.82 + (i % 3) * 0.08), Math.sin(bend) * r * (0.82 + (i % 3) * 0.08));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPhaseNeedleRiftFx(ctx, fx, k) {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+  for (const seg of fx.segments || []) {
+    const points = jaggedLine(seg.x1, seg.y1, seg.x2, seg.y2, fx.major ? 9 : 7, fx.major ? 14 : 10, (seg.seed || 0) + state.time * 150);
+    ctx.strokeStyle = hexToRgba(fx.color, k * 0.28);
+    ctx.lineWidth = fx.major ? 12 : 8;
+    strokePolyline(ctx, points);
+    ctx.strokeStyle = hexToRgba("#ffffff", k * 0.86);
+    ctx.lineWidth = fx.major ? 4 : 3;
+    strokePolyline(ctx, points);
+    ctx.strokeStyle = hexToRgba("#42e8ff", k * 0.72);
+    ctx.lineWidth = 1.5;
+    strokePolyline(ctx, points);
+  }
+  glow(ctx, fx.x, fx.y, fx.radius * 0.36, k * 0.26, fx.color);
+  ctx.lineCap = "butt";
+  ctx.restore();
 }
 
 function jaggedLine(x1, y1, x2, y2, steps, amp, seed) {
@@ -2191,4 +2546,5 @@ function drawArrow(ctx, angle, r, color) { ctx.fillStyle = color; ctx.beginPath(
 function drawDashedCircle(ctx, x, y, r, color) { ctx.strokeStyle = color; ctx.lineWidth = 1; for (let i = 0; i < 18; i += 2) { const a1 = (i / 18) * TAU, a2 = a1 + TAU / 18 * 0.55; ctx.beginPath(); ctx.moveTo(x + Math.cos(a1) * r, y + Math.sin(a1) * r); ctx.lineTo(x + Math.cos(a2) * r, y + Math.sin(a2) * r); ctx.stroke(); } }
 function diamond(ctx, len, w, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(0, w); ctx.lineTo(-len * 0.35, 0); ctx.lineTo(0, -w); ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.stroke(); }
 function star(ctx, r, color) { ctx.fillStyle = color; ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU, rr = i % 2 ? r * 0.35 : r; const x = Math.cos(a) * rr, y = Math.sin(a) * rr; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.closePath(); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.stroke(); }
+function drawStarShape(ctx, x, y, outer, inner, points = 10) { ctx.beginPath(); for (let i = 0; i < points; i++) { const a = -Math.PI / 2 + i * TAU / points; const r = i % 2 ? inner : outer; const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); }
 function diamondAt(ctx, x, y, r) { ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); }

@@ -87,6 +87,11 @@ export class SiegePylon extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r * 1.08, this.r * 0.95, this.r * 0.22, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(66,232,255,${this.charge > 0 ? 0.42 : 0.2})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, this.r * 1.15, this.r * 0.88, 0, 0, TAU);
+    ctx.stroke();
 
     for (let i = 0; i < 3; i++) {
       const a = -Math.PI / 2 + i * TAU / 3 + Math.sin(this.legPhase + i) * 0.08;
@@ -98,6 +103,11 @@ export class SiegePylon extends BaseEnemy {
       ctx.stroke();
       ctx.fillStyle = core;
       ctx.fillRect(Math.cos(a) * 25 * z - 3 * z, Math.sin(a) * 16 * z + 17 * z, 6 * z, 3 * z);
+      ctx.strokeStyle = "rgba(255,255,255,0.32)";
+      ctx.lineWidth = 1 * z;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 17 * z, Math.sin(a) * 12 * z + 13 * z, 4 * z, 0, TAU);
+      ctx.stroke();
     }
 
     ctx.rotate(Math.sin(this.anim * 0.9) * 0.04);
@@ -113,11 +123,24 @@ export class SiegePylon extends BaseEnemy {
     ctx.strokeStyle = core;
     ctx.lineWidth = 2.2 * z;
     ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1.1 * z;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 7 * z, -22 * z);
+      ctx.lineTo(i * 5 * z, 18 * z);
+      ctx.stroke();
+    }
 
     ctx.fillStyle = core;
     ctx.beginPath();
     ctx.arc(0, -11 * z, 8 * z * chargeK, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = this.charge > 0 ? "#ffffff" : "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(0, -11 * z, 12 * z * chargeK, 0, TAU);
+    ctx.stroke();
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(2 * z, -13 * z, 3 * z * chargeK, 0, TAU);

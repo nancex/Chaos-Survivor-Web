@@ -73,6 +73,11 @@ export class Exploder extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 15 * z, 16 * z, 5 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = this.armed ? "rgba(255,77,109,0.62)" : "rgba(255,176,110,0.28)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, (20 + Math.sin(this.anim * 1.2) * 2) * z, 0, TAU);
+    ctx.stroke();
     ctx.fillStyle = flash ? "#ffffff" : "#2a1214";
     ctx.beginPath();
     ctx.arc(0, 0, 15 * z, 0, TAU);
@@ -80,6 +85,10 @@ export class Exploder extends BaseEnemy {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,209,102,0.2)";
+    ctx.beginPath();
+    ctx.arc(-4 * z, -3 * z, 9 * z, 0, TAU);
+    ctx.fill();
     ctx.strokeStyle = flash ? "#ffffff" : "#ffb06e";
     ctx.lineWidth = 2;
     for (let i = 0; i < 6; i++) {
@@ -89,11 +98,26 @@ export class Exploder extends BaseEnemy {
       ctx.lineTo(Math.cos(a) * 14 * z, Math.sin(a) * 14 * z);
       ctx.stroke();
     }
+    ctx.fillStyle = flash ? "#ffffff" : this.armed ? "#ffffff" : "#ff4d6d";
+    ctx.beginPath();
+    ctx.arc(0, 0, (4.5 + (this.armed ? Math.sin(this.anim * 4) * 1.8 : 0)) * z, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      const a = this.anim * 0.25 + i * TAU / 3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 9 * z, Math.sin(a) * 9 * z, 2 * z, 0, TAU);
+      ctx.stroke();
+    }
     if (this.armed) {
       ctx.strokeStyle = "rgba(255,77,109,0.48)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 7]);
       ctx.beginPath();
       ctx.arc(0, 0, EXPLODE_RADIUS, 0, TAU);
       ctx.stroke();
+      ctx.setLineDash([]);
     }
     ctx.restore();
   }

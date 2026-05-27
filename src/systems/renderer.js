@@ -255,41 +255,14 @@ function drawPlayer(ctx) {
   const mood = hurt ? "hurt" : low ? "worried" : moving ? "happy" : ["blink", "smile", "curious", "happy"][Math.floor(state.time * 1.15) % 4];
   const bob = Math.sin(state.time * 7) * (moving ? 2.2 : 1.1);
   const breathe = Math.sin(state.time * 4.2);
-  const step = Math.sin(state.time * (moving ? 11 : 4.5));
   const squash = 1 + Math.sin(state.time * 5) * 0.025;
   ctx.save();
   ctx.translate(p.x, p.y + bob);
   ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath(); ctx.ellipse(0, 20, 24, 8, 0, 0, TAU); ctx.fill();
-  glow(ctx, 0, -1, 27, hurt ? 0.35 : 0.43, hurt ? "#ff9ab0" : "#ffd6a8");
-  glow(ctx, 0, 11, 20, 0.18, low ? "#ff4d6d" : "#42e8ff");
+  ctx.beginPath(); ctx.ellipse(0, 21, 22, 7, 0, 0, TAU); ctx.fill();
+  glow(ctx, 0, -3, 29, hurt ? 0.35 : 0.44, hurt ? "#ff9ab0" : "#ffd6a8");
+  glow(ctx, 0, -8, 22, 0.17, low ? "#ff4d6d" : "#42e8ff");
   ctx.scale(1.02 + breathe * 0.01, squash);
-
-  ctx.fillStyle = "#121827";
-  ctx.strokeStyle = low ? "#ff4d6d" : "#42e8ff";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(-15, 7, 30, 22, 8);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = low ? "rgba(255,77,109,0.72)" : "rgba(66,232,255,0.72)";
-  ctx.fillRect(-8, 11, 16, 3);
-  ctx.fillRect(-5, 17, 10, 3);
-
-  ctx.strokeStyle = "#ffd166";
-  ctx.lineWidth = 2.2;
-  ctx.lineCap = "round";
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(side * 13, 13);
-    ctx.lineTo(side * (21 + step * 1.2), 21 + Math.abs(step) * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(side * 8, 27);
-    ctx.lineTo(side * (14 + step * 2), 35);
-    ctx.stroke();
-  }
-  ctx.lineCap = "butt";
 
   const skin = hurt ? "#ffd7dd" : "#ffd6a8";
   ctx.fillStyle = skin;
@@ -314,6 +287,14 @@ function drawPlayer(ctx) {
     const a = state.time * 2.4 + side;
     ctx.fillStyle = side < 0 ? "#42e8ff" : "#ffd166";
     ctx.fillRect(side * (19 + Math.cos(a) * 1.2) - 2, -16 + Math.sin(a) * 1.6, 4, 4);
+  }
+  ctx.strokeStyle = low ? "#ff4d6d" : "#42e8ff";
+  ctx.lineWidth = 1.2;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * 18, -2);
+    ctx.quadraticCurveTo(side * (27 + breathe * 1.5), 4, side * 19, 12);
+    ctx.stroke();
   }
   ctx.fillStyle = "#fff4d8";
   ctx.beginPath(); ctx.arc(-7, -10, 7, 0, TAU); ctx.fill();

@@ -85,6 +85,11 @@ export class Artillery extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 20 * z, 22 * z, 6 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(249,115,22,${this.charge > 0 ? 0.46 : 0.22})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 25 * z, 20 * z, 0, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = body;
     ctx.beginPath();
@@ -93,6 +98,9 @@ export class Artillery extends BaseEnemy {
     ctx.strokeStyle = edge;
     ctx.lineWidth = 2.2;
     ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,209,102,0.16)";
+    ctx.fillRect(-11 * z, -8 * z, 22 * z, 4 * z);
+    ctx.fillRect(-9 * z, 4 * z, 18 * z, 4 * z);
 
     ctx.fillStyle = "#3b1c12";
     ctx.fillRect(-12 * z, -4 * z, 24 * z, 5 * z);
@@ -100,12 +108,20 @@ export class Artillery extends BaseEnemy {
     for (let i = -1; i <= 1; i++) {
       ctx.fillRect(i * 8 * z - 2 * z, 6 * z, 4 * z, 9 * z);
     }
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(-14 * z, -13 * z, 28 * z, 31 * z, 5 * z);
+    ctx.stroke();
 
     ctx.save();
     ctx.translate(0, -16 * z);
     ctx.rotate(-Math.PI / 2 + Math.sin(this.anim * 0.7) * 0.08);
     ctx.fillStyle = "#111827";
     ctx.fillRect(-6 * z, -8 * z, 12 * z, 27 * z);
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(-7 * z, -9 * z, 14 * z, 29 * z);
     ctx.fillStyle = edge;
     ctx.beginPath();
     ctx.arc(0, -9 * z, 7 * z * hot, 0, TAU);
@@ -114,6 +130,13 @@ export class Artillery extends BaseEnemy {
     ctx.beginPath();
     ctx.arc(0, -10 * z, 3 * z * hot, 0, TAU);
     ctx.fill();
+    if (this.charge > 0) {
+      ctx.strokeStyle = "rgba(255,242,168,0.75)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, -9 * z, 11 * z * hot, 0, TAU);
+      ctx.stroke();
+    }
     ctx.restore();
 
     ctx.strokeStyle = "rgba(249,115,22,0.55)";

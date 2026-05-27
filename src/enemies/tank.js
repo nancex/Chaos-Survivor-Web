@@ -63,6 +63,11 @@ export class Tank extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 25 * z + bob, 27 * z, 8 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = brace ? "rgba(255,209,102,0.7)" : "rgba(66,232,255,0.22)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(-29 * z, -22 * z, 58 * z, 47 * z, 9 * z);
+    ctx.stroke();
     ctx.fillStyle = flash ? "#ffffff" : "#26344a";
     ctx.beginPath();
     ctx.roundRect(-24 * z, -18 * z, 48 * z, 38 * z, 7 * z);
@@ -72,14 +77,33 @@ export class Tank extends BaseEnemy {
     ctx.stroke();
     ctx.fillStyle = flash ? "#ffffff" : "#111827";
     ctx.fillRect(-18 * z, -10 * z, 36 * z, 11 * z);
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(255,255,255,0.12)";
+    ctx.fillRect(-19 * z, 3 * z, 38 * z, 5 * z);
+    ctx.fillRect(-15 * z, -15 * z, 30 * z, 3 * z);
     ctx.fillStyle = brace ? "#ffffff" : "#ff4d6d";
     ctx.fillRect(7 * z, -7 * z, 8 * z, 5 * z);
+    ctx.fillStyle = brace ? "#ffd166" : "#42e8ff";
+    ctx.fillRect(-15 * z, -7 * z, 8 * z, 5 * z);
     ctx.fillStyle = "#ffd166";
     for (let i = -1; i <= 1; i++) ctx.fillRect(i * 13 * z - 4 * z, 13 * z, 8 * z, 5 * z);
+    ctx.strokeStyle = flash ? "#ffffff" : "#0b1020";
+    ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 25 * z, -7 * z);
+      ctx.lineTo(side * 35 * z, -12 * z);
+      ctx.lineTo(side * 35 * z, 13 * z);
+      ctx.lineTo(side * 25 * z, 17 * z);
+      ctx.stroke();
+    }
     if (brace) {
       ctx.strokeStyle = "rgba(255,209,102,0.72)";
       ctx.beginPath();
       ctx.arc(0, 0, 34 * z, 0, TAU);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.4)";
+      ctx.beginPath();
+      ctx.arc(0, 0, 42 * z, Math.PI * 0.15, Math.PI * 0.85);
       ctx.stroke();
     }
     ctx.restore();

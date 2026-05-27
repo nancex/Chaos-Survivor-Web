@@ -87,6 +87,11 @@ export class PrismMedic extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 8 - bob, this.r, this.r * 0.22, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : `rgba(114,255,180,${this.channel > 0 ? 0.48 : 0.22})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 25 * z, 17 * z, this.orbit * 0.1, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = flash ? "#ffffff" : "#eafff5";
     ctx.strokeStyle = flash ? "#ffffff" : this.color;
@@ -102,6 +107,18 @@ export class PrismMedic extends BaseEnemy {
     ctx.fillStyle = flash ? "#ffffff" : "#134e3a";
     ctx.fillRect(-3 * z, -11 * z, 6 * z, 22 * z);
     ctx.fillRect(-10 * z, -3 * z, 20 * z, 6 * z);
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(66,232,255,0.72)";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(0, -18 * z);
+    ctx.lineTo(0, 18 * z);
+    ctx.moveTo(-14 * z, 0);
+    ctx.lineTo(14 * z, 0);
+    ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, 0, (3.4 + Math.sin(this.anim * 4) * 0.6) * z, 0, TAU);
+    ctx.fill();
 
     for (let i = 0; i < 4; i++) {
       const a = this.orbit + i * TAU / 4;
@@ -112,6 +129,8 @@ export class PrismMedic extends BaseEnemy {
       ctx.rotate(a);
       ctx.fillStyle = flash ? "#ffffff" : this.color;
       ctx.fillRect(-4 * z, -2 * z, 8 * z, 4 * z);
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.strokeRect(-5 * z, -3 * z, 10 * z, 6 * z);
       ctx.restore();
     }
     if (this.channel > 0 && this.target) {

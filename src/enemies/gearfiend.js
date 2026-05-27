@@ -96,15 +96,39 @@ export class Gearfiend extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, this.r + 7, this.r * 1.05, this.r * 0.24, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(66,232,255,0.28)";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.rotate(this.spin * (i ? -0.18 : 0.14));
+      ctx.beginPath();
+      ctx.ellipse(0, 0, (25 + i * 6) * z, (17 + i * 4) * z, 0, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
     drawGear(ctx, 0, 0, 19 * z, 12, this.spin, flash ? "#ffffff" : "#7b8798", flash ? "#ffffff" : this.color);
     ctx.fillStyle = flash ? "#ffffff" : "#101827";
     ctx.beginPath();
     ctx.arc(0, 0, 10 * z, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,209,102,0.72)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 13 * z, 0, TAU);
+    ctx.stroke();
     ctx.fillStyle = this.windup > 0 ? "#fff2a8" : "#ff7a1a";
     ctx.beginPath();
     ctx.arc(Math.cos(this.angle) * 3 * z, Math.sin(this.angle) * 3 * z, 4.5 * z, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = this.windup > 0 ? "#ffffff" : this.color;
+    ctx.lineWidth = 1.4;
+    ctx.save();
+    ctx.rotate(this.angle);
+    ctx.beginPath();
+    ctx.moveTo(13 * z, 0);
+    ctx.lineTo(28 * z, 0);
+    ctx.stroke();
+    ctx.restore();
     for (const side of [-1, 1]) {
       drawGear(ctx, side * 20 * z, 5 * z, 7 * z, 8, -this.spin * 1.6, flash ? "#ffffff" : "#3f4a5f", flash ? "#ffffff" : this.color);
     }

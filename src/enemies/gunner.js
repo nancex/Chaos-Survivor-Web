@@ -83,6 +83,11 @@ export class Gunner extends BaseEnemy {
     ctx.beginPath();
     ctx.ellipse(0, 17 * z, 17 * z, 5 * z, 0, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = flash ? "#ffffff" : "rgba(66,232,255,0.24)";
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 20 * z, 18 * z, 0, 0, TAU);
+    ctx.stroke();
 
     ctx.fillStyle = dark;
     ctx.fillRect(-7 * z, 4 * z, 5 * z, 15 * z);
@@ -99,6 +104,15 @@ export class Gunner extends BaseEnemy {
     ctx.strokeStyle = dark;
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.fillStyle = flash ? "#ffffff" : "rgba(66,232,255,0.18)";
+    ctx.fillRect(-9 * z, -5 * z, 18 * z, 3 * z);
+    ctx.fillRect(-7 * z, 4 * z, 14 * z, 3 * z);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-14 * z, -6 * z);
+    ctx.lineTo(14 * z, -6 * z);
+    ctx.stroke();
 
     ctx.fillStyle = "#111827";
     ctx.beginPath();
@@ -106,14 +120,21 @@ export class Gunner extends BaseEnemy {
     ctx.fill();
     ctx.fillStyle = "#ff4d6d";
     ctx.fillRect(-3 * z, -11 * z, 6 * z, 3 * z);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-6 * z, -5 * z, 12 * z, 2 * z);
 
     ctx.save();
     const localAngle = normalizeAngle(this.angle) * this.flip;
     ctx.rotate(localAngle);
     ctx.fillStyle = dark;
     ctx.fillRect(6 * z, -4 * z, 25 * z, 8 * z);
+    ctx.fillStyle = "#0b1020";
+    ctx.fillRect(12 * z, -2 * z, 12 * z, 4 * z);
     ctx.fillStyle = accent;
     ctx.fillRect(26 * z, -2 * z, 8 * z, 4 * z);
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(5 * z, -5 * z, 30 * z, 10 * z);
     if (this.burstLeft > 0) {
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();

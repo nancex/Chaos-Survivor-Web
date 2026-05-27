@@ -432,6 +432,13 @@ function drawCrimsonEye(ctx, e) {
   const flash = e.flash > 0;
   const hot = e.enraged ? 1.2 : e.shared.resonance ? 1.1 : 1;
   ctx.rotate(Math.sin(e.anim * 0.8) * 0.08);
+  ctx.strokeStyle = flash ? "#ffffff" : `rgba(255,77,109,${0.24 + Math.sin(e.anim * 2) * 0.08})`;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 2; i++) {
+    ctx.beginPath();
+    ctx.ellipse(0, 0, e.r * (1.34 + i * 0.18), e.r * (0.98 + i * 0.14), e.orbit * (i ? -0.12 : 0.16), 0, TAU);
+    ctx.stroke();
+  }
   for (let i = 0; i < 8; i++) {
     const a = e.orbit + i * TAU / 8;
     const r = e.r * (1.08 + (i % 2) * 0.18);
@@ -445,10 +452,24 @@ function drawCrimsonEye(ctx, e) {
   ctx.strokeStyle = flash ? "#ffffff" : "#ff4d6d";
   ctx.lineWidth = 4;
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255,209,102,0.45)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    const a = e.orbit * 0.35 + i * TAU / 5;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * e.r * 0.82, Math.sin(a) * e.r * 0.58);
+    ctx.lineTo(Math.cos(a) * e.r * 1.12, Math.sin(a) * e.r * 0.82);
+    ctx.stroke();
+  }
   ctx.fillStyle = flash ? "#ffffff" : "#ff7a1a";
   ctx.beginPath();
   ctx.ellipse(0, 0, e.r * 0.62 * hot, e.r * 0.44, 0, 0, TAU);
   ctx.fill();
+  ctx.strokeStyle = flash ? "#ffffff" : "rgba(255,255,255,0.76)";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, e.r * 0.7 * hot, 0, TAU);
+  ctx.stroke();
   ctx.fillStyle = "#120308";
   ctx.beginPath();
   ctx.ellipse(Math.cos(e.angle) * 4, Math.sin(e.angle) * 3, e.r * 0.13, e.r * 0.48, 0, 0, TAU);
@@ -465,6 +486,16 @@ function drawAzureEye(ctx, e) {
   drawEyeShadow(ctx, e);
   const flash = e.flash > 0;
   const open = e.mode === "laser_fire" || e.mode === "laser_aim" ? 1.18 : 1;
+  ctx.strokeStyle = flash ? "#ffffff" : `rgba(66,232,255,${0.22 + (e.mode === "laser_fire" ? 0.24 : 0)})`;
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 2; i++) {
+    ctx.save();
+    ctx.rotate(e.orbit * (i ? -0.18 : 0.14));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, e.r * (1.3 + i * 0.18), e.r * (0.98 + i * 0.12), 0, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
+  }
   for (let i = 0; i < 6; i++) {
     const a = e.orbit * -0.8 + i * TAU / 6;
     ctx.save();
@@ -481,6 +512,11 @@ function drawAzureEye(ctx, e) {
   ctx.strokeStyle = flash ? "#ffffff" : "#42e8ff";
   ctx.lineWidth = 3.5;
   ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.5)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, e.r * 0.82 * open, e.r * 0.56, 0, 0, TAU);
+  ctx.stroke();
   ctx.strokeStyle = "rgba(217,251,255,0.72)";
   ctx.lineWidth = 2;
   for (let i = 0; i < 3; i++) {
@@ -490,6 +526,9 @@ function drawAzureEye(ctx, e) {
   }
   ctx.fillStyle = e.mode === "laser_fire" ? "#ffffff" : "#42e8ff";
   ctx.fillRect(-e.r * 0.5, -e.r * 0.08, e.r, e.r * 0.16);
+  ctx.fillStyle = e.mode === "laser_fire" ? "#ffffff" : "rgba(180,140,255,0.78)";
+  ctx.fillRect(-e.r * 0.33, -e.r * 0.2, e.r * 0.66, e.r * 0.08);
+  ctx.fillRect(-e.r * 0.33, e.r * 0.12, e.r * 0.66, e.r * 0.08);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(Math.cos(e.angle) * 5 - e.r * 0.13, -e.r * 0.04, e.r * 0.26, e.r * 0.08);
 }

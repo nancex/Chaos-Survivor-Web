@@ -5,9 +5,9 @@ import { ITEM_DEFS, itemDescription } from "../systems/items.js";
 import { drawWeaponPreview } from "./weaponPreview.js";
 
 const CATEGORIES = [
-  { id: "enemies", label: "敌人", eyebrow: "HOSTILES" },
-  { id: "weapons", label: "武器", eyebrow: "ARSENAL" },
-  { id: "items", label: "道具", eyebrow: "RELICS" },
+  { id: "enemies", label: "敌人", eyebrow: "遭遇记录" },
+  { id: "weapons", label: "武器", eyebrow: "武装记录" },
+  { id: "items", label: "道具", eyebrow: "道具记录" },
 ];
 
 const dom = {};

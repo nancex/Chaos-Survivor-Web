@@ -64,7 +64,28 @@
           <i>START</i>
         </button>
         <p id="bestText" class="menu-best">最佳纪录 00:00</p>
+        <button id="codexButton" type="button" class="menu-codex-button" aria-label="打开图鉴">
+          <span>图鉴</span>
+          <i>CODEX</i>
+        </button>
         <p id="gameVersionText" class="menu-version">v0.1.0</p>
+      </section>
+
+      <section id="codexOverlay" class="overlay codex-overlay" aria-hidden="true">
+        <div class="codex-panel">
+          <header class="codex-head">
+            <div>
+              <p class="eyebrow">ARCHIVE CODEX</p>
+              <h2>图鉴</h2>
+            </div>
+            <button id="codexCloseButton" type="button" aria-label="关闭图鉴">×</button>
+          </header>
+          <div class="codex-body">
+            <nav id="codexTabs" class="codex-tabs" aria-label="图鉴分类"></nav>
+            <section id="codexList" class="codex-list" aria-label="图鉴条目"></section>
+            <aside id="codexDetail" class="codex-detail" aria-label="图鉴详情"></aside>
+          </div>
+        </div>
       </section>
 
       <section id="levelOverlay" class="overlay">

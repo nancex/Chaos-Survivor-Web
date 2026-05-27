@@ -19,6 +19,7 @@ import {
 import { generateMap } from "../systems/map.js";
 import { bindInput } from "../systems/input.js";
 import { closeInventory, initInventoryUi, isInventoryOpen } from "../ui/inventoryUi.js";
+import { closeCodex, initCodexUi } from "../ui/codexUi.js";
 import { closeShop, initShopUi, openShop } from "../ui/shopUi.js";
 import { isBossWave, setupEnemyRegistry } from "../systems/enemyRegistry.js";
 import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, updateCoins, collectAllExperience, collectAllCoins, clearEnemies } from "../systems/entities.js";
@@ -36,6 +37,7 @@ const LEVEL_CHOICE_REFRESH_COST = 10;
 export async function bootGame() {
   const ctx = ui.canvas.getContext("2d", { alpha: false });
   initInventoryUi();
+  initCodexUi();
   initShopUi({ continueToNextWave: finishWaveTransition });
   await loadGameConfig();
   await setupDifficultyConfig();
@@ -49,12 +51,14 @@ export async function bootGame() {
   let fpsFrames = 0;
 
   function start() {
+    closeCodex();
     hideAllOverlays();
     showDifficultyChoices();
     playSfx("select");
   }
 
   function startWithDifficulty(id) {
+    closeCodex();
     selectDifficulty(id);
     resetRun(generateMap());
     selectDifficulty(id);
@@ -216,6 +220,7 @@ export async function bootGame() {
   }
 
   function returnToMenu() {
+    closeCodex();
     stopMusic();
     resetRun(generateMap());
     state.shop = createShopState();

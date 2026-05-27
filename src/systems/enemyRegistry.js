@@ -3,6 +3,7 @@ import { state, world } from "../state.js";
 import { clamp } from "../utils.js";
 import { setSpawnConfigured } from "../enemies/BaseEnemy.js";
 import { currentDifficulty, difficultyOrder } from "../difficulty.js";
+import { recordCodexEntry } from "./codex.js";
 import { Zombie } from "../enemies/zombie.js";
 import { Lancer } from "../enemies/lancer.js";
 import { Wisp } from "../enemies/wisp.js";
@@ -92,6 +93,7 @@ export function spawnEnemyById(id, x = null, y = null) {
   const e = new Klass(cfg, pos.x, pos.y);
   world.enemies.push(e);
   if (e.boss) world.boss = e;
+  recordCodexEntry("enemies", id);
   return e;
 }
 

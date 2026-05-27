@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { recordCodexEntry } from "../systems/codex.js";
 
 export const QUALITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"];
 
@@ -57,6 +58,7 @@ export function addWeaponToInventory(id, quality = "common") {
   inv.weaponSlots.push(slot);
   inv.selectedWeaponUid ||= slot.uid;
   recomputeAllWeapons();
+  recordCodexEntry("weapons", id);
   return slot;
 }
 

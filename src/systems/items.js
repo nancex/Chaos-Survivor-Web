@@ -4,6 +4,7 @@ import { distSq, clamp } from "../utils.js";
 import { burst, pulse, trail } from "../effects.js";
 import { playSfx } from "../audio.js";
 import { QUALITY_INFO, QUALITY_ORDER, recomputeAllWeapons } from "../economy/inventory.js";
+import { recordCodexEntry } from "./codex.js";
 
 const QUALITY_VALUES = {
   heart_container: [5, 10, 20, 35, 50],
@@ -406,6 +407,7 @@ function recordItem(item, quality, qty) {
   const qualityInfo = QUALITY_INFO[quality] || QUALITY_INFO.common;
   if (existing) existing.qty = item.unique ? 1 : existing.qty + qty;
   else inv.items.push({ id, itemId: item.id, quality, name: item.singleQuality ? item.name : `${qualityInfo.name}${item.name}`, icon: item.icon, qty: item.unique ? 1 : qty, desc: itemDescription(item, quality) });
+  recordCodexEntry("items", item.id);
 }
 
 function qualityValue(id, quality) {

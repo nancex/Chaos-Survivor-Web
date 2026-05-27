@@ -1,10 +1,10 @@
-import { PROJECTILE_LIMIT, TAU, WORLD_SIZE } from "./constants.js";
-import { state, world } from "./state.js";
-import { angleDiff, circleHit, clamp, distSq } from "./utils.js";
+import { PROJECTILE_LIMIT, TAU, WORLD_SIZE } from "../constants.js";
+import { state, world } from "../state.js";
+import { angleDiff, circleHit, clamp, distSq } from "../utils.js";
 import { applyKnockback, damageEnemy, nearestEnemy, queryEnemies } from "./entities.js";
-import { burst, pulse, trail } from "./effects.js";
-import { playSfx } from "./audio.js";
-import { addWeaponToInventory, QUALITY_ORDER, WEAPON_INFO } from "./inventory.js";
+import { burst, pulse, trail } from "../effects.js";
+import { playSfx } from "../audio.js";
+import { addWeaponToInventory, QUALITY_ORDER, WEAPON_INFO } from "../economy/inventory.js";
 
 export const STARTER_WEAPONS = ["arc", "ice", "missile", "boomerang", "drone"].map((id) => ({ id, ...WEAPON_INFO[id] }));
 

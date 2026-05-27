@@ -1,6 +1,6 @@
-import { state } from "./state.js";
+import { state } from "../state.js";
 import { addWeaponToInventory, canFuseWeapons, QUALITY_INFO, QUALITY_ORDER, recomputeAllWeapons, WEAPON_INFO } from "./inventory.js";
-import { playSfx } from "./audio.js";
+import { playSfx } from "../audio.js";
 
 const SHOP_SLOTS = 4;
 const STARTER_WEIGHT = 2.5;

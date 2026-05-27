@@ -1,5 +1,5 @@
-import { SAVE_KEY, TOTAL_WAVES, waveDurationFor } from "./constants.js";
-import { state, world, resetRun } from "./state.js";
+import { SAVE_KEY, TOTAL_WAVES, waveDurationFor } from "../constants.js";
+import { state, world, resetRun } from "../state.js";
 import {
   ui,
   updateHud,
@@ -14,20 +14,20 @@ import {
   hideAllOverlays,
   pickThree,
   showEnd,
-} from "./ui.js";
-import { generateMap } from "./map.js";
-import { bindInput } from "./input.js";
-import { closeInventory, initInventoryUi, isInventoryOpen } from "./inventoryUi.js";
-import { closeShop, initShopUi, openShop } from "./shopUi.js";
-import { isBossWave, setupEnemyRegistry } from "./enemyRegistry.js";
-import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, updateCoins, collectAllExperience, collectAllCoins, clearEnemies } from "./entities.js";
-import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "./weapons.js";
-import { createShopState } from "./shop.js";
-import * as effects from "./effects.js";
-import { resizeCanvas, updateCamera, render } from "./renderer.js";
-import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "./audio.js";
-import { CAMERA_ZOOM } from "./constants.js";
-import { loadDifficultyProgress, recordDifficultyVictory, selectDifficulty, setupDifficultyConfig } from "./difficulty.js";
+} from "../ui/ui.js";
+import { generateMap } from "../systems/map.js";
+import { bindInput } from "../systems/input.js";
+import { closeInventory, initInventoryUi, isInventoryOpen } from "../ui/inventoryUi.js";
+import { closeShop, initShopUi, openShop } from "../ui/shopUi.js";
+import { isBossWave, setupEnemyRegistry } from "../systems/enemyRegistry.js";
+import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, updateCoins, collectAllExperience, collectAllCoins, clearEnemies } from "../systems/entities.js";
+import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon } from "../systems/weapons.js";
+import { createShopState } from "../economy/shop.js";
+import * as effects from "../effects.js";
+import { resizeCanvas, updateCamera, render } from "../systems/renderer.js";
+import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "../audio.js";
+import { CAMERA_ZOOM } from "../constants.js";
+import { loadDifficultyProgress, recordDifficultyVictory, selectDifficulty, setupDifficultyConfig } from "../difficulty.js";
 
 export async function bootGame() {
   const ctx = ui.canvas.getContext("2d", { alpha: false });

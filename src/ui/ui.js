@@ -1,7 +1,7 @@
-import { TOTAL_WAVES } from "./constants.js";
-import { state } from "./state.js";
-import { choice, formatTime } from "./utils.js";
-import { bestSummaryText, difficultyCards } from "./difficulty.js";
+import { TOTAL_WAVES } from "../constants.js";
+import { state } from "../state.js";
+import { choice, formatTime } from "../utils.js";
+import { bestSummaryText, difficultyCards } from "../difficulty.js";
 import {
   findFuseCandidate,
   fuseWeaponSlots,
@@ -9,7 +9,7 @@ import {
   selectWeaponSlot,
   selectedWeaponSlot,
   WEAPON_INFO,
-} from "./inventory.js";
+} from "../economy/inventory.js";
 import { startWeaponPreview } from "./weaponPreview.js";
 
 let stopPreview = null;

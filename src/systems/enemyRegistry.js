@@ -1,40 +1,40 @@
-import { WORLD_SIZE, TAU, ENEMY_LIMIT } from "./constants.js";
-import { state, world } from "./state.js";
-import { clamp } from "./utils.js";
-import { setSpawnConfigured } from "./enemies/BaseEnemy.js";
-import { currentDifficulty } from "./difficulty.js";
-import { Zombie } from "./enemies/zombie.js";
-import { Lancer } from "./enemies/lancer.js";
-import { Wisp } from "./enemies/wisp.js";
-import { SlimeLarge } from "./enemies/slime_large.js";
-import { SlimeMedium } from "./enemies/slime_medium.js";
-import { SlimeSmall } from "./enemies/slime_small.js";
-import { BlackholeMage } from "./enemies/blackhole_mage.js";
-import { MechWorm } from "./enemies/mech_worm.js";
-import { Doctor } from "./enemies/doctor.js";
-import { Embermine } from "./enemies/embermine.js";
-import { SiegePylon } from "./enemies/siege_pylon.js";
-import { Razorbat } from "./enemies/razorbat.js";
-import { BroodSeeder } from "./enemies/brood_seeder.js";
-import { LineRaider } from "./enemies/line_raider.js";
-import { ShieldCaster } from "./enemies/shield_caster.js";
-import { Wizard } from "./enemies/wizard.js";
-import { Pentastar } from "./enemies/pentastar.js";
-import { Gearfiend } from "./enemies/gearfiend.js";
-import { PrismMedic } from "./enemies/prism_medic.js";
-import { PhaseMirage } from "./enemies/phase_mirage.js";
-import { MagnetRaider } from "./enemies/magnet_raider.js";
-import { MagmaBeetle } from "./enemies/magma_beetle.js";
-import { Exploder } from "./enemies/exploder.js";
-import { Tank } from "./enemies/tank.js";
-import { Pyromancer } from "./enemies/pyromancer.js";
-import { LaserEye } from "./enemies/laser_eye.js";
-import { Gunner } from "./enemies/gunner.js";
-import { Artillery } from "./enemies/artillery.js";
-import { StormTyrant } from "./enemies/storm_tyrant.js";
-import { StormRailDevourer } from "./enemies/storm_rail_devourer.js";
-import { TwinAbyssalEyes } from "./enemies/twin_abyssal_eyes.js";
-import { PolarCrystalWraith } from "./enemies/polar_crystal_wraith.js";
+import { WORLD_SIZE, TAU, ENEMY_LIMIT } from "../constants.js";
+import { state, world } from "../state.js";
+import { clamp } from "../utils.js";
+import { setSpawnConfigured } from "../enemies/BaseEnemy.js";
+import { currentDifficulty } from "../difficulty.js";
+import { Zombie } from "../enemies/zombie.js";
+import { Lancer } from "../enemies/lancer.js";
+import { Wisp } from "../enemies/wisp.js";
+import { SlimeLarge } from "../enemies/slime_large.js";
+import { SlimeMedium } from "../enemies/slime_medium.js";
+import { SlimeSmall } from "../enemies/slime_small.js";
+import { BlackholeMage } from "../enemies/blackhole_mage.js";
+import { MechWorm } from "../enemies/mech_worm.js";
+import { Doctor } from "../enemies/doctor.js";
+import { Embermine } from "../enemies/embermine.js";
+import { SiegePylon } from "../enemies/siege_pylon.js";
+import { Razorbat } from "../enemies/razorbat.js";
+import { BroodSeeder } from "../enemies/brood_seeder.js";
+import { LineRaider } from "../enemies/line_raider.js";
+import { ShieldCaster } from "../enemies/shield_caster.js";
+import { Wizard } from "../enemies/wizard.js";
+import { Pentastar } from "../enemies/pentastar.js";
+import { Gearfiend } from "../enemies/gearfiend.js";
+import { PrismMedic } from "../enemies/prism_medic.js";
+import { PhaseMirage } from "../enemies/phase_mirage.js";
+import { MagnetRaider } from "../enemies/magnet_raider.js";
+import { MagmaBeetle } from "../enemies/magma_beetle.js";
+import { Exploder } from "../enemies/exploder.js";
+import { Tank } from "../enemies/tank.js";
+import { Pyromancer } from "../enemies/pyromancer.js";
+import { LaserEye } from "../enemies/laser_eye.js";
+import { Gunner } from "../enemies/gunner.js";
+import { Artillery } from "../enemies/artillery.js";
+import { StormTyrant } from "../enemies/storm_tyrant.js";
+import { StormRailDevourer } from "../enemies/storm_rail_devourer.js";
+import { TwinAbyssalEyes } from "../enemies/twin_abyssal_eyes.js";
+import { PolarCrystalWraith } from "../enemies/polar_crystal_wraith.js";
 
 const classes = {
   zombie: Zombie,
@@ -75,7 +75,7 @@ export let enemyConfig = {};
 
 export async function setupEnemyRegistry() {
   if (!Object.keys(enemyConfig).length) {
-    const response = await fetch(new URL("./enemy-config.json", import.meta.url));
+    const response = await fetch(new URL("../config/enemy-config.json", import.meta.url));
     const config = await response.json();
     enemyConfig = Object.fromEntries(Object.entries(config).map(([id, data]) => [id, { id, ...data }]));
   }

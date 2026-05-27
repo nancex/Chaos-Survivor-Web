@@ -1,5 +1,5 @@
-import { createInventory, state } from "./state.js";
-import { QUALITY_INFO, WEAPON_INFO } from "./inventory.js";
+import { createInventory, state } from "../state.js";
+import { QUALITY_INFO, WEAPON_INFO } from "../economy/inventory.js";
 import {
   canFuseShopWeapon,
   isSoldOut,
@@ -9,7 +9,7 @@ import {
   refreshCost,
   refreshShopOffers,
   toggleOfferLock,
-} from "./shop.js";
+} from "../economy/shop.js";
 
 const dom = {};
 let continueHandler = null;

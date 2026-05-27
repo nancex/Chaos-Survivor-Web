@@ -1,6 +1,6 @@
-import { input, state } from "./state.js";
-import { ui } from "./ui.js";
-import { setMuted, isMuted, nextMusicTrack } from "./audio.js";
+import { input, state } from "../state.js";
+import { ui } from "../ui/ui.js";
+import { setMuted, isMuted, nextMusicTrack } from "../audio.js";
 
 export function bindInput({ start, restart, togglePause, resume, returnToMenu }) {
   const keys = new Map([

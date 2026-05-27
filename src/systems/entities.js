@@ -1,11 +1,11 @@
-import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, TAU, WORLD_SIZE } from "./constants.js";
-import { state, world, input } from "./state.js";
-import { clamp, distSq, circleHit } from "./utils.js";
-import { burst, dust } from "./effects.js";
-import { playSfx } from "./audio.js";
+import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, TAU, WORLD_SIZE } from "../constants.js";
+import { state, world, input } from "../state.js";
+import { clamp, distSq, circleHit } from "../utils.js";
+import { burst, dust } from "../effects.js";
+import { playSfx } from "../audio.js";
 import { isBossWave, randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
-import { updateBlackhole } from "./blackhole.js";
-import { difficultyMultiplier, currentDifficulty } from "./difficulty.js";
+import { updateBlackhole } from "../blackhole.js";
+import { difficultyMultiplier, currentDifficulty } from "../difficulty.js";
 
 export function updatePlayer(dt) {
   const p = state.player;

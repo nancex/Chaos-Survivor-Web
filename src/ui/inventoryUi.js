@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { state } from "../state.js";
 import {
   canFuseWeapons,
   findFuseCandidate,
@@ -7,8 +7,8 @@ import {
   WEAPON_INFO,
   selectWeaponSlot,
   selectedWeaponSlot,
-} from "./inventory.js";
-import { itemSellPrice, sellInventoryItem, sellWeaponSlot, weaponSellPrice } from "./shop.js";
+} from "../economy/inventory.js";
+import { itemSellPrice, sellInventoryItem, sellWeaponSlot, weaponSellPrice } from "../economy/shop.js";
 
 let initialized = false;
 let previousMode = "playing";

@@ -1,6 +1,6 @@
-import { CAMERA_ZOOM, TAU } from "./constants.js";
-import { state, world } from "./state.js";
-import { hexToRgba } from "./utils.js";
+import { CAMERA_ZOOM, TAU } from "../constants.js";
+import { state, world } from "../state.js";
+import { hexToRgba } from "../utils.js";
 
 const LIGHT_SCALE = 0.45;
 const MAX_PROJECTILE_LIGHTS = 56;

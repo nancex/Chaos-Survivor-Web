@@ -1,6 +1,6 @@
-import { WORLD_SIZE, TAU } from "./constants.js";
-import { state } from "./state.js";
-import { hexToRgba, mulberry32 } from "./utils.js";
+import { WORLD_SIZE, TAU } from "../constants.js";
+import { state } from "../state.js";
+import { hexToRgba, mulberry32 } from "../utils.js";
 
 const STATIC_CACHE_SCALE = 0.5;
 const PROP_LAYER_FLOOR = "floor";

@@ -55,18 +55,16 @@
       <div id="touchStick" class="touch-stick" aria-hidden="true"><i></i></div>
 
       <section id="startOverlay" class="overlay active">
-        <div class="panel intro">
-          <p class="eyebrow">PIXEL GEOMETRY SURVIVOR</p>
+        <div class="menu-title" aria-label="游戏名称">
+          <span>NEON RUINS Survivor</span>
           <h1>混乱幸存者</h1>
-          <p class="summary">选择开局武器，在随机霓虹废墟中撑过 20 波敌潮。</p>
-          <div class="stats-row">
-            <span>WASD / 方向键移动</span>
-            <span>自动攻击</span>
-            <span>E 背包 / P 暂停</span>
-          </div>
-          <button id="startButton" type="button" class="primary">开始生存</button>
-          <p id="bestText" class="subtle">最佳纪录 00:00</p>
         </div>
+        <button id="startButton" type="button" class="menu-start-button" aria-label="开始游戏">
+          <span>开始</span>
+          <i>START</i>
+        </button>
+        <p id="bestText" class="menu-best">最佳纪录 00:00</p>
+        <p id="gameVersionText" class="menu-version">v0.1.0</p>
       </section>
 
       <section id="levelOverlay" class="overlay">

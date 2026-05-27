@@ -119,6 +119,23 @@ export function randomEnemyForWave(wave) {
   return ids[Math.floor(Math.random() * ids.length)] || "zombie";
 }
 
+export function decorativeEnemyIds() {
+  return Object.values(enemyConfig)
+    .filter((entry) => !entry.boss && classes[entry.id])
+    .map((entry) => entry.id);
+}
+
+export function createDecorativeEnemy(id, x, y) {
+  const cfg = enemyConfig[id];
+  const Klass = classes[id];
+  if (!cfg || !Klass || cfg.boss) return null;
+  const enemy = new Klass(cfg, x, y);
+  enemy.dead = false;
+  enemy.flash = 0;
+  enemy.shielded = false;
+  return enemy;
+}
+
 function randomSpawnPosition(radius) {
   const p = state.player;
   const angle = Math.random() * TAU;

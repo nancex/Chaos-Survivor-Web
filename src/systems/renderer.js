@@ -5,6 +5,7 @@ import { drawMap } from "./map.js";
 import { drawEffects } from "../effects.js";
 import { renderLighting } from "./lighting.js";
 import { drawBlackhole } from "../blackhole.js";
+import { createDecorativeEnemy, decorativeEnemyIds } from "./enemyRegistry.js";
 
 export const viewport = { width: 1, height: 1, dpr: 1 };
 
@@ -17,6 +18,15 @@ const QUALITY_COLORS = {
 };
 
 const CANVAS_PIXEL_FONT = "'Zpix', 'Fusion Pixel 12px Monospaced SC', 'Cubic 11', 'Press Start 2P', 'Pixelify Sans', 'Silkscreen', 'Courier New', monospace";
+const MENU_DECOR_ENEMY_COUNT = 12;
+const menuScene = {
+  time: 0,
+  last: 0,
+  enemies: [],
+  particles: [],
+  cameraX: 0,
+  cameraY: 0,
+};
 
 function qualityColor(quality, fallback) {
   return !quality || quality === "common" ? fallback : QUALITY_COLORS[quality] || fallback;
@@ -45,6 +55,10 @@ export function updateCamera(dt) {
 }
 
 export function render(ctx) {
+  if (state.mode === "menu") {
+    renderMenuScene(ctx);
+    return;
+  }
   const sx = state.shake > 0 ? (Math.random() - 0.5) * state.shake : 0;
   const sy = state.shake > 0 ? (Math.random() - 0.5) * state.shake : 0;
   const viewW = visibleWorldWidth();
@@ -83,6 +97,147 @@ export function render(ctx) {
     ctx.fillStyle = `rgba(255,77,109,${state.flash * 0.18})`;
     ctx.fillRect(0, 0, viewport.width, viewport.height);
   }
+}
+
+function renderMenuScene(ctx) {
+  const now = performance.now() / 1000;
+  const dt = Math.min(0.033, menuScene.last ? now - menuScene.last : 1 / 60);
+  menuScene.last = now;
+  menuScene.time += dt;
+  ensureMenuScene();
+  updateMenuDecor(dt);
+
+  const viewW = visibleWorldWidth();
+  const viewH = visibleWorldHeight();
+  menuScene.cameraX = Math.sin(menuScene.time * 0.08) * 420 + Math.cos(menuScene.time * 0.045) * 260;
+  menuScene.cameraY = Math.cos(menuScene.time * 0.07) * 360 + Math.sin(menuScene.time * 0.05) * 220;
+  const camX = clampViewX(menuScene.cameraX - viewW / 2);
+  const camY = clampViewY(menuScene.cameraY - viewH / 2);
+
+  ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0);
+  ctx.fillStyle = "#02050c";
+  ctx.fillRect(0, 0, viewport.width, viewport.height);
+  ctx.save();
+  ctx.scale(CAMERA_ZOOM, CAMERA_ZOOM);
+  ctx.translate(-camX, -camY);
+  drawMap(ctx, state.map, camX, camY, viewW, viewH, menuScene.time);
+  drawMenuEnemyGlows(ctx, camX, camY, viewW, viewH);
+  for (const actor of menuScene.enemies) {
+    if (!isMenuActorInView(actor, camX, camY, viewW, viewH)) continue;
+    actor.enemy.draw(ctx);
+  }
+  ctx.restore();
+  drawMenuScreenFx(ctx);
+}
+
+function ensureMenuScene() {
+  if (menuScene.enemies.length) return;
+  const ids = decorativeEnemyIds();
+  if (!ids.length) return;
+  const spreadX = visibleWorldWidth() * 0.65;
+  const spreadY = visibleWorldHeight() * 0.55;
+  for (let i = 0; i < MENU_DECOR_ENEMY_COUNT; i++) {
+    const id = ids[Math.floor(Math.random() * ids.length)];
+    const angle = Math.random() * TAU;
+    const radius = 160 + Math.random() * 620;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * spreadX;
+    const y = Math.sin(angle) * radius + (Math.random() - 0.5) * spreadY;
+    const enemy = createDecorativeEnemy(id, x, y);
+    if (!enemy) continue;
+    menuScene.enemies.push({
+      enemy,
+      homeX: x,
+      homeY: y,
+      phase: Math.random() * TAU,
+      speed: 0.25 + Math.random() * 0.45,
+      drift: 38 + Math.random() * 96,
+    });
+  }
+  for (let i = 0; i < 90; i++) spawnMenuParticle(true);
+}
+
+function updateMenuDecor(dt) {
+  for (const actor of menuScene.enemies) {
+    const e = actor.enemy;
+    actor.phase += dt * actor.speed;
+    e.x = actor.homeX + Math.cos(actor.phase * 1.3) * actor.drift + Math.sin(menuScene.time * 0.2 + actor.homeY * 0.01) * 16;
+    e.y = actor.homeY + Math.sin(actor.phase) * actor.drift * 0.7;
+    e.anim += dt * (2.2 + e.speed * 0.018);
+    e.flip = Math.cos(actor.phase) < 0 ? -1 : 1;
+  }
+  for (const p of menuScene.particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+    p.spin += dt * p.twist;
+  }
+  menuScene.particles = menuScene.particles.filter((p) => p.life > 0);
+  while (menuScene.particles.length < 90) spawnMenuParticle(false);
+}
+
+function spawnMenuParticle(initial) {
+  const life = 2.8 + Math.random() * 4.6;
+  menuScene.particles.push({
+    x: Math.random() * viewport.width,
+    y: initial ? Math.random() * viewport.height : viewport.height + 20,
+    vx: (Math.random() - 0.5) * 20,
+    vy: -18 - Math.random() * 58,
+    r: 1 + Math.random() * 2.8,
+    life,
+    maxLife: life,
+    spin: Math.random() * TAU,
+    twist: (Math.random() - 0.5) * 2,
+    color: Math.random() < 0.52 ? "#42e8ff" : Math.random() < 0.78 ? "#b48cff" : "#ffd166",
+  });
+}
+
+function drawMenuEnemyGlows(ctx, camX, camY, viewW, viewH) {
+  for (const actor of menuScene.enemies) {
+    const e = actor.enemy;
+    if (!isMenuActorInView(actor, camX, camY, viewW, viewH)) continue;
+    glow(ctx, e.x, e.y, e.r * 2.8, 0.18, e.color || "#42e8ff");
+  }
+}
+
+function isMenuActorInView(actor, camX, camY, viewW, viewH) {
+  const e = actor.enemy;
+  return e.x > camX - 140 && e.x < camX + viewW + 140 && e.y > camY - 140 && e.y < camY + viewH + 140;
+}
+
+function drawMenuScreenFx(ctx) {
+  const t = menuScene.time;
+  const pulse = 0.45 + Math.sin(t * 1.4) * 0.15;
+  const centerGlow = ctx.createRadialGradient(viewport.width / 2, viewport.height * 0.5, 40, viewport.width / 2, viewport.height * 0.5, viewport.width * 0.62);
+  centerGlow.addColorStop(0, `rgba(66,232,255,${0.1 * pulse})`);
+  centerGlow.addColorStop(0.45, "rgba(180,140,255,0.08)");
+  centerGlow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = centerGlow;
+  ctx.fillRect(0, 0, viewport.width, viewport.height);
+
+  for (const p of menuScene.particles) {
+    const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.spin);
+    ctx.fillStyle = hexToRgba(p.color, 0.18 + alpha * 0.55);
+    ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 2);
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = hexToRgba(p.color, alpha * 0.35);
+    ctx.fillRect(-p.r * 0.45, -p.r * 0.45, p.r * 0.9, p.r * 0.9);
+    ctx.restore();
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.035)";
+  for (let y = Math.floor((t * 26) % 9); y < viewport.height; y += 9) {
+    ctx.fillRect(0, y, viewport.width, 1);
+  }
+  const vignette = ctx.createRadialGradient(viewport.width / 2, viewport.height / 2, viewport.height * 0.2, viewport.width / 2, viewport.height / 2, viewport.width * 0.72);
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(0.72, "rgba(0,0,0,0.18)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.74)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, viewport.width, viewport.height);
 }
 
 function drawBounds(ctx) {

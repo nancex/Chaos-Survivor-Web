@@ -14,6 +14,7 @@ import { startWeaponPreview } from "./weaponPreview.js";
 
 let stopPreview = null;
 const hudLast = { hp: null, xp: null, kills: null, gold: null, level: null };
+const FALLBACK_VERSION = "v0.1.0";
 
 export const ui = {
   canvas: document.getElementById("gameCanvas"),
@@ -43,6 +44,7 @@ export const ui = {
   choiceList: document.getElementById("choiceList"),
   difficultyList: document.getElementById("difficultyList"),
   startButton: document.getElementById("startButton"),
+  gameVersionText: document.getElementById("gameVersionText"),
   restartButton: document.getElementById("restartButton"),
   resumeButton: document.getElementById("resumeButton"),
   pauseRestartButton: document.getElementById("pauseRestartButton"),
@@ -63,7 +65,19 @@ export const ui = {
   touchStick: document.getElementById("touchStick"),
 };
 
+export async function loadGameConfig() {
+  try {
+    const response = await fetch(new URL("../config/game-config.json", import.meta.url), { cache: "no-store" });
+    if (!response.ok) throw new Error(`game config ${response.status}`);
+    const config = await response.json();
+    if (ui.gameVersionText) ui.gameVersionText.textContent = config.version || FALLBACK_VERSION;
+  } catch {
+    if (ui.gameVersionText) ui.gameVersionText.textContent = FALLBACK_VERSION;
+  }
+}
+
 export function updateHud(fps) {
+  document.body.classList.toggle("is-menu", state.mode === "menu");
   const p = state.player;
   if (!p) return;
   const hp = Math.max(0, Math.ceil(p.hp));

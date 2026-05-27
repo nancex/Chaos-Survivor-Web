@@ -14,6 +14,7 @@ import {
   hideAllOverlays,
   pickThree,
   showEnd,
+  loadGameConfig,
 } from "../ui/ui.js";
 import { generateMap } from "../systems/map.js";
 import { bindInput } from "../systems/input.js";
@@ -36,6 +37,7 @@ export async function bootGame() {
   const ctx = ui.canvas.getContext("2d", { alpha: false });
   initInventoryUi();
   initShopUi({ continueToNextWave: finishWaveTransition });
+  await loadGameConfig();
   await setupDifficultyConfig();
   loadDifficultyProgress();
   await setupEnemyRegistry();

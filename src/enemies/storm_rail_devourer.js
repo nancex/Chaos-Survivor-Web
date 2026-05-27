@@ -372,8 +372,22 @@ export class StormRailDevourer extends BaseEnemy {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.railAngle);
     const alpha = 0.18 + Math.sin(this.anim * 12) * 0.08;
-    ctx.fillStyle = `rgba(255,77,255,${this.phase2 ? alpha + 0.08 : alpha})`;
+    const color = this.phase2 ? "#ff4dff" : this.color;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = colorWithAlpha(color, this.phase2 ? alpha * 0.42 : alpha * 0.34);
+    ctx.fillRect(0, -46, RAIL_LENGTH, 92);
+    ctx.fillStyle = colorWithAlpha(color, this.phase2 ? alpha + 0.08 : alpha);
     ctx.fillRect(0, -34, RAIL_LENGTH, 68);
+    ctx.strokeStyle = colorWithAlpha("#ffffff", 0.22 + alpha);
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 11; i++) {
+      const x = 90 + i * 96 + Math.sin(this.anim * 8 + i) * 8;
+      ctx.beginPath();
+      ctx.moveTo(x, -44);
+      ctx.lineTo(x + 26, 0);
+      ctx.lineTo(x, 44);
+      ctx.stroke();
+    }
     ctx.strokeStyle = this.phase2 ? "rgba(255,255,255,0.65)" : "rgba(66,232,255,0.65)";
     ctx.lineWidth = 3;
     ctx.setLineDash([22, 14]);
@@ -384,6 +398,12 @@ export class StormRailDevourer extends BaseEnemy {
     ctx.lineTo(RAIL_LENGTH, 34);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.strokeStyle = colorWithAlpha("#ffffff", 0.72);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(RAIL_LENGTH, 0);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -401,8 +421,24 @@ export class StormRailDevourer extends BaseEnemy {
 
   drawBodyLinks(ctx) {
     const color = this.phase2 ? "#ff4dff" : this.color;
-    ctx.strokeStyle = colorWithAlpha(color, this.mode === "coil_lock" ? 0.54 : 0.3);
-    ctx.lineWidth = this.mode === "coil_lock" ? 3 : 2;
+    if (this.mode === "coil_lock") {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = colorWithAlpha(color, 0.18);
+      ctx.lineWidth = 10;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      let glowPrev = { x: this.x, y: this.y };
+      for (const seg of this.segments) {
+        ctx.moveTo(glowPrev.x, glowPrev.y);
+        ctx.lineTo(seg.x, seg.y);
+        glowPrev = seg;
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.strokeStyle = colorWithAlpha(color, this.mode === "coil_lock" ? 0.72 : 0.3);
+    ctx.lineWidth = this.mode === "coil_lock" ? 3.4 : 2;
     ctx.beginPath();
     let prev = { x: this.x, y: this.y };
     for (const seg of this.segments) {

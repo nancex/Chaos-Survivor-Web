@@ -544,20 +544,47 @@ function drawLaserTelegraph(ctx, e) {
   ctx.save();
   ctx.rotate(e.angle);
   const firing = e.mode === "laser_fire";
-  ctx.strokeStyle = firing ? "rgba(255,255,255,0.86)" : "rgba(66,232,255,0.38)";
+  ctx.globalCompositeOperation = "lighter";
+  const pulse = 0.82 + Math.sin(e.anim * 12) * 0.18;
+  ctx.strokeStyle = firing ? "rgba(66,232,255,0.32)" : "rgba(66,232,255,0.18)";
+  ctx.lineWidth = firing ? 30 : 13;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(e.r, 0);
+  ctx.lineTo(990, 0);
+  ctx.stroke();
+  ctx.strokeStyle = firing ? "rgba(255,255,255,0.92)" : "rgba(217,251,255,0.42)";
   ctx.lineWidth = firing ? 8 : 2.5;
   ctx.beginPath();
   ctx.moveTo(e.r, 0);
   ctx.lineTo(980, 0);
   ctx.stroke();
   if (firing) {
-    ctx.strokeStyle = "rgba(66,232,255,0.86)";
-    ctx.lineWidth = 15;
-    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = "rgba(180,140,255,0.68)";
+    ctx.lineWidth = 17 * pulse;
     ctx.beginPath();
     ctx.moveTo(e.r, 0);
     ctx.lineTo(980, 0);
     ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.58)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 7; i++) {
+      const x = e.r + 90 + i * 116;
+      ctx.beginPath();
+      ctx.moveTo(x, -14);
+      ctx.lineTo(x + 42, 0);
+      ctx.lineTo(x, 14);
+      ctx.stroke();
+    }
+  } else {
+    ctx.setLineDash([16, 12]);
+    ctx.strokeStyle = "rgba(159,244,255,0.54)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(e.r + 12, 0);
+    ctx.lineTo(960, 0);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -565,7 +592,16 @@ function drawLaserTelegraph(ctx, e) {
 function drawDashTelegraph(ctx, e) {
   ctx.save();
   ctx.rotate(e.angle);
-  ctx.strokeStyle = "rgba(255,77,109,0.42)";
+  ctx.globalCompositeOperation = "lighter";
+  const alpha = 0.34 + Math.sin(e.anim * 13) * 0.12;
+  ctx.strokeStyle = `rgba(255,77,109,${alpha * 0.42})`;
+  ctx.lineWidth = 22;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(e.r, 0);
+  ctx.lineTo(550, 0);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255,209,102,${alpha * 0.72})`;
   ctx.lineWidth = 5;
   ctx.setLineDash([18, 12]);
   ctx.beginPath();
@@ -573,11 +609,30 @@ function drawDashTelegraph(ctx, e) {
   ctx.lineTo(520, 0);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.55})`;
+  ctx.lineWidth = 1.4;
+  for (let i = 0; i < 5; i++) {
+    const x = e.r + 58 + i * 64;
+    ctx.beginPath();
+    ctx.moveTo(x, -18);
+    ctx.lineTo(x + 24, 0);
+    ctx.lineTo(x, 18);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
 function drawLink(ctx, a, b, resonance) {
-  ctx.strokeStyle = resonance ? "rgba(255,255,255,0.48)" : "rgba(100,180,255,0.22)";
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = resonance ? "rgba(255,255,255,0.24)" : "rgba(100,180,255,0.12)";
+  ctx.lineWidth = resonance ? 13 : 7;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+  ctx.strokeStyle = resonance ? "rgba(255,255,255,0.6)" : "rgba(100,180,255,0.28)";
   ctx.lineWidth = resonance ? 4 : 2;
   ctx.setLineDash(resonance ? [10, 7] : [6, 10]);
   ctx.beginPath();
@@ -585,6 +640,7 @@ function drawLink(ctx, a, b, resonance) {
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function polygon(ctx, x, y, r, sides, angle, fill) {

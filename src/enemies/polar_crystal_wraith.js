@@ -374,7 +374,16 @@ function drawDashTelegraph(ctx, e) {
   if (e.mode !== "crystal_dash" || e.modeTimer <= 0 || e.dashing) return;
   ctx.save();
   ctx.rotate(e.angle);
-  ctx.strokeStyle = "rgba(217,251,255,0.42)";
+  ctx.globalCompositeOperation = "lighter";
+  const alpha = 0.34 + Math.sin(e.anim * 14) * 0.12;
+  ctx.strokeStyle = `rgba(159,244,255,${alpha * 0.36})`;
+  ctx.lineWidth = 24;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(e.r * 0.8, 0);
+  ctx.lineTo(590, 0);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(217,251,255,${alpha + 0.18})`;
   ctx.lineWidth = 5;
   ctx.setLineDash([18, 12]);
   ctx.beginPath();
@@ -382,6 +391,16 @@ function drawDashTelegraph(ctx, e) {
   ctx.lineTo(560, 0);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.strokeStyle = `rgba(180,140,255,${alpha * 0.7})`;
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 7; i++) {
+    const x = e.r + 54 + i * 58;
+    ctx.beginPath();
+    ctx.moveTo(x, -20);
+    ctx.lineTo(x + 18, 0);
+    ctx.lineTo(x, 20);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

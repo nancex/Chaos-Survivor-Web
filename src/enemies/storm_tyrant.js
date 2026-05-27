@@ -323,8 +323,16 @@ function drawTelegraph(ctx, e) {
   if (e.mode !== "windup") return;
   const alpha = 0.35 + Math.sin(e.anim * 9) * 0.16;
   ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   if (e.currentAttack === "dash") {
     ctx.rotate(e.lockAngle);
+    ctx.strokeStyle = `rgba(66,232,255,${alpha * 0.28})`;
+    ctx.lineWidth = 22;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(25, 0);
+    ctx.lineTo(392, 0);
+    ctx.stroke();
     ctx.strokeStyle = `rgba(159,244,255,${alpha})`;
     ctx.lineWidth = 5;
     ctx.setLineDash([18, 12]);
@@ -333,21 +341,54 @@ function drawTelegraph(ctx, e) {
     ctx.lineTo(360, 0);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.7})`;
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 6; i++) {
+      const x = 72 + i * 48;
+      ctx.beginPath();
+      ctx.moveTo(x, -18);
+      ctx.lineTo(x + 18, 0);
+      ctx.lineTo(x, 18);
+      ctx.stroke();
+    }
   } else if (e.currentAttack === "ring") {
-    ctx.strokeStyle = `rgba(66,232,255,${alpha})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, e.r + 30 + Math.sin(e.anim * 8) * 10, 0, TAU);
-    ctx.stroke();
+    const r = e.r + 30 + Math.sin(e.anim * 8) * 10;
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = i === 1 ? `rgba(255,255,255,${alpha * 0.42})` : `rgba(66,232,255,${alpha * (0.9 - i * 0.18)})`;
+      ctx.lineWidth = i === 0 ? 5 : 1.6;
+      ctx.setLineDash(i === 2 ? [12, 8] : []);
+      ctx.beginPath();
+      ctx.arc(0, 0, r + i * 18, e.ringSpin * (i ? -0.7 : 0.9), e.ringSpin * (i ? -0.7 : 0.9) + Math.PI * 1.62);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
   } else {
     ctx.rotate(e.lockAngle);
-    ctx.fillStyle = `rgba(66,232,255,${alpha * 0.16})`;
+    ctx.fillStyle = `rgba(66,232,255,${alpha * 0.14})`;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.lineTo(280, -72);
     ctx.lineTo(280, 72);
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = `rgba(159,244,255,${alpha * 0.74})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(26, -8);
+    ctx.lineTo(288, -74);
+    ctx.moveTo(26, 8);
+    ctx.lineTo(288, 74);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.46})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const x = 86 + i * 46;
+      ctx.beginPath();
+      ctx.moveTo(x, -28 + i % 2 * 12);
+      ctx.lineTo(x + 28, 0);
+      ctx.lineTo(x, 28 - i % 2 * 12);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }

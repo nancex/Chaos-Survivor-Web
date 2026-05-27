@@ -1721,7 +1721,7 @@ h2 {
 
 .pause-actions .primary {
   border-color: rgba(66, 232, 255, 0.48);
-  color: #031018;
+  color: #f8fbff;
 }
 
 .shop-panel {
@@ -2219,6 +2219,8 @@ h2 {
 
 .item-list {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 82px;
+  align-content: start;
   flex: 1;
   min-height: 0;
   max-height: 100%;

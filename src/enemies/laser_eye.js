@@ -4,6 +4,7 @@ import { burst, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 import { applyPlayerDamage } from "../systems/items.js";
+import { playSfx } from "../audio.js";
 
 export class LaserEye extends BaseEnemy {
   constructor(config, x, y) {
@@ -70,7 +71,11 @@ export class LaserEye extends BaseEnemy {
       const result = applyPlayerDamage(this.damage * 1.35 * dt, this);
       state.flash = Math.max(state.flash, 0.12);
       state.shake = Math.max(state.shake, 3);
-      if (result.damaged && Math.random() < dt * 24) burst(p.x, p.y, 3, this.color, 100);
+      if (result.damaged) {
+        p.invuln = Math.max(p.invuln, 0.12);
+        playSfx("hurt");
+        if (Math.random() < dt * 24) burst(p.x, p.y, 3, this.color, 100);
+      }
     }
   }
 

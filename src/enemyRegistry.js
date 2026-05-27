@@ -31,15 +31,8 @@ import { Pyromancer } from "./enemies/pyromancer.js";
 import { LaserEye } from "./enemies/laser_eye.js";
 import { Gunner } from "./enemies/gunner.js";
 import { Artillery } from "./enemies/artillery.js";
-import { EliteSummoner } from "./enemies/elite_summoner.js";
-import { EliteBerserker } from "./enemies/elite_berserker.js";
-import { EliteAssassin } from "./enemies/elite_assassin.js";
-import { EliteSentinel } from "./enemies/elite_sentinel.js";
-import { EliteMissileSniper } from "./enemies/elite_missile_sniper.js";
 import { StormTyrant } from "./enemies/storm_tyrant.js";
-import { VoidColossus } from "./enemies/void_colossus.js";
 import { StormRailDevourer } from "./enemies/storm_rail_devourer.js";
-import { DarkCrystalRift } from "./enemies/dark_crystal_rift.js";
 import { TwinAbyssalEyes } from "./enemies/twin_abyssal_eyes.js";
 import { PolarCrystalWraith } from "./enemies/polar_crystal_wraith.js";
 
@@ -72,15 +65,8 @@ const classes = {
   laser_eye: LaserEye,
   gunner: Gunner,
   artillery: Artillery,
-  elite_summoner: EliteSummoner,
-  elite_berserker: EliteBerserker,
-  elite_assassin: EliteAssassin,
-  elite_sentinel: EliteSentinel,
-  elite_missile_sniper: EliteMissileSniper,
   storm_tyrant: StormTyrant,
-  void_colossus: VoidColossus,
   storm_rail_devourer: StormRailDevourer,
-  dark_crystal_rift: DarkCrystalRift,
   twin_abyssal_eyes: TwinAbyssalEyes,
   polar_crystal_wraith: PolarCrystalWraith,
 };

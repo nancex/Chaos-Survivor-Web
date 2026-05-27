@@ -196,11 +196,9 @@ function drawProjectiles(ctx) {
 function drawDrones(ctx) {
   const w = state.weapons.drone;
   if (!w || w.level <= 0) return;
-  const color = qualityColor(w.quality, "#77ff8a");
-  const maxEnergy = w.batteryMax + Math.max(0, ["common", "uncommon", "rare", "epic", "legendary"].indexOf(w.quality || "common")) * 10;
   for (const d of w.drones) {
     if (!inView(d.x, d.y, 60)) continue;
-    drawDrone(ctx, d.x, d.y, d.anim, d.mode === "attack", d.energy, maxEnergy, color, w.quality);
+    drawDrone(ctx, d.x, d.y, d.anim, d.mode === "attack", d.energy, d.batteryMax || w.batteryMax, d.color || qualityColor(d.quality, "#77ff8a"), d.quality || "common");
   }
 }
 

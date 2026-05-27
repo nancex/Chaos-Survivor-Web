@@ -4,7 +4,7 @@ import { angleDiff, circleHit, clamp, distSq } from "../utils.js";
 import { applyKnockback, damageEnemy, nearestEnemy, queryEnemies } from "./entities.js";
 import { burst, pulse, trail } from "../effects.js";
 import { playSfx } from "../audio.js";
-import { addWeaponToInventory, QUALITY_ORDER, WEAPON_INFO } from "../economy/inventory.js";
+import { addWeaponToInventory, QUALITY_INFO, QUALITY_ORDER, WEAPON_INFO } from "../economy/inventory.js";
 
 export const STARTER_WEAPONS = ["arc", "ice", "missile", "boomerang", "drone"].map((id) => ({ id, ...WEAPON_INFO[id] }));
 
@@ -29,25 +29,33 @@ export function updateWeapons(dt) {
   updateWeaponFx(dt);
 }
 
-const QUALITY_COLORS = {
-  common: "#cbd5e1",
-  uncommon: "#77ff8a",
-  rare: "#42e8ff",
-  epic: "#b48cff",
-  legendary: "#ffd166",
-};
-
 function qualityRank(w) {
   return Math.max(0, QUALITY_ORDER.indexOf(w?.quality || "common"));
 }
 
+function qualityRankOf(quality) {
+  return Math.max(0, QUALITY_ORDER.indexOf(quality || "common"));
+}
+
 function qualityColor(w, fallback = "#42e8ff") {
-  const quality = w?.quality || "common";
-  return quality === "common" ? fallback : QUALITY_COLORS[quality] || fallback;
+  return qualityColorOf(w?.quality, fallback);
+}
+
+function qualityColorOf(quality, fallback = "#42e8ff") {
+  return !quality || quality === "common" ? fallback : QUALITY_INFO[quality]?.color || fallback;
 }
 
 function weaponPower(w, value) {
   return value * (w.qualityMult || 1);
+}
+
+function weaponQualityAt(w, index) {
+  const qualities = w?.slotQualities || [];
+  return index < qualities.length ? qualities[index] : w?.quality || "common";
+}
+
+function weaponViewForQuality(w, quality) {
+  return { ...w, quality, qualityMult: QUALITY_INFO[quality]?.mult || 1 };
 }
 
 function updateArcWeapon(dt) {
@@ -154,25 +162,29 @@ function updateIceWeapon(dt) {
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
   const rank = qualityRank(w);
-  const color = qualityColor(w, "#9ff4ff");
   const target = nearestEnemy(p.x, p.y, w.range);
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   const count = w.count + (rank >= 1 ? 1 : 0);
   for (let i = 0; i < count; i++) {
+    const quality = weaponQualityAt(w, i);
+    const shot = weaponViewForQuality(w, quality);
+    const shotRank = qualityRank(shot);
+    const color = qualityColor(shot, "#9ff4ff");
     fireProjectile(base + (i - (count - 1) / 2) * 0.24, w, {
       shape: "ice",
-      variant: rank >= 2 ? "iceShard" : "ice",
-      quality: w.quality,
+      variant: shotRank >= 2 ? "iceShard" : "ice",
+      quality,
       color,
       tracking: true,
       turnSpeed: w.turnSpeed,
-      pierce: rank >= 3 ? 2 : 1,
-      radius: rank >= 1 ? 5.8 : 5,
+      pierce: shotRank >= 3 ? 2 : 1,
+      radius: shotRank >= 1 ? 5.8 : 5,
       life: 2.4,
-      freezeDuration: w.freezeDuration + rank * 0.05,
+      freezeDuration: w.freezeDuration + shotRank * 0.05,
       knockback: 92,
-      iceRing: rank >= 2,
-      frostZone: rank >= 4,
+      iceRing: shotRank >= 2,
+      frostZone: shotRank >= 4,
+      damage: weaponPower(shot, w.damage),
     });
   }
   playSfx("shoot");
@@ -211,26 +223,29 @@ function updateBoomerangWeapon(dt) {
   const w = state.weapons.boomerang;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
-  const rank = qualityRank(w);
-  const color = qualityColor(w, "#ff65d8");
   const target = nearestEnemy(p.x, p.y, w.range);
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   for (let i = 0; i < w.count; i++) {
+    const quality = weaponQualityAt(w, i);
+    const shot = weaponViewForQuality(w, quality);
+    const shotRank = qualityRank(shot);
+    const color = qualityColor(shot, "#ff65d8");
     fireProjectile(base + (i - (w.count - 1) / 2) * 0.34, w, {
       shape: "boomerang",
-      variant: rank >= 1 ? "dualBoomerang" : "boomerang",
-      quality: w.quality,
+      variant: shotRank >= 1 ? "dualBoomerang" : "boomerang",
+      quality,
       color,
       returning: true,
-      returnAfter: w.returnAfter + (rank >= 1 ? 0.18 : 0),
+      returnAfter: w.returnAfter + (shotRank >= 1 ? 0.18 : 0),
       returnSpeed: w.returnSpeed,
-      pierce: 7 + (rank >= 2 ? 2 : 0),
-      radius: rank >= 1 ? 8 : 7,
+      pierce: 7 + (shotRank >= 2 ? 2 : 0),
+      radius: shotRank >= 1 ? 8 : 7,
       speed: w.speed,
-      life: rank >= 4 ? 3.2 : 2.35,
-      knockback: rank >= 2 ? 154 : 118,
-      farBurst: rank >= 3,
-      returnBounceLeft: rank >= 4 ? 1 : 0,
+      life: shotRank >= 4 ? 3.2 : 2.35,
+      knockback: shotRank >= 2 ? 154 : 118,
+      farBurst: shotRank >= 3,
+      returnBounceLeft: shotRank >= 4 ? 1 : 0,
+      damage: weaponPower(shot, w.damage),
     });
   }
   playSfx("shoot");
@@ -240,12 +255,8 @@ function updateDroneWeapon(dt) {
   const w = state.weapons.drone;
   if (!w || w.level <= 0) return;
   const p = state.player;
-  const rank = qualityRank(w);
-  const color = qualityColor(w, "#77ff8a");
-  const batteryMax = w.batteryMax + rank * 10;
-  const rechargeRate = w.rechargeRate * (1 + rank * 0.12);
-  w.beamTimer = Math.max(0, (w.beamTimer || 0) - dt);
-  syncDrones(w, batteryMax);
+  const profiles = droneProfiles(w);
+  syncDrones(w, profiles);
   w.angle += dt * (1.85 + w.level * 0.12);
 
   for (let i = 0; i < w.drones.length; i++) {
@@ -255,20 +266,21 @@ function updateDroneWeapon(dt) {
     const orbitY = p.y + Math.sin(orbitAngle) * w.orbitRadius;
     const target = nearestEnemy(d.x, d.y, w.acquireRange);
     d.fireTimer = Math.max(0, d.fireTimer - dt);
+    d.beamTimer = Math.max(0, (d.beamTimer || 0) - dt);
     d.anim += dt;
-    d.energy = Math.min(batteryMax, d.energy ?? batteryMax);
+    d.energy = Math.min(d.batteryMax, d.energy ?? d.batteryMax);
     d.legendReady = d.legendReady ?? true;
 
     const shouldRecharge = !target || d.energy < w.shotCost || d.mode === "recharge";
     if (shouldRecharge) {
-      d.mode = d.energy >= batteryMax && target ? "attack" : "recharge";
+      d.mode = d.energy >= d.batteryMax && target ? "attack" : "recharge";
       d.targetId = null;
       moveDrone(d, orbitX, orbitY, dt, 460);
       if (distSq(d.x, d.y, orbitX, orbitY) < 28 * 28) {
-        d.energy = Math.min(batteryMax, d.energy + rechargeRate * dt);
-        if (rank >= 4 && d.energy >= batteryMax) d.legendReady = true;
+        d.energy = Math.min(d.batteryMax, d.energy + d.rechargeRate * dt);
+        if (d.qualityRank >= 4 && d.energy >= d.batteryMax) d.legendReady = true;
       }
-      if (d.energy < batteryMax || !target) {
+      if (d.energy < d.batteryMax || !target) {
         trail(d.x, d.y, d.prevX, d.prevY, "#ffd166", 5);
         continue;
       }
@@ -284,29 +296,45 @@ function updateDroneWeapon(dt) {
         d.fireTimer = w.fireCooldown;
         d.energy = Math.max(0, d.energy - w.shotCost);
         const a = Math.atan2(target.y - d.y, target.x - d.x);
-        if (rank >= 4 && d.legendReady) {
-          fireDroneBeam(d, target, w, color, true);
+        if (d.qualityRank >= 4 && d.legendReady) {
+          fireDroneBeam(d, target, w, d.color, true);
           d.legendReady = false;
         } else {
-          fireDroneBullet(d.x, d.y, a, w);
-          if (rank >= 3 && w.beamTimer <= 0) {
-            fireDroneBeam(d, target, w, color, false);
-            w.beamTimer = 1.45;
+          fireDroneBullet(d.x, d.y, a, w, d);
+          if (d.qualityRank >= 3 && d.beamTimer <= 0) {
+            fireDroneBeam(d, target, w, d.color, false);
+            d.beamTimer = 1.45;
           }
         }
-        world.weaponFx.push({ kind: "muzzle", x: d.x, y: d.y, angle: a, life: 0.1, maxLife: 0.1, color });
+        world.weaponFx.push({ kind: "muzzle", x: d.x, y: d.y, angle: a, life: 0.1, maxLife: 0.1, color: d.color });
         playSfx("shoot");
       }
     }
 
-    trail(d.x, d.y, d.prevX, d.prevY, d.mode === "attack" ? color : "#ffd166", 5);
+    trail(d.x, d.y, d.prevX, d.prevY, d.mode === "attack" ? d.color : "#ffd166", 5);
   }
 }
 
-function syncDrones(w, batteryMax = w.batteryMax) {
+function droneProfiles(w) {
+  const qualities = w.slotQualities?.length ? w.slotQualities : Array.from({ length: w.count }, () => w.quality || "common");
+  return qualities.map((quality) => {
+    const rank = qualityRankOf(quality);
+    return {
+      quality,
+      qualityRank: rank,
+      qualityMult: QUALITY_INFO[quality]?.mult || 1,
+      color: qualityColorOf(quality, "#77ff8a"),
+      batteryMax: w.batteryMax + rank * 10,
+      rechargeRate: w.rechargeRate * (1 + rank * 0.12),
+    };
+  });
+}
+
+function syncDrones(w, profiles) {
   const p = state.player;
-  while (w.drones.length < w.count) {
+  while (w.drones.length < profiles.length) {
     const a = w.angle + (w.drones.length / Math.max(1, w.count)) * TAU;
+    const profile = profiles[w.drones.length];
     w.drones.push({
       x: p.x + Math.cos(a) * w.orbitRadius,
       y: p.y + Math.sin(a) * w.orbitRadius,
@@ -314,14 +342,19 @@ function syncDrones(w, batteryMax = w.batteryMax) {
       prevY: p.y,
       mode: "orbit",
       fireTimer: Math.random() * w.fireCooldown,
-      energy: batteryMax,
+      energy: profile.batteryMax,
       anim: Math.random() * TAU,
       targetId: null,
+      beamTimer: 0,
       legendReady: true,
     });
   }
-  if (w.drones.length > w.count) w.drones.length = w.count;
-  for (const d of w.drones) d.energy = Math.min(batteryMax, d.energy ?? batteryMax);
+  if (w.drones.length > profiles.length) w.drones.length = profiles.length;
+  for (let i = 0; i < w.drones.length; i++) {
+    const d = w.drones[i];
+    Object.assign(d, profiles[i]);
+    d.energy = Math.min(d.batteryMax, d.energy ?? d.batteryMax);
+  }
 }
 
 function moveDrone(d, x, y, dt, speed) {
@@ -335,10 +368,12 @@ function moveDrone(d, x, y, dt, speed) {
   d.y += (dy / dist) * step;
 }
 
-function fireDroneBullet(x, y, angle, w) {
+function fireDroneBullet(x, y, angle, w, drone) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
-  const rank = qualityRank(w);
-  const color = qualityColor(w, "#77ff8a");
+  const rank = drone?.qualityRank ?? qualityRank(w);
+  const color = drone?.color ?? qualityColor(w, "#77ff8a");
+  const quality = drone?.quality || w.quality || "common";
+  const qualityMult = drone?.qualityMult || w.qualityMult || 1;
   const speed = w.bulletSpeed;
   world.projectiles.push({
     x,
@@ -349,7 +384,7 @@ function fireDroneBullet(x, y, angle, w) {
     vy: Math.sin(angle) * speed,
     speed,
     angle,
-    damage: weaponPower(w, w.bulletDamage),
+    damage: w.bulletDamage * qualityMult,
     pierce: 1,
     r: 4,
     life: 0.95,
@@ -357,7 +392,7 @@ function fireDroneBullet(x, y, angle, w) {
     color,
     shape: "droneBolt",
     variant: rank >= 2 ? "homingDroneBolt" : "droneBolt",
-    quality: w.quality || "common",
+    quality,
     tracking: rank >= 2,
     turnSpeed: rank >= 2 ? 2.6 : 0,
     returning: false,
@@ -375,7 +410,7 @@ function fireDroneBullet(x, y, angle, w) {
 }
 
 function fireDroneBeam(drone, target, w, color, legendary) {
-  const damage = weaponPower(w, w.bulletDamage) * (legendary ? 3.4 : 1.45);
+  const damage = w.bulletDamage * (drone.qualityMult || w.qualityMult || 1) * (legendary ? 3.4 : 1.45);
   damageEnemy(target, damage, drone.x, drone.y);
   applyKnockback(target, target.x - drone.x, target.y - drone.y, legendary ? 180 : 95);
   const hits = [];
@@ -452,7 +487,7 @@ function fireProjectile(angle, w, opt) {
     vy: Math.sin(angle) * speed,
     speed,
     angle,
-    damage: weaponPower(w, w.damage),
+    damage: opt.damage ?? weaponPower(w, w.damage),
     pierce: opt.pierce,
     r: opt.radius,
     life: opt.life,

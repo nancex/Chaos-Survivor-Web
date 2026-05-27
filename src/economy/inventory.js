@@ -112,6 +112,7 @@ export function recomputeAllWeapons() {
     weapon.quality = "common";
     weapon.qualityMult = 1;
     weapon.slotCount = 0;
+    weapon.slotQualities = [];
     if ("count" in weapon) weapon.count = 0;
   }
   for (const slot of state.inventory.weaponSlots) applyWeaponSlot(slot);
@@ -123,6 +124,8 @@ export function applyWeaponSlot(slot) {
   const qualityLevel = QUALITY_ORDER.indexOf(slot.quality);
   const currentQualityLevel = QUALITY_ORDER.indexOf(weapon.quality || "common");
   weapon.slotCount = (weapon.slotCount || 0) + 1;
+  weapon.slotQualities ||= [];
+  weapon.slotQualities.push(slot.quality);
   weapon.level += Math.max(1, slot.level + qualityLevel);
   if (qualityLevel >= currentQualityLevel) weapon.quality = slot.quality;
   weapon.qualityMult = Math.max(weapon.qualityMult || 1, QUALITY_INFO[slot.quality].mult);

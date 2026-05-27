@@ -585,6 +585,27 @@ canvas {
   100% { transform: rotate(360deg) scale(1); opacity: 0.8; }
 }
 
+@keyframes uiPanelRise {
+  0% { opacity: 0; transform: translateY(16px) scale(0.985); filter: brightness(0.8); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
+}
+
+@keyframes uiScanDrift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 120px 0, 0 16px; }
+}
+
+@keyframes uiCornerPulse {
+  0%, 100% { opacity: 0.45; filter: drop-shadow(0 0 0 rgba(66, 232, 255, 0)); }
+  50% { opacity: 0.9; filter: drop-shadow(0 0 10px rgba(66, 232, 255, 0.5)); }
+}
+
+@keyframes uiButtonSweep {
+  0% { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  35% { opacity: 0.65; }
+  100% { transform: translateX(130%) skewX(-18deg); opacity: 0; }
+}
+
 .quick-actions {
   position: absolute;
   right: 12px;
@@ -2594,6 +2615,232 @@ h2 {
   place-items: center;
   color: var(--muted);
   text-align: center;
+}
+
+/* Shared neon polish for shop, inventory, and codex overlays. Visual-only: layout stays unchanged. */
+.shop-panel,
+.inventory-panel,
+.codex-panel {
+  position: relative;
+  isolation: isolate;
+  animation: uiPanelRise 280ms ease-out both;
+}
+
+.shop-head,
+.shop-main,
+.shop-actions,
+.shop-panel > .subtle,
+.inventory-head,
+.inventory-layout,
+.codex-head,
+.codex-body {
+  position: relative;
+  z-index: 1;
+}
+
+.shop-panel,
+.inventory-panel {
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.55),
+    0 0 44px rgba(66, 232, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045);
+}
+
+.shop-panel::before,
+.inventory-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 48%, rgba(66, 232, 255, 0.08) 49%, transparent 51%),
+    repeating-linear-gradient(0deg, transparent 0 11px, rgba(255, 255, 255, 0.035) 12px, transparent 13px);
+  background-size: 140px 100%, 100% 16px;
+  mix-blend-mode: screen;
+  opacity: 0.3;
+  animation: uiScanDrift 7s linear infinite;
+}
+
+.shop-panel::after,
+.inventory-panel::after,
+.codex-panel::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid rgba(66, 232, 255, 0.14);
+  border-radius: inherit;
+  box-shadow:
+    inset 18px 0 28px rgba(66, 232, 255, 0.055),
+    inset -18px 0 28px rgba(255, 209, 102, 0.045);
+  opacity: 0.72;
+}
+
+.shop-card,
+.weapon-slot,
+.item-card,
+.codex-card,
+.inventory-stats,
+.inventory-weapons,
+.inventory-items,
+.inventory-detail,
+.shop-inventory-panel,
+.codex-detail,
+.codex-list {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.shop-card::before,
+.weapon-slot::before,
+.item-card::before,
+.codex-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 14%, color-mix(in srgb, var(--quality, var(--cyan)) 22%, transparent), transparent 30%),
+    linear-gradient(120deg, transparent 0 42%, rgba(255, 255, 255, 0.1) 48%, transparent 56%);
+  opacity: 0;
+  transform: translateX(-10%);
+  transition: opacity 180ms ease, transform 220ms ease;
+}
+
+.shop-card:hover,
+.weapon-slot:not(.empty):hover,
+.item-card:not(.empty):hover,
+.codex-card:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--quality, var(--cyan)) 20%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.shop-card:hover::before,
+.weapon-slot:not(.empty):hover::before,
+.item-card:not(.empty):hover::before,
+.codex-card:hover::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.shop-card-top i,
+.weapon-slot i,
+.item-card i,
+.codex-card i,
+.codex-detail-title i {
+  position: relative;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--quality, var(--cyan)) 30%, transparent),
+    inset 0 0 14px rgba(255, 255, 255, 0.055);
+}
+
+.shop-card-top i::after,
+.weapon-slot i::after,
+.item-card i::after,
+.codex-card i::after,
+.codex-detail-title i::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--quality, var(--cyan)) 46%, transparent);
+  border-radius: inherit;
+  opacity: 0.5;
+  animation: uiCornerPulse 2.8s ease-in-out infinite;
+}
+
+.inventory-stats,
+.inventory-weapons,
+.inventory-items,
+.inventory-detail,
+.shop-inventory-panel,
+.codex-detail,
+.codex-list {
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 -1px 0 rgba(66, 232, 255, 0.05);
+}
+
+.stat-grid span,
+.shop-stock-row,
+.inventory-slot-count,
+.codex-meta {
+  position: relative;
+}
+
+.stat-grid span::after,
+.shop-stock-row::after,
+.inventory-slot-count::after,
+.codex-meta::after {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cyan) 38%, transparent), transparent);
+  opacity: 0.5;
+}
+
+.shop-card-actions button,
+.shop-actions button,
+.inventory-actions button,
+.codex-close,
+.codex-tab {
+  position: relative;
+  overflow: hidden;
+}
+
+.shop-card-actions button::after,
+.shop-actions button::after,
+.inventory-actions button::after,
+.codex-close::after,
+.codex-tab::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-130%) skewX(-18deg);
+}
+
+.shop-card-actions button:hover::after,
+.shop-actions button:hover::after,
+.inventory-actions button:hover::after,
+.codex-close:hover::after,
+.codex-tab:hover::after {
+  animation: uiButtonSweep 520ms ease-out;
+}
+
+.shop-actions button:hover,
+.inventory-actions button:hover,
+.codex-close:hover,
+.codex-tab:hover,
+.codex-tab.active {
+  box-shadow:
+    0 0 24px rgba(66, 232, 255, 0.14),
+    inset 0 0 16px rgba(255, 255, 255, 0.055);
+}
+
+.codex-preview,
+.weapon-preview-canvas {
+  filter: drop-shadow(0 0 18px rgba(66, 232, 255, 0.22));
+}
+
+.codex-panel::before {
+  animation: uiScanDrift 8s linear infinite;
 }
 
 .touch-stick {

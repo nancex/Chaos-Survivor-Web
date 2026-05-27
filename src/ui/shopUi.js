@@ -17,6 +17,7 @@ let continueHandler = null;
 const text = {
   noGoldRefresh: "\u91d1\u5e01\u4e0d\u8db3\uff0c\u65e0\u6cd5\u5237\u65b0\u3002",
   refresh: "\u5237\u65b0\u5546\u54c1",
+  refreshNoGold: "\u91d1\u5e01\u4e0d\u8db3",
   coin: "\u91d1\u5e01",
   lockHint: "\u9501\u5b9a\u7684\u5546\u54c1\u4e0d\u4f1a\u5728\u5237\u65b0\u6216\u4e0b\u6b21\u8fdb\u5165\u5546\u5e97\u65f6\u53d8\u5316\u3002",
   sold: "\u5df2\u552e\u7f44",
@@ -71,8 +72,10 @@ export function renderShop(message = "") {
   ensureInventory();
   dom.gold.textContent = String(state.gold);
   const cost = refreshCost();
-  dom.refresh.textContent = `${text.refresh} - ${cost} ${text.coin}`;
-  dom.refresh.disabled = state.gold < cost;
+  const canRefresh = state.gold >= cost;
+  dom.refresh.textContent = canRefresh ? `${text.refresh} - ${cost} ${text.coin}` : `${text.refreshNoGold} - ${cost} ${text.coin}`;
+  dom.refresh.disabled = !canRefresh;
+  dom.refresh.classList.toggle("no-gold-refresh", !canRefresh);
   dom.list.innerHTML = "";
   for (const offer of state.shop.offers) dom.list.appendChild(renderOffer(offer));
   renderShopInventory();

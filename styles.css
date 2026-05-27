@@ -852,11 +852,31 @@ h2 {
 }
 
 .shop-wallet {
-  min-width: 128px;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
   border: 1px solid rgba(255, 209, 102, 0.34);
   border-radius: 5px;
-  padding: 9px 12px;
+  padding: 9px 12px 9px 10px;
   background: rgba(3, 6, 12, 0.42);
+  text-align: right;
+}
+
+.shop-wallet-icon {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  flex: 0 0 20px;
+  color: var(--gold);
+  font-style: italic;
+  font-weight: 900;
+}
+
+.shop-wallet-copy {
+  min-width: 0;
   text-align: right;
 }
 
@@ -990,9 +1010,49 @@ h2 {
 }
 
 .shop-actions {
-  grid-template-columns: minmax(180px, 240px) minmax(180px, 240px);
-  justify-content: end;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+  gap: 14px;
   padding: 0 20px 14px;
+}
+
+.shop-actions button {
+  min-height: 48px;
+  border-radius: 5px;
+  font-size: 15px;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.shop-actions button:disabled {
+  opacity: 0.55;
+}
+
+.shop-action-buttons {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+#shopRefreshButton {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.055));
+}
+
+#shopRefreshButton:not(:disabled):hover {
+  border-color: rgba(66, 232, 255, 0.48);
+  background: linear-gradient(180deg, rgba(66, 232, 255, 0.14), rgba(255, 255, 255, 0.06));
+}
+
+#shopRefreshButton.no-gold-refresh {
+  border-color: rgba(255, 77, 109, 0.26);
+  color: rgba(167, 180, 199, 0.72);
+}
+
+#shopContinueButton {
+  border-color: rgba(255, 209, 102, 0.48);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.96), rgba(119, 255, 138, 0.88));
+  color: #031018;
 }
 
 .shop-inventory-panel {
@@ -1678,6 +1738,11 @@ h2 {
 
   .shop-actions {
     grid-template-columns: 1fr;
+  }
+
+  .shop-action-buttons {
+    grid-column: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .shop-main {

@@ -98,8 +98,11 @@
               <h2>波次商店</h2>
             </div>
             <div class="shop-wallet">
-              <span>金币</span>
-              <strong id="shopGoldText">0</strong>
+              <i class="shop-wallet-icon" aria-hidden="true">G</i>
+              <div class="shop-wallet-copy">
+                <span>金币</span>
+                <strong id="shopGoldText">0</strong>
+              </div>
             </div>
           </div>
           <div class="shop-main">
@@ -107,8 +110,10 @@
             <div id="shopInventoryPanel" class="shop-inventory-panel"></div>
           </div>
           <div class="shop-actions">
-            <button id="shopRefreshButton" type="button">刷新商品</button>
-            <button id="shopContinueButton" type="button" class="primary">进入下一波</button>
+            <div class="shop-action-buttons">
+              <button id="shopRefreshButton" type="button">刷新商品</button>
+              <button id="shopContinueButton" type="button" class="primary">进入下一波</button>
+            </div>
           </div>
           <p id="shopHint" class="subtle">锁定的商品不会在刷新或下次进入商店时变化。</p>
         </div>

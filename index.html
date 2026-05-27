@@ -1,19 +1,20 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>混乱幸存者</title>
+    <title>娣蜂贡骞稿瓨鑰?/title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main id="gameRoot">
-      <canvas id="gameCanvas" aria-label="混乱幸存者游戏区域"></canvas>
+      <canvas id="gameCanvas" aria-label="娣蜂贡骞稿瓨鑰呮父鎴忓尯鍩?></canvas>
 
       <section id="hud" class="hud" aria-live="polite">
         <div id="hudVitals" class="hud-left">
           <div id="hpMeter" class="meter hp-meter">
-            <span>生命</span>
+            <span>鐢熷懡</span>
             <div class="bar bar-track">
               <i id="hpBar" class="bar-fill"></i>
               <b class="bar-shine"></b>
@@ -22,7 +23,7 @@
             <strong id="hpText">100</strong>
           </div>
           <div id="xpMeter" class="meter xp xp-meter">
-            <span>经验</span>
+            <span>缁忛獙</span>
             <div class="bar bar-track">
               <i id="xpBar" class="bar-fill"></i>
               <b class="bar-shine"></b>
@@ -34,21 +35,21 @@
 
         <div id="wavePanel" class="hud-center">
           <strong id="timerText">00:30</strong>
-          <span id="waveText">第 1/20 波</span>
+          <span id="waveText">绗?1/20 娉?/span>
         </div>
 
         <div class="hud-right">
-          <span id="killText" class="hud-chip kill-chip"><i>x</i><b>击败</b><strong>0</strong></span>
-          <span id="coinText" class="sr-only">金币 0</span>
-          <span id="goldText" class="hud-chip gold-chip"><i>G</i><b>金币</b><strong>0</strong></span>
+          <span id="killText" class="hud-chip kill-chip"><i>x</i><b>鍑昏触</b><strong>0</strong></span>
+          <span id="coinText" class="sr-only">閲戝竵 0</span>
+          <span id="goldText" class="hud-chip gold-chip"><i>G</i><b>閲戝竵</b><strong>0</strong></span>
           <span id="fpsText" class="hud-chip fps-chip fps-good"><i>F</i><b>FPS</b><strong>60</strong></span>
         </div>
       </section>
 
-      <nav class="quick-actions" aria-label="游戏操作">
-        <button id="inventoryButton" type="button" title="背包">背包</button>
-        <button id="pauseButton" type="button" title="暂停/继续">II</button>
-        <button id="muteButton" type="button" title="音效开关">♪</button>
+      <nav class="quick-actions" aria-label="娓告垙鎿嶄綔">
+        <button id="inventoryButton" type="button" title="鑳屽寘">鑳屽寘</button>
+        <button id="pauseButton" type="button" title="鏆傚仠/缁х画">II</button>
+        <button id="muteButton" type="button" title="闊虫晥寮€鍏?>鈾?/button>
       </nav>
 
       <div id="touchStick" class="touch-stick" aria-hidden="true"><i></i></div>
@@ -56,22 +57,22 @@
       <section id="startOverlay" class="overlay active">
         <div class="panel intro">
           <p class="eyebrow">PIXEL GEOMETRY SURVIVOR</p>
-          <h1>混乱幸存者</h1>
-          <p class="summary">选择开局武器，在随机霓虹废墟中撑过 20 波敌潮。</p>
+          <h1>娣蜂贡骞稿瓨鑰?/h1>
+          <p class="summary">閫夋嫨寮€灞€姝﹀櫒锛屽湪闅忔満闇撹櫣搴熷涓拺杩?20 娉㈡晫娼€?/p>
           <div class="stats-row">
-            <span>WASD / 方向键移动</span>
-            <span>自动攻击</span>
-            <span>E 背包 / P 暂停</span>
+            <span>WASD / 鏂瑰悜閿Щ鍔?/span>
+            <span>鑷姩鏀诲嚮</span>
+            <span>E 鑳屽寘 / P 鏆傚仠</span>
           </div>
-          <button id="startButton" type="button" class="primary">开始生存</button>
-          <p id="bestText" class="subtle">最佳纪录 00:00</p>
+          <button id="startButton" type="button" class="primary">寮€濮嬬敓瀛?/button>
+          <p id="bestText" class="subtle">鏈€浣崇邯褰?00:00</p>
         </div>
       </section>
 
       <section id="levelOverlay" class="overlay">
         <div class="panel choices">
           <p class="eyebrow">LEVEL UP</p>
-          <h2>选择一次强化</h2>
+          <h2>閫夋嫨涓€娆″己鍖?/h2>
           <div id="choiceList" class="choice-list"></div>
         </div>
       </section>
@@ -81,9 +82,9 @@
           <div class="difficulty-head">
             <div>
               <p class="eyebrow">DIFFICULTY</p>
-              <h2>选择作战难度</h2>
+              <h2>閫夋嫨浣滄垬闅惧害</h2>
             </div>
-            <p>完成当前难度后，下一难度会自动解锁。</p>
+            <p>瀹屾垚褰撳墠闅惧害鍚庯紝涓嬩竴闅惧害浼氳嚜鍔ㄨВ閿併€?/p>
           </div>
           <div id="difficultyList" class="difficulty-list"></div>
         </div>
@@ -94,10 +95,10 @@
           <div class="shop-head">
             <div>
               <p class="eyebrow">WAVE SHOP</p>
-              <h2>波次商店</h2>
+              <h2>娉㈡鍟嗗簵</h2>
             </div>
             <div class="shop-wallet">
-              <span>金币</span>
+              <span>閲戝竵</span>
               <strong id="shopGoldText">0</strong>
             </div>
           </div>
@@ -106,23 +107,23 @@
             <div id="shopInventoryPanel" class="shop-inventory-panel"></div>
           </div>
           <div class="shop-actions">
-            <button id="shopRefreshButton" type="button">刷新商品</button>
-            <button id="shopContinueButton" type="button" class="primary">进入下一波</button>
+            <button id="shopRefreshButton" type="button">鍒锋柊鍟嗗搧</button>
+            <button id="shopContinueButton" type="button" class="primary">杩涘叆涓嬩竴娉?/button>
           </div>
-          <p id="shopHint" class="subtle">锁定的商品不会在刷新或下次进入商店时变化。</p>
+          <p id="shopHint" class="subtle">閿佸畾鐨勫晢鍝佷笉浼氬湪鍒锋柊鎴栦笅娆¤繘鍏ュ晢搴楁椂鍙樺寲銆?/p>
         </div>
       </section>
 
       <section id="pauseOverlay" class="overlay">
         <div class="panel pause-menu">
           <p class="eyebrow">PAUSED</p>
-          <h2>游戏已暂停</h2>
+          <h2>娓告垙宸叉殏鍋?/h2>
           <div class="pause-actions">
-            <button id="resumeButton" type="button" class="primary">返回游戏</button>
-            <button id="pauseRestartButton" type="button">重新开始</button>
-            <button id="menuButton" type="button">返回主菜单</button>
+            <button id="resumeButton" type="button" class="primary">杩斿洖娓告垙</button>
+            <button id="pauseRestartButton" type="button">閲嶆柊寮€濮?/button>
+            <button id="menuButton" type="button">杩斿洖涓昏彍鍗?/button>
           </div>
-          <p class="subtle">暂停期间游戏音乐会停止，返回游戏后继续播放。</p>
+          <p class="subtle">鏆傚仠鏈熼棿娓告垙闊充箰浼氬仠姝紝杩斿洖娓告垙鍚庣户缁挱鏀俱€?/p>
         </div>
       </section>
 
@@ -131,32 +132,32 @@
           <div class="inventory-head">
             <div>
               <p class="eyebrow">INVENTORY</p>
-              <h2>背包</h2>
+              <h2>鑳屽寘</h2>
             </div>
-            <div class="inventory-summary" aria-label="背包摘要">
-              <span id="inventoryWeaponCount">武器 0/6</span>
-              <span id="inventoryGoldCount">金币 0</span>
+            <div class="inventory-summary" aria-label="鑳屽寘鎽樿">
+              <span id="inventoryWeaponCount">姝﹀櫒 0/6</span>
+              <span id="inventoryGoldCount">閲戝竵 0</span>
             </div>
-            <button id="inventoryCloseButton" type="button" title="关闭背包">×</button>
+            <button id="inventoryCloseButton" type="button" title="鍏抽棴鑳屽寘">脳</button>
           </div>
           <div class="inventory-layout">
             <section class="inventory-stats">
-              <h3>玩家属性</h3>
+              <h3>鐜╁灞炴€?/h3>
               <div id="inventoryStats" class="stat-grid"></div>
             </section>
             <section class="inventory-weapons">
-              <h3>武器槽 <span>0/6</span></h3>
+              <h3>姝﹀櫒妲?<span>0/6</span></h3>
               <div id="weaponSlotList" class="weapon-slot-list"></div>
             </section>
             <section class="inventory-detail">
-              <h3>武器信息</h3>
+              <h3>姝﹀櫒淇℃伅</h3>
               <div id="weaponDetail" class="weapon-detail"></div>
               <div class="inventory-actions">
-                <button id="weaponFuseButton" type="button">合成品质</button>
+                <button id="weaponFuseButton" type="button">鍚堟垚鍝佽川</button>
               </div>
             </section>
             <section class="inventory-items">
-              <h3>所持道具</h3>
+              <h3>鎵€鎸侀亾鍏?/h3>
               <div id="itemList" class="item-list"></div>
             </section>
           </div>
@@ -166,9 +167,9 @@
       <section id="endOverlay" class="overlay">
         <div class="panel end">
           <p id="endEyebrow" class="eyebrow">RUN COMPLETE</p>
-          <h2 id="endTitle">生存结束</h2>
+          <h2 id="endTitle">鐢熷瓨缁撴潫</h2>
           <div id="endStats" class="end-stats"></div>
-          <button id="restartButton" type="button" class="primary">再来一局</button>
+          <button id="restartButton" type="button" class="primary">鍐嶆潵涓€灞€</button>
         </div>
       </section>
     </main>
@@ -176,3 +177,4 @@
     <script type="module" src="./src/core/game.js"></script>
   </body>
 </html>
+

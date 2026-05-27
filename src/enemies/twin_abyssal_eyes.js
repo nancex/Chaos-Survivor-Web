@@ -379,7 +379,7 @@ export class TwinAbyssalEyes extends BaseEnemy {
     world.boss = null;
     if (!this.shared.rewardDropped) {
       this.shared.rewardDropped = true;
-      import("../entities.js").then(({ dropGem }) => dropGem(this.x, this.y, this.shared.rewardXp || this.xp));
+      import("../systems/entities.js").then(({ dropGem }) => dropGem(this.x, this.y, this.shared.rewardXp || this.xp));
     }
   }
 

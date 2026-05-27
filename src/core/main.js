@@ -5,9 +5,8 @@ import {
   updateHud,
   updateBestText,
   showChoices,
-  showWeaponCarousel,
-  showDifficultySelect,
-  hideDifficultySelect,
+  showRunSetup,
+  hideRunSetup,
   hideChoices,
   showPauseMenu,
   hidePauseMenu,
@@ -53,45 +52,26 @@ export async function bootGame() {
   function start() {
     closeCodex();
     hideAllOverlays();
-    showDifficultyChoices();
+    showRunSetup({
+      weapons: STARTER_WEAPONS,
+      onConfirm: startWithLoadout,
+    });
     playSfx("select");
   }
 
-  function startWithDifficulty(id) {
+  function startWithLoadout({ difficulty, weapon }) {
     closeCodex();
-    selectDifficulty(id);
+    selectDifficulty(difficulty.id);
     resetRun(generateMap());
-    selectDifficulty(id);
+    selectDifficulty(difficulty.id);
     state.shop = createShopState();
     hideAllOverlays();
-    showStarterChoices();
+    hideRunSetup();
+    state.initialWeaponId = weapon.id;
+    activateWeapon(weapon.id);
+    state.mode = "playing";
     playSfx("start");
     startMusic();
-  }
-
-  function showDifficultyChoices() {
-    showDifficultySelect({
-      onPick: (item) => {
-        hideDifficultySelect();
-        startWithDifficulty(item.id);
-      },
-    });
-  }
-
-  function showStarterChoices() {
-    showWeaponCarousel({
-      eyebrow: "STARTER WEAPON",
-      title: "选择开局武器",
-      items: STARTER_WEAPONS,
-      onPick: (item) => {
-        state.initialWeaponId = item.id;
-        activateWeapon(item.id);
-        hideChoices();
-        state.mode = "playing";
-        playSfx("select");
-        startMusic();
-      },
-    });
   }
 
   function showLevelChoices() {

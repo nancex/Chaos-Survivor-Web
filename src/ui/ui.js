@@ -34,7 +34,16 @@ export const ui = {
   fpsText: document.getElementById("fpsText"),
   startOverlay: document.getElementById("startOverlay"),
   levelOverlay: document.getElementById("levelOverlay"),
-  difficultyOverlay: document.getElementById("difficultyOverlay"),
+  loadoutOverlay: document.getElementById("loadoutOverlay"),
+  loadoutDifficultyList: document.getElementById("loadoutDifficultyList"),
+  loadoutWeaponPreview: document.getElementById("loadoutWeaponPreview"),
+  loadoutWeaponList: document.getElementById("loadoutWeaponList"),
+  loadoutConfirmButton: document.getElementById("loadoutConfirmButton"),
+  loadoutDifficultyName: document.getElementById("loadoutDifficultyName"),
+  loadoutWeaponName: document.getElementById("loadoutWeaponName"),
+  loadoutSelectedWeaponName: document.getElementById("loadoutSelectedWeaponName"),
+  loadoutWeaponDesc: document.getElementById("loadoutWeaponDesc"),
+  loadoutWeaponTags: document.getElementById("loadoutWeaponTags"),
   shopOverlay: document.getElementById("shopOverlay"),
   pauseOverlay: document.getElementById("pauseOverlay"),
   inventoryOverlay: document.getElementById("inventoryOverlay"),
@@ -42,7 +51,6 @@ export const ui = {
   levelEyebrow: document.querySelector("#levelOverlay .eyebrow"),
   levelTitle: document.querySelector("#levelOverlay h2"),
   choiceList: document.getElementById("choiceList"),
-  difficultyList: document.getElementById("difficultyList"),
   startButton: document.getElementById("startButton"),
   gameVersionText: document.getElementById("gameVersionText"),
   restartButton: document.getElementById("restartButton"),
@@ -137,33 +145,106 @@ export function updateBestText() {
   ui.bestText.textContent = bestSummaryText(formatTime);
 }
 
-export function showDifficultySelect({ onPick }) {
+export function showRunSetup({ weapons, onConfirm }) {
   clearPreview();
   ui.quickActions?.classList.add("blocked");
-  ui.difficultyList.innerHTML = "";
-  for (const item of difficultyCards()) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `difficulty-card${item.unlocked ? "" : " locked"}${item.completed ? " completed" : ""}${item.currentHighest ? " current" : ""}`;
-    button.disabled = !item.unlocked;
-    button.innerHTML = `
-      <span>${String(item.index + 1).padStart(2, "0")}</span>
-      <strong>${item.name}</strong>
-      <p>${item.unlocked ? item.desc : "击败上一难度解锁。"}</p>
-      <div class="difficulty-meta">
-        <i>敌人 ${Math.round(item.enemyHp * 100)}%</i>
-        <i>伤害 ${Math.round(item.enemyDamage * 100)}%</i>
-        <i>怪潮 ${Math.round(item.spawnRate * 100)}%</i>
-      </div>
-      <em>${item.completed ? `已通关 · ${formatTime(item.bestTime)}` : item.unlocked ? "可挑战" : "未解锁"}</em>`;
-    button.addEventListener("click", () => onPick(item), { once: true });
-    ui.difficultyList.appendChild(button);
+  const difficulties = difficultyCards();
+  let selectedDifficulty = difficulties.find((item) => item.unlocked && item.currentHighest)
+    || difficulties.find((item) => item.unlocked)
+    || null;
+  let selectedWeapon = weapons[0] || null;
+  let confirmed = false;
+
+  ui.loadoutDifficultyList.innerHTML = "";
+  ui.loadoutWeaponList.innerHTML = "";
+
+  function renderDifficultyList() {
+    ui.loadoutDifficultyList.innerHTML = "";
+    for (const item of difficulties) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `loadout-difficulty-card difficulty-card${item.unlocked ? "" : " locked"}${item.completed ? " completed" : ""}${item.currentHighest ? " current" : ""}${selectedDifficulty?.id === item.id ? " selected" : ""}`;
+      button.disabled = !item.unlocked;
+      button.innerHTML = `
+        <span>${String(item.index + 1).padStart(2, "0")}</span>
+        <strong>${item.name}</strong>
+        <p>${item.unlocked ? item.desc : "击败上一难度解锁。"}</p>
+        <div class="difficulty-meta">
+          <i>敌人 ${Math.round(item.enemyHp * 100)}%</i>
+          <i>伤害 ${Math.round(item.enemyDamage * 100)}%</i>
+          <i>怪潮 ${Math.round(item.spawnRate * 100)}%</i>
+        </div>
+        <em>${item.completed ? `已通关 · ${formatTime(item.bestTime)}` : item.unlocked ? "可挑战" : "未解锁"}</em>`;
+      button.addEventListener("click", () => {
+        selectedDifficulty = item;
+        renderDifficultyList();
+        updateSummary();
+      });
+      ui.loadoutDifficultyList.appendChild(button);
+    }
   }
-  ui.difficultyOverlay.classList.add("active");
+
+  function renderWeaponList() {
+    ui.loadoutWeaponList.innerHTML = "";
+    for (const item of weapons) {
+      const info = WEAPON_INFO[item.id] || item;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `loadout-weapon-card${selectedWeapon?.id === item.id ? " selected" : ""}`;
+      button.innerHTML = `
+        <i>${item.icon}</i>
+        <strong>${item.name}</strong>
+        <p>${item.desc}</p>
+        <small>${(info.tags || []).join(" · ")}</small>`;
+      button.addEventListener("click", () => {
+        selectedWeapon = item;
+        renderWeaponList();
+        updateWeaponPreviewInfo();
+        updateSummary();
+      });
+      ui.loadoutWeaponList.appendChild(button);
+    }
+  }
+
+  function updateWeaponPreviewInfo() {
+    if (!selectedWeapon) return;
+    const info = WEAPON_INFO[selectedWeapon.id] || selectedWeapon;
+    ui.loadoutWeaponName.textContent = `${selectedWeapon.icon} ${selectedWeapon.name}`;
+    ui.loadoutWeaponDesc.textContent = selectedWeapon.desc;
+    ui.loadoutWeaponTags.innerHTML = "";
+    (info.tags || []).forEach((text) => {
+      const tag = document.createElement("span");
+      tag.textContent = text;
+      ui.loadoutWeaponTags.appendChild(tag);
+    });
+  }
+
+  function updateSummary() {
+    ui.loadoutDifficultyName.textContent = selectedDifficulty?.name || "未选择";
+    ui.loadoutSelectedWeaponName.textContent = selectedWeapon?.name || "未选择";
+    ui.loadoutConfirmButton.disabled = !selectedDifficulty || !selectedWeapon;
+  }
+
+  ui.loadoutConfirmButton.onclick = () => {
+    if (confirmed || !selectedDifficulty || !selectedWeapon) return;
+    confirmed = true;
+    ui.loadoutConfirmButton.disabled = true;
+    onConfirm({ difficulty: selectedDifficulty, weapon: selectedWeapon });
+  };
+
+  renderDifficultyList();
+  renderWeaponList();
+  updateWeaponPreviewInfo();
+  updateSummary();
+  stopPreview = startWeaponPreview(ui.loadoutWeaponPreview, () => selectedWeapon);
+  ui.loadoutOverlay.classList.add("active");
+  ui.loadoutOverlay.setAttribute("aria-hidden", "false");
 }
 
-export function hideDifficultySelect() {
-  ui.difficultyOverlay?.classList.remove("active");
+export function hideRunSetup() {
+  clearPreview();
+  ui.loadoutOverlay?.classList.remove("active");
+  ui.loadoutOverlay?.setAttribute("aria-hidden", "true");
   ui.quickActions?.classList.remove("blocked");
 }
 
@@ -221,86 +302,6 @@ export function showChoices({ eyebrow, title, items, onPick, refresh = null }) {
   ui.levelOverlay.classList.add("active");
 }
 
-export function showWeaponCarousel({ eyebrow, title, items, onPick }) {
-  clearPreview();
-  ui.quickActions?.classList.add("blocked");
-  let index = 0;
-  ui.levelOverlay.classList.remove("level-up-overlay");
-  ui.levelOverlay.querySelector(".level-up-fx")?.remove();
-  ui.levelOverlay.querySelector(".level-choice-actions")?.remove();
-  ui.levelEyebrow.textContent = eyebrow;
-  ui.levelTitle.textContent = title;
-  ui.choiceList.innerHTML = "";
-  ui.choiceList.className = "choice-list weapon-choice-list";
-
-  const root = document.createElement("div");
-  root.className = "weapon-carousel";
-  const prev = document.createElement("button");
-  prev.type = "button";
-  prev.className = "weapon-nav";
-  prev.textContent = "‹";
-  prev.setAttribute("aria-label", "上一种武器");
-  const next = document.createElement("button");
-  next.type = "button";
-  next.className = "weapon-nav";
-  next.textContent = "›";
-  next.setAttribute("aria-label", "下一种武器");
-  const card = document.createElement("article");
-  card.className = "weapon-card";
-  const canvas = document.createElement("canvas");
-  canvas.className = "weapon-preview";
-  const name = document.createElement("strong");
-  const desc = document.createElement("p");
-  const tags = document.createElement("div");
-  tags.className = "weapon-tags";
-  const confirm = document.createElement("button");
-  confirm.type = "button";
-  confirm.className = "primary weapon-confirm";
-  confirm.textContent = "选择武器";
-
-  card.append(canvas, name, desc, tags, confirm);
-  root.append(prev, card, next);
-  ui.choiceList.appendChild(root);
-
-  function renderInfo() {
-    const item = items[index];
-    name.textContent = `${item.icon} ${item.name}`;
-    desc.textContent = item.desc;
-    tags.innerHTML = "";
-    (WEAPON_INFO[item.id]?.tags || []).forEach((text) => {
-      const tag = document.createElement("span");
-      tag.textContent = text;
-      tags.appendChild(tag);
-    });
-  }
-
-  let picked = false;
-  function pickCurrent() {
-    if (picked) return;
-    picked = true;
-    onPick(items[index]);
-  }
-
-  prev.addEventListener("click", (event) => {
-    event.stopPropagation();
-    index = (index - 1 + items.length) % items.length;
-    renderInfo();
-  });
-  next.addEventListener("click", (event) => {
-    event.stopPropagation();
-    index = (index + 1) % items.length;
-    renderInfo();
-  });
-  card.addEventListener("click", pickCurrent);
-  confirm.addEventListener("click", (event) => {
-    event.stopPropagation();
-    pickCurrent();
-  });
-  renderInfo();
-  stopPreview = startWeaponPreview(canvas, () => items[index]);
-  ui.levelOverlay.classList.add("active");
-}
-
 export function hideChoices() {
   clearPreview();
   ui.levelOverlay.classList.remove("active");
@@ -341,7 +342,8 @@ export function hideAllOverlays() {
   ui.levelOverlay.classList.remove("active");
   ui.levelOverlay.classList.remove("level-up-overlay");
   ui.levelOverlay.querySelector(".level-up-fx")?.remove();
-  ui.difficultyOverlay?.classList.remove("active");
+  ui.loadoutOverlay?.classList.remove("active");
+  ui.loadoutOverlay?.setAttribute("aria-hidden", "true");
   ui.shopOverlay?.classList.remove("active");
   ui.pauseOverlay.classList.remove("active");
   ui.inventoryOverlay.classList.remove("active");

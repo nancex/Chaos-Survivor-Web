@@ -95,16 +95,55 @@
         </div>
       </section>
 
-      <section id="difficultyOverlay" class="overlay">
-        <div class="panel difficulty-panel">
-          <div class="difficulty-head">
-            <div>
-              <p class="eyebrow">DIFFICULTY</p>
-              <h2>选择作战难度</h2>
-            </div>
-            <p>完成当前难度后，下一难度会自动解锁。</p>
+      <section id="loadoutOverlay" class="overlay loadout-overlay" aria-hidden="true">
+        <div class="panel loadout-panel">
+          <div class="loadout-fx" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i>
           </div>
-          <div id="difficultyList" class="difficulty-list"></div>
+          <header class="loadout-head">
+            <div>
+              <p class="eyebrow">COMBAT SETUP</p>
+              <h2>作战配置</h2>
+            </div>
+            <p>同时选择作战难度与开局武器。确认后立即进入战场。</p>
+          </header>
+          <div class="loadout-body">
+            <section class="loadout-section loadout-difficulty-section">
+              <div class="loadout-section-title">
+                <span>01</span>
+                <div>
+                  <h3>选择作战难度</h3>
+                  <p>完成当前难度后，下一难度会自动解锁。</p>
+                </div>
+              </div>
+              <div id="loadoutDifficultyList" class="loadout-difficulty-list"></div>
+            </section>
+            <section class="loadout-section loadout-weapon-section">
+              <div class="loadout-section-title">
+                <span>02</span>
+                <div>
+                  <h3>选择开局武器</h3>
+                  <p>武器预览会实时播放，进入游戏后立即装备。</p>
+                </div>
+              </div>
+              <div class="loadout-weapon-preview-wrap">
+                <canvas id="loadoutWeaponPreview" class="loadout-weapon-preview" aria-label="开局武器预览"></canvas>
+                <div class="loadout-weapon-info">
+                  <strong id="loadoutWeaponName">未选择武器</strong>
+                  <p id="loadoutWeaponDesc">选择一把开局武器。</p>
+                  <div id="loadoutWeaponTags" class="weapon-tags"></div>
+                </div>
+              </div>
+              <div id="loadoutWeaponList" class="loadout-weapon-list"></div>
+            </section>
+          </div>
+          <footer class="loadout-footer">
+            <div class="loadout-summary">
+              <span>难度 <strong id="loadoutDifficultyName">未选择</strong></span>
+              <span>武器 <strong id="loadoutSelectedWeaponName">未选择</strong></span>
+            </div>
+            <button id="loadoutConfirmButton" type="button" class="primary" disabled>开始作战</button>
+          </footer>
         </div>
       </section>
 

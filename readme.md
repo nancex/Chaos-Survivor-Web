@@ -41,7 +41,7 @@ python .\scripts\no_cache_server.py 5000 --bind 127.0.0.1
 
 不再推荐直接使用 `python -m http.server` 作为日常开发启动方式，因为它会返回 `Last-Modified` / `304 Not Modified`，容易让非技术用户误以为代码没有更新。
 
-### 2.2 一键启动脚本（新增）
+### 2.2 一键启动脚本
 
 项目已新增启动入口：
 
@@ -260,7 +260,7 @@ Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 - `coinGain`：金币收益倍率
 - `xpGain`：经验收益倍率
 
-### 4.3 字段生效位置（代码映射）
+### 4.3 字段生效位置
 
 - 敌人生成上限：`src/systems/enemyRegistry.js`
 - 刷怪速率：`src/systems/entities.js`

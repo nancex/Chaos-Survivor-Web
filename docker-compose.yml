@@ -1,0 +1,10 @@
+services:
+  survivor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: survivor:latest
+    container_name: survivor
+    ports:
+      - "5000:80"
+    restart: unless-stopped

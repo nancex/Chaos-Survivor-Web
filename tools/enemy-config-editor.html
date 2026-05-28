@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>敌人配置编辑器</title>
+    <link rel="icon" href="../favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="./enemy-config-editor.css" />
+  </head>
+  <body>
+    <main class="editor-shell">
+      <aside class="enemy-sidebar" aria-label="敌人列表">
+        <header class="sidebar-head">
+          <div>
+            <span>ENEMY CONFIG</span>
+            <h1>敌人配置</h1>
+          </div>
+          <button id="addEnemyButton" type="button">新增</button>
+        </header>
+
+        <label class="search-box">
+          <span>搜索</span>
+          <input id="searchInput" type="search" placeholder="id / 名称 / 行为" />
+        </label>
+
+        <div class="filter-row" aria-label="筛选">
+          <button class="filter-button active" type="button" data-filter="all">全部</button>
+          <button class="filter-button" type="button" data-filter="normal">小怪</button>
+          <button class="filter-button" type="button" data-filter="boss">Boss</button>
+        </div>
+
+        <div class="list-tools" aria-label="列表翻页">
+          <button id="prevPageButton" type="button">上一页</button>
+          <strong id="pageInfo">1 / 1</strong>
+          <button id="nextPageButton" type="button">下一页</button>
+        </div>
+
+        <label class="jump-box">
+          <span>跳转到第几个敌人</span>
+          <input id="jumpInput" type="number" min="1" step="1" placeholder="例如 120" />
+        </label>
+
+        <section id="enemyList" class="enemy-list" aria-label="敌人条目"></section>
+      </aside>
+
+      <section class="editor-main" aria-label="敌人配置表单">
+        <header class="topbar">
+          <div>
+            <span id="statusText">正在加载配置...</span>
+            <strong id="selectedTitle">未选择敌人</strong>
+          </div>
+          <nav class="toolbar" aria-label="操作">
+            <button id="importButton" type="button">导入 JSON</button>
+            <button id="copyButton" type="button">复制 JSON</button>
+            <button id="downloadButton" type="button">下载 JSON</button>
+            <button id="saveFileButton" type="button">保存到文件</button>
+          </nav>
+          <input id="fileInput" type="file" accept=".json,application/json" hidden />
+        </header>
+
+        <div id="messageBox" class="message-box" role="status" aria-live="polite"></div>
+
+        <div class="workspace-grid">
+          <form id="enemyForm" class="config-form" autocomplete="off">
+            <section class="panel identity-panel">
+              <div class="section-title">
+                <span>01</span>
+                <h2>基础信息</h2>
+              </div>
+              <div class="form-grid">
+                <label>
+                  <span>ID</span>
+                  <input id="enemyId" name="id" type="text" required pattern="[a-z0-9_]+" />
+                </label>
+                <label>
+                  <span>显示名</span>
+                  <input name="name" type="text" />
+                </label>
+                <label>
+                  <span>分类</span>
+                  <select name="category">
+                    <option value="小怪">小怪</option>
+                    <option value="Boss">Boss</option>
+                  </select>
+                </label>
+                <label>
+                  <span>行为</span>
+                  <input name="behavior" type="text" list="behaviorOptions" />
+                </label>
+                <label>
+                  <span>特性</span>
+                  <input name="trait" type="text" />
+                </label>
+                <label>
+                  <span>主题色</span>
+                  <input name="color" type="color" />
+                </label>
+              </div>
+              <datalist id="behaviorOptions"></datalist>
+              <label class="wide-field">
+                <span>描述</span>
+                <textarea name="desc" rows="3"></textarea>
+              </label>
+              <label class="wide-field">
+                <span>攻略提示</span>
+                <textarea name="tip" rows="2"></textarea>
+              </label>
+            </section>
+
+            <section class="panel">
+              <div class="section-title">
+                <span>02</span>
+                <h2>战斗数值</h2>
+              </div>
+              <div class="stat-grid">
+                <label><span>生命 hp</span><input name="hp" type="number" min="1" step="1" /></label>
+                <label><span>速度 speed</span><input name="speed" type="number" min="0" step="1" /></label>
+                <label><span>伤害 damage</span><input name="damage" type="number" min="0" step="1" /></label>
+                <label><span>经验 xp</span><input name="xp" type="number" min="0" step="1" /></label>
+                <label><span>半径 radius</span><input name="radius" type="number" min="1" step="1" /></label>
+                <label><span>防御 defense</span><input name="defense" type="number" min="0" step="1" /></label>
+                <label><span>击退抗性</span><input name="knockbackResistance" type="number" min="0" max="1" step="0.01" /></label>
+              </div>
+              <label class="toggle-line">
+                <input name="boss" type="checkbox" />
+                <span>这是 Boss 敌人</span>
+              </label>
+            </section>
+
+            <section class="panel">
+              <div class="section-title">
+                <span>03</span>
+                <h2>波次规则</h2>
+              </div>
+              <p class="hint">勾选“出现”表示该敌人可在对应波次生成；勾选“排除”会强制禁止该波次出现。导出时会自动转换为游戏使用的 JSON 字段。</p>
+              <div class="wave-actions">
+                <button id="selectAllWavesButton" type="button">全选出现</button>
+                <button id="clearWavesButton" type="button">清空出现</button>
+                <button id="clearExcludeWavesButton" type="button">清空排除</button>
+              </div>
+              <div class="wave-picker-head">
+                <span>波次</span>
+                <span>出现</span>
+                <span>排除</span>
+              </div>
+              <div id="wavePicker" class="wave-picker" aria-label="波次选择"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-title">
+                <span>04</span>
+                <h2>难度限制</h2>
+              </div>
+              <p class="hint">难度名称从 `difficulty-config.json` 自动读取。默认全选表示所有难度都可出现，导出时不会写入额外限制字段。</p>
+              <div class="difficulty-toolbar">
+                <button id="selectAllDifficultiesButton" type="button">全选难度</button>
+                <button id="clearDifficultiesButton" type="button">清空难度</button>
+              </div>
+              <div id="difficultyPicker" class="difficulty-picker" aria-label="允许出现的难度"></div>
+              <div class="rules-grid difficulty-range">
+                <label>
+                  <span>最低难度</span>
+                  <select name="minDifficulty"></select>
+                </label>
+                <label>
+                  <span>最高难度</span>
+                  <select name="maxDifficulty"></select>
+                </label>
+              </div>
+            </section>
+
+            <section class="form-actions">
+              <button id="duplicateButton" type="button">复制当前敌人</button>
+              <button id="deleteButton" type="button" class="danger-button">删除当前敌人</button>
+              <button id="resetButton" type="button">恢复当前敌人</button>
+              <button type="submit" class="primary-button">应用到配置</button>
+            </section>
+          </form>
+
+          <aside class="preview-column" aria-label="预览与校验">
+            <section class="panel preview-panel">
+              <div class="section-title">
+                <span>VIEW</span>
+                <h2>敌人预览</h2>
+              </div>
+              <div id="enemyPreview" class="enemy-preview">
+                <i></i>
+                <strong>未选择</strong>
+                <span>选择敌人后显示概要</span>
+              </div>
+              <div class="summary-grid">
+                <span><b id="summaryHp">-</b><em>HP</em></span>
+                <span><b id="summaryDamage">-</b><em>DMG</em></span>
+                <span><b id="summarySpeed">-</b><em>SPD</em></span>
+                <span><b id="summaryWave">-</b><em>WAVE</em></span>
+              </div>
+            </section>
+
+            <section class="panel validation-panel">
+              <div class="section-title">
+                <span>QA</span>
+                <h2>配置校验</h2>
+              </div>
+              <ul id="validationList" class="validation-list"></ul>
+            </section>
+
+            <section class="panel raw-panel">
+              <div class="section-title">
+                <span>JSON</span>
+                <h2>当前条目</h2>
+              </div>
+              <pre id="rawPreview">{}</pre>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./enemy-config-editor.js"></script>
+  </body>
+</html>

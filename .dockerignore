@@ -1,0 +1,8 @@
+.git
+.gitignore
+.superpowers
+.VSCodeCounter
+tests
+*.md
+Dockerfile*
+docker-compose*.yml

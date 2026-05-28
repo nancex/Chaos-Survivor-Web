@@ -1,6 +1,24 @@
 .superpowers/
 .VSCodeCounter/
 tests/
+
+# Local notes
+AGENTS.md
 细微改动.md
 道具.md
-AGENTS.md
+
+# Local runtime artifacts
+.edge-profile/
+*.log
+*.tmp
+*.bak
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

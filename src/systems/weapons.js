@@ -1165,17 +1165,22 @@ function chooseStarfallAnchor(w) {
       best = e;
     }
   }
-  if (best) return { x: best.x, y: best.y };
+  if (best) {
+    return {
+      x: best.x + (best.vx || best.knockbackX || 0) * 0.18,
+      y: best.y + (best.vy || best.knockbackY || 0) * 0.18,
+    };
+  }
   return null;
 }
 
 function spawnStarfallVolley(base, shot, rank, color, anchor, stars, volleyIndex) {
   const points = [];
-  const spread = 72 + rank * 7;
+  const spread = 46 + rank * 5;
   const total = Math.min(9, stars);
   for (let i = 0; i < total; i++) {
     const a = i * TAU / total + Math.random() * 0.35 + volleyIndex * 0.42;
-    const r = i === 0 ? 0 : spread * (0.45 + (i % 3) * 0.32 + Math.random() * 0.22);
+    const r = i === 0 ? 0 : spread * (0.28 + (i % 3) * 0.22 + Math.random() * 0.14);
     const tx = anchor.x + Math.cos(a) * r;
     const ty = anchor.y + Math.sin(a) * r * 0.72;
     points.push({ x: tx, y: ty });

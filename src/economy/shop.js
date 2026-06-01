@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { addWeaponToInventory, canFuseWeapons, QUALITY_INFO, QUALITY_ORDER, recomputeAllWeapons, WEAPON_INFO } from "./inventory.js";
 import { applyItemPurchase, canPurchaseItem, hasPurchasedUniqueItem, ITEM_DEFS, itemDescription, itemSellPriceById, offerQualityForItem, weightedQuality } from "../systems/items.js";
+import { ITEM_RARITY_WEIGHTS } from "../config/editableGameData.js";
 import { playSfx } from "../audio.js";
 
 const SHOP_SLOTS = 4;
@@ -179,7 +180,7 @@ function createWeaponOffer() {
 function createItemOffer() {
   const candidates = ITEM_DEFS.filter((item) => (!item.unique || !hasPurchasedUniqueItem(item.id)) && canPurchaseItem(item.id).ok);
   const template = weightedChoice((candidates.length ? candidates : ITEM_DEFS).map((item) => [item, itemWeight(item)]));
-  const rarity = offerQualityForItem(template, weightedQuality(RARITY_WEIGHTS));
+  const rarity = offerQualityForItem(template, weightedQuality(ITEM_RARITY_WEIGHTS));
   const rank = QUALITY_ORDER.indexOf(rarity);
   const quality = QUALITY_INFO[rarity] || QUALITY_INFO.common;
   return {

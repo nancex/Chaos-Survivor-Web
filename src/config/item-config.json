@@ -1,4 +1,11 @@
 {
+  "rarityWeights": {
+    "common": 58,
+    "uncommon": 25,
+    "rare": 11,
+    "epic": 4.5,
+    "legendary": 1.5
+  },
   "definitions": [
     { "id": "heart_container", "icon": "♡", "name": "心之容器", "basePrice": 22, "desc": "最大生命值 +5/10/20/35/50。" },
     { "id": "healing_potion", "icon": "✚", "name": "治疗药水", "basePrice": 12, "desc": "立即恢复 20/30/50/80/120 点生命。" },

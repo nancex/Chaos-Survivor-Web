@@ -6,6 +6,14 @@ export const QUALITY_INFO = {
   legendary: { name: "传说", color: "#ffd166", mult: 2.15 },
 };
 
+export const ITEM_RARITY_WEIGHTS = [
+  ["common", 58],
+  ["uncommon", 25],
+  ["rare", 11],
+  ["epic", 4.5],
+  ["legendary", 1.5],
+];
+
 export const WEAPON_BASE_STATS = {
   arc: { level: 0, timer: 0, cooldown: 0.58, damage: 65, range: 720, chainRange: 205, chains: 3, falloff: 0.78, quality: "common", qualityMult: 1 },
   ice: { level: 0, timer: 0.8, cooldown: 0.84, count: 1, damage: 53, range: 980, speed: 500, turnSpeed: 5.8, freezeDuration: 0.45, quality: "common", qualityMult: 1 },
@@ -70,6 +78,7 @@ export function applyEditableGameData({ weapons = {}, items = {} } = {}) {
   mergeMap(QUALITY_INFO, weapons.qualityInfo);
   mergeMap(WEAPON_INFO, weapons.info);
   mergeMap(WEAPON_BASE_STATS, weapons.baseStats);
+  mergeRarityWeights(ITEM_RARITY_WEIGHTS, items.rarityWeights);
   if (Array.isArray(items.definitions)) mergeArrayById(ITEM_DATA_DEFS, items.definitions);
   for (const listener of listeners) listener();
 }
@@ -104,5 +113,15 @@ function mergeArrayById(target, patch) {
     const index = target.findIndex((entry) => entry.id === value.id);
     if (index >= 0) target[index] = { ...target[index], ...value };
     else target.push({ ...value });
+  }
+}
+
+function mergeRarityWeights(target, patch = {}) {
+  for (const [quality, weight] of Object.entries(patch || {})) {
+    const normalized = Number(weight);
+    if (!Number.isFinite(normalized)) continue;
+    const entry = target.find((item) => item[0] === quality);
+    if (entry) entry[1] = Math.max(0, normalized);
+    else target.push([quality, Math.max(0, normalized)]);
   }
 }

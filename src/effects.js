@@ -57,18 +57,7 @@ export function trail(x, y, px, py, color, size = 5) {
 }
 
 export function spawnDamageText(amount, target, options = {}) {
-  const critical = Boolean(options.critical);
-  particle("damageText", target?.x ?? options.x ?? 0, (target?.y ?? options.y ?? 0) - (target?.r ?? 12) - 8, {
-    vx: (Math.random() - 0.5) * (critical ? 18 : 12),
-    vy: critical ? -74 - Math.random() * 26 : -54 - Math.random() * 20,
-    life: critical ? 0.98 : 0.82,
-    size: critical ? 28 : 19,
-    radius: critical ? 34 : 22,
-    color: critical ? "#ff345f" : "#fff1a8",
-    alpha: 1,
-    text: String(Math.max(1, Math.round(amount))),
-    critical,
-  });
+  return;
 }
 
 export function dust(x, y, vx, vy) {

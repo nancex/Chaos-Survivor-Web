@@ -55,6 +55,7 @@ export function bossDirectionIndicator(view, camera, boss) {
     y: clamp(edgeY, margin, view.height - margin),
     angle,
     name: boss.name || "Boss",
+    panel: false,
   };
 }
 
@@ -2068,6 +2069,10 @@ function drawEnemyProjectiles(ctx) {
       drawFireballProjectile(ctx, b);
       continue;
     }
+    if (b.shape === "voidFireball") {
+      drawVoidFireballProjectile(ctx, b);
+      continue;
+    }
     if (b.shape === "stormBlade" || b.shape === "stormOrb") {
       drawStormProjectile(ctx, b);
       continue;
@@ -2092,6 +2097,7 @@ function drawItemObjects(ctx) {
     else if (obj.kind === "landmine") drawAllyMine(ctx, obj);
     else if (obj.kind === "fallingStar") drawFallingStar(ctx, obj);
     else if (obj.kind === "tesla_node") drawTeslaNode(ctx, obj);
+    else if (obj.kind === "storm_portal") drawStormPortal(ctx, obj);
   }
 }
 
@@ -2399,6 +2405,10 @@ function drawHazards(ctx) {
     }
     if (h.kind === "frost_zone" || h.kind === "blizzard_core") {
       drawFrostZoneHazard(ctx, h, alpha);
+      continue;
+    }
+    if (h.kind === "storm_laser_net") {
+      drawStormLaserNetHazard(ctx, h, alpha);
       continue;
     }
     ctx.save();
@@ -2721,6 +2731,81 @@ function drawBossBar(ctx) {
   drawBossHpText(ctx, layout.bar.text, y + 20, 14);
 }
 
+function drawStormPortal(ctx, obj) {
+  const alpha = Math.max(0, obj.life / obj.maxLife);
+  ctx.save();
+  ctx.translate(obj.x, obj.y);
+  ctx.globalCompositeOperation = "lighter";
+  const r = obj.r * (0.72 + (1 - alpha) * 0.42);
+  glow(ctx, 0, 0, r * 1.5, alpha * 0.42, obj.color);
+  ctx.strokeStyle = hexToRgba(obj.color, alpha * 0.86);
+  ctx.lineWidth = 4;
+  ctx.rotate(state.time * 4);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.66, r, 0, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba("#ffffff", alpha * 0.58);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.36, r * 0.72, 0, 0, TAU);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStormLaserNetHazard(ctx, h, alpha) {
+  const armed = (h.armTime || 0) <= 0;
+  const warn = Math.max(0, h.armTime || 0) / 0.55;
+  ctx.save();
+  ctx.translate(h.x, h.y);
+  ctx.rotate(h.angle || 0);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = hexToRgba(armed ? h.color : "#ffffff", armed ? alpha * 0.86 : 0.24 + (1 - warn) * 0.36);
+  ctx.lineWidth = armed ? h.width || 22 : 5;
+  ctx.lineCap = "round";
+  if (!armed) ctx.setLineDash([28, 16]);
+  ctx.beginPath();
+  ctx.moveTo(-(h.length || 1200) / 2, 0);
+  ctx.lineTo((h.length || 1200) / 2, 0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle = hexToRgba("#ffffff", armed ? alpha * 0.82 : 0.5);
+  ctx.lineWidth = armed ? 3 : 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-(h.length || 1200) / 2, 0);
+  ctx.lineTo((h.length || 1200) / 2, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawVoidFireballProjectile(ctx, b) {
+  const angle = Math.atan2(b.vy, b.vx);
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(angle);
+  if (enemyProjectileHasHalo(b)) glow(ctx, 0, 0, b.r * 3.0, 0.52, b.color || "#b48cff");
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = hexToRgba("#b48cff", 0.34);
+  ctx.beginPath();
+  ctx.ellipse(-b.r * 1.1, 0, b.r * 2.4, b.r * 0.78, 0, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba("#ffffff", 0.72);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-b.r * 1.8, -b.r * 0.72);
+  ctx.lineTo(b.r * 1.35, 0);
+  ctx.lineTo(-b.r * 1.8, b.r * 0.72);
+  ctx.stroke();
+  ctx.fillStyle = b.color || "#b48cff";
+  ctx.beginPath();
+  ctx.arc(0, 0, b.r * 1.05, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(b.r * 0.24, -b.r * 0.12, b.r * 0.42, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawBossHpText(ctx, text, y, size = 12) {
   if (!text) return;
   ctx.fillStyle = "#f3f7ff";
@@ -2740,27 +2825,23 @@ function drawBossDirectionIndicator(ctx) {
   ctx.translate(indicator.x, indicator.y);
   ctx.rotate(indicator.angle);
   ctx.globalCompositeOperation = "lighter";
-  glow(ctx, 0, 0, 28 * pulse, 0.28, "#ff4d6d");
-  ctx.fillStyle = "rgba(6,9,18,0.78)";
-  ctx.strokeStyle = "rgba(255,209,102,0.78)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.roundRect(-20, -16, 46, 32, 6);
-  ctx.fill();
-  ctx.stroke();
+  glow(ctx, 0, 0, 24 * pulse, 0.24, "#ff4d6d");
   ctx.fillStyle = "#ff4d6d";
   ctx.beginPath();
-  ctx.moveTo(24, 0);
-  ctx.lineTo(-8, -11);
-  ctx.lineTo(-2, 0);
-  ctx.lineTo(-8, 11);
+  ctx.moveTo(30, 0);
+  ctx.lineTo(-13, -15);
+  ctx.lineTo(-4, 0);
+  ctx.lineTo(-13, 15);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
   ctx.strokeStyle = "#fff3b0";
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
-  ctx.moveTo(12, 0);
-  ctx.lineTo(-3, 0);
+  ctx.moveTo(17, 0);
+  ctx.lineTo(-5, 0);
   ctx.stroke();
   ctx.restore();
 }

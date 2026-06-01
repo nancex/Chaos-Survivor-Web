@@ -2261,6 +2261,33 @@ h2 {
   min-height: 100%;
 }
 
+.weapon-carousel-controls {
+  grid-template-rows: auto;
+  min-height: 96px;
+}
+
+.weapon-carousel-controls .loadout-weapon-card {
+  display: none;
+}
+
+.weapon-carousel-controls .loadout-carousel-arrow[data-dir="-1"] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.weapon-carousel-controls .loadout-carousel-arrow[data-dir="1"] {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.weapon-carousel-controls .loadout-carousel-count {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: center;
+  min-width: 112px;
+}
+
 .loadout-carousel-arrow {
   display: grid;
   width: 50px;

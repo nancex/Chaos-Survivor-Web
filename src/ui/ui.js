@@ -258,7 +258,7 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
     const item = selectedWeapon;
     const info = WEAPON_INFO[item.id] || item;
     const wrap = document.createElement("div");
-    wrap.className = "loadout-carousel weapon-carousel";
+    wrap.className = "loadout-carousel weapon-carousel weapon-carousel-controls";
     wrap.innerHTML = `
       <button type="button" class="loadout-carousel-arrow" data-dir="-1" aria-label="上一个武器">‹</button>
       <button type="button" class="loadout-weapon-card carousel-card selected">

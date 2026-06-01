@@ -3,15 +3,22 @@ let audio = null;
 let proceduralTimer = null;
 let musicGain = null;
 let musicCompressor = null;
+let musicElement = null;
+let musicSource = null;
+let musicFilters = null;
+let musicTracks = null;
+let musicTrackBase = "";
+let currentTrackIndex = 0;
 let proceduralPaused = false;
 let musicStep = 0;
 let musicSection = 0;
 let nextMusicTime = 0;
 const lastPlayed = new Map();
+const MUSIC_PLAYLISTS = ["assets/playlist.json", "assets/music/playlist.json"];
 const MUSIC_BPM = 152;
 const MUSIC_STEP_MS = Math.round(60000 / MUSIC_BPM / 2);
 const MUSIC_STEP_SECONDS = MUSIC_STEP_MS / 1000;
-const MUSIC_MASTER_GAIN = 0.32;
+const MUSIC_MASTER_GAIN = 0.42;
 const MUSIC_LOOKAHEAD_STEPS = 6;
 const MUSIC_SCALE = [55, 61.74, 65.41, 73.42, 82.41, 92.5, 98, 110, 123.47, 130.81, 146.83, 164.81, 196];
 const LEAD_PATTERN = [12, 14, 15, 17, 19, 17, 15, 14, 12, 10, 8, 10, 12, 15, 17, 22, 24, 22, 19, 17, 15, 17, 19, 15, 14, 12, 10, 12, 15, 17, 19, 22];
@@ -22,6 +29,7 @@ const CHORD_ROOTS = [0, 5, 3, 7, 0, 8, 5, 3];
 export function setMuted(value) {
   muted = value;
   if (musicGain) musicGain.gain.value = muted ? 0.0001 : MUSIC_MASTER_GAIN;
+  if (musicElement) musicElement.muted = muted;
   if (!muted && !proceduralTimer) startMusic();
 }
 
@@ -63,6 +71,7 @@ export function playSfx(name) {
 
 export async function startMusic() {
   if (muted) return;
+  if (await startExternalMusic()) return;
   if (proceduralTimer) return;
   if (proceduralPaused) {
     proceduralPaused = false;
@@ -75,10 +84,15 @@ export async function startMusic() {
 
 export function stopMusic() {
   proceduralPaused = false;
+  stopExternalMusic();
   stopProceduralMusic();
 }
 
 export function pauseMusic() {
+  if (musicElement && !musicElement.paused) {
+    musicElement.pause();
+    proceduralPaused = true;
+  }
   if (proceduralTimer) {
     stopProceduralMusic();
     proceduralPaused = true;
@@ -91,6 +105,11 @@ export function resumeMusic() {
 }
 
 export async function nextMusicTrack() {
+  if (musicTracks?.length) {
+    currentTrackIndex = (currentTrackIndex + 1) % musicTracks.length;
+    await startExternalMusic(true);
+    return;
+  }
   musicSection = (musicSection + 1) % 4;
   musicStep = musicSection * 16;
   if (!proceduralTimer && !muted) startProceduralMusic();
@@ -98,13 +117,13 @@ export async function nextMusicTrack() {
 
 export function proceduralMusicArrangement() {
   return {
-    externalTracks: false,
+    externalTracks: true,
     bpm: MUSIC_BPM,
     continuous: true,
     masterGain: MUSIC_MASTER_GAIN,
     lookaheadSteps: MUSIC_LOOKAHEAD_STEPS,
-    key: "A Phrygian dominant / neon minor",
-    instruments: ["kick", "snare", "closed hat", "open hat", "ride", "tom", "sub bass", "distorted bass", "pad", "choir stab", "arpeggio", "lead", "counter lead", "impact"],
+    key: "external playlist with neon processing",
+    instruments: ["external audio", "sub tilt", "neon saturation", "compressed ambience", "short delay"],
   };
 }
 
@@ -147,6 +166,146 @@ function stopProceduralMusic() {
     window.clearInterval(proceduralTimer);
     proceduralTimer = null;
   }
+}
+
+async function startExternalMusic(forceReload = false) {
+  try {
+    const tracks = await loadMusicTracks();
+    if (!tracks.length) return false;
+    const ctx = ensureAudio();
+    setupExternalMusicGraph(ctx);
+    const file = tracks[currentTrackIndex % tracks.length];
+    const src = resolveTrackUrl(file);
+    if (forceReload || musicElement.src !== new URL(src, window.location.href).href) {
+      musicElement.src = src;
+      musicElement.load();
+    }
+    musicElement.loop = tracks.length <= 1;
+    musicElement.muted = muted;
+    musicElement.volume = 1;
+    musicElement.onended = () => {
+      if (!musicTracks?.length || muted) return;
+      currentTrackIndex = (currentTrackIndex + 1) % musicTracks.length;
+      startExternalMusic(true);
+    };
+    stopProceduralMusic();
+    proceduralPaused = false;
+    await musicElement.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function loadMusicTracks() {
+  if (musicTracks) return musicTracks;
+  for (const playlist of MUSIC_PLAYLISTS) {
+    try {
+      const response = await fetch(playlist, { cache: "no-store" });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const tracks = (data.tracks || [])
+        .map((track) => typeof track === "string" ? track : track?.file)
+        .filter(Boolean);
+      if (!tracks.length) continue;
+      musicTracks = tracks;
+      musicTrackBase = playlist.slice(0, playlist.lastIndexOf("/") + 1);
+      return musicTracks;
+    } catch {}
+  }
+  musicTracks = [];
+  return musicTracks;
+}
+
+function resolveTrackUrl(file) {
+  if (/^(https?:)?\/\//.test(file) || file.startsWith("/") || file.startsWith("data:")) return file;
+  return `${musicTrackBase}${file}`;
+}
+
+function setupExternalMusicGraph(ctx) {
+  musicElement ||= new Audio();
+  musicElement.crossOrigin = "anonymous";
+  musicElement.preload = "auto";
+  musicGain ||= ctx.createGain();
+  musicCompressor ||= ctx.createDynamicsCompressor();
+  musicSource ||= ctx.createMediaElementSource(musicElement);
+  if (!musicFilters) {
+    const highpass = ctx.createBiquadFilter();
+    const lowShelf = ctx.createBiquadFilter();
+    const presenceDip = ctx.createBiquadFilter();
+    const airShelf = ctx.createBiquadFilter();
+    const shaper = ctx.createWaveShaper();
+    const delay = ctx.createDelay(0.24);
+    const feedback = ctx.createGain();
+    const wet = ctx.createGain();
+    highpass.type = "highpass";
+    highpass.frequency.value = 34;
+    lowShelf.type = "lowshelf";
+    lowShelf.frequency.value = 115;
+    lowShelf.gain.value = 2.2;
+    presenceDip.type = "peaking";
+    presenceDip.frequency.value = 2400;
+    presenceDip.Q.value = 0.8;
+    presenceDip.gain.value = -1.6;
+    airShelf.type = "highshelf";
+    airShelf.frequency.value = 6400;
+    airShelf.gain.value = 1.4;
+    shaper.curve = saturationCurve(140);
+    shaper.oversample = "2x";
+    delay.delayTime.value = 0.115;
+    feedback.gain.value = 0.18;
+    wet.gain.value = 0.08;
+    musicFilters = { highpass, lowShelf, presenceDip, airShelf, shaper, delay, feedback, wet };
+  }
+  musicCompressor.threshold.value = -18;
+  musicCompressor.knee.value = 18;
+  musicCompressor.ratio.value = 3.4;
+  musicCompressor.attack.value = 0.012;
+  musicCompressor.release.value = 0.22;
+  musicGain.gain.value = muted ? 0.0001 : MUSIC_MASTER_GAIN;
+  try {
+    musicSource.disconnect();
+    musicFilters.highpass.disconnect();
+    musicFilters.lowShelf.disconnect();
+    musicFilters.presenceDip.disconnect();
+    musicFilters.airShelf.disconnect();
+    musicFilters.shaper.disconnect();
+    musicFilters.delay.disconnect();
+    musicFilters.feedback.disconnect();
+    musicFilters.wet.disconnect();
+    musicCompressor.disconnect();
+    musicGain.disconnect();
+  } catch {}
+  musicSource.connect(musicFilters.highpass);
+  musicFilters.highpass.connect(musicFilters.lowShelf);
+  musicFilters.lowShelf.connect(musicFilters.presenceDip);
+  musicFilters.presenceDip.connect(musicFilters.airShelf);
+  musicFilters.airShelf.connect(musicFilters.shaper);
+  musicFilters.shaper.connect(musicCompressor);
+  musicFilters.shaper.connect(musicFilters.delay);
+  musicFilters.delay.connect(musicFilters.feedback);
+  musicFilters.feedback.connect(musicFilters.delay);
+  musicFilters.delay.connect(musicFilters.wet);
+  musicFilters.wet.connect(musicCompressor);
+  musicCompressor.connect(musicGain);
+  musicGain.connect(ctx.destination);
+}
+
+function stopExternalMusic() {
+  if (!musicElement) return;
+  musicElement.pause();
+  musicElement.currentTime = 0;
+}
+
+function saturationCurve(amount = 80) {
+  const n = 512;
+  const curve = new Float32Array(n);
+  const k = Number(amount);
+  for (let i = 0; i < n; i++) {
+    const x = i * 2 / n - 1;
+    curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
+  }
+  return curve;
 }
 
 function playMusicNote(freq, duration, type, gainValue, delay = 0, at = null) {

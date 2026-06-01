@@ -11,8 +11,10 @@ const CATEGORIES = [
 ];
 
 const dom = {};
+const CODEX_PAGE_SIZE = 10;
 let activeType = "enemies";
 let selectedId = null;
+let codexPage = 0;
 let previewStop = null;
 
 export function initCodexUi() {
@@ -58,6 +60,7 @@ function renderTabs() {
     button.addEventListener("click", () => {
       activeType = category.id;
       selectedId = null;
+      codexPage = 0;
       renderCodex();
     });
     dom.tabs.appendChild(button);
@@ -68,7 +71,10 @@ function renderCodex() {
   stopPreview();
   renderTabsState();
   const entries = entriesFor(activeType);
-  selectedId = selectedId && entries.some((entry) => entry.id === selectedId) ? selectedId : entries[0]?.id || null;
+  const pageCount = Math.max(1, Math.ceil(entries.length / CODEX_PAGE_SIZE));
+  codexPage = Math.max(0, Math.min(pageCount - 1, codexPage));
+  const pageEntries = pagedEntries(entries);
+  selectedId = selectedId && pageEntries.some((entry) => entry.id === selectedId) ? selectedId : pageEntries[0]?.id || null;
   renderList(entries);
   renderDetail(entries.find((entry) => entry.id === selectedId) || null);
 }
@@ -132,7 +138,8 @@ function renderList(entries) {
     dom.list.appendChild(empty);
     return;
   }
-  for (const entry of entries) {
+  const visibleEntries = pagedEntries(entries);
+  for (const entry of visibleEntries) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `codex-card${entry.id === selectedId ? " active" : ""}`;
@@ -149,6 +156,31 @@ function renderList(entries) {
     });
     dom.list.appendChild(button);
   }
+  renderPagination(entries.length);
+}
+
+function pagedEntries(entries) {
+  const start = codexPage * CODEX_PAGE_SIZE;
+  return entries.slice(start, start + CODEX_PAGE_SIZE);
+}
+
+function renderPagination(total) {
+  if (total <= CODEX_PAGE_SIZE) return;
+  const pageCount = Math.ceil(total / CODEX_PAGE_SIZE);
+  const controls = document.createElement("div");
+  controls.className = "codex-pagination";
+  controls.innerHTML = `
+    <button type="button" data-dir="-1" ${codexPage <= 0 ? "disabled" : ""}>上一页</button>
+    <span>${codexPage + 1} / ${pageCount}</span>
+    <button type="button" data-dir="1" ${codexPage >= pageCount - 1 ? "disabled" : ""}>下一页</button>`;
+  for (const button of controls.querySelectorAll("button")) {
+    button.addEventListener("click", () => {
+      codexPage = Math.max(0, Math.min(pageCount - 1, codexPage + Number(button.dataset.dir)));
+      selectedId = null;
+      renderCodex();
+    });
+  }
+  dom.list.appendChild(controls);
 }
 
 function renderDetail(entry) {

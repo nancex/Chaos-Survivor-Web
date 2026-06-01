@@ -142,6 +142,16 @@ function setFpsClass(fps) {
   ui.fpsText.classList.add(fps < 30 ? "fps-bad" : fps < 45 ? "fps-warn" : "fps-good");
 }
 
+function clampCarouselIndex(index, length) {
+  if (!length) return 0;
+  return Math.max(0, Math.min(length - 1, index));
+}
+
+function cycleCarouselIndex(index, direction, length) {
+  if (!length) return 0;
+  return (index + direction + length) % length;
+}
+
 export function updateBestText() {
   ui.bestText.textContent = bestSummaryText(formatTime);
 }
@@ -150,10 +160,10 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
   clearPreview();
   ui.quickActions?.classList.add("blocked");
   const difficulties = difficultyCards();
-  let selectedDifficulty = difficulties.find((item) => item.unlocked && item.currentHighest)
-    || difficulties.find((item) => item.unlocked)
-    || null;
-  let selectedWeapon = weapons[0] || null;
+  let difficultyIndex = Math.max(0, difficulties.findIndex((item) => item.currentHighest));
+  let weaponIndex = 0;
+  let selectedDifficulty = difficulties[difficultyIndex] || null;
+  let selectedWeapon = weapons[weaponIndex] || null;
   let confirmed = false;
 
   ui.loadoutDifficultyList.innerHTML = "";
@@ -207,6 +217,69 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
     }
   }
 
+  function renderDifficultyCarousel() {
+    ui.loadoutDifficultyList.innerHTML = "";
+    if (!difficulties.length) return;
+    difficultyIndex = clampCarouselIndex(difficultyIndex, difficulties.length);
+    selectedDifficulty = difficulties[difficultyIndex];
+    const item = selectedDifficulty;
+    const wrap = document.createElement("div");
+    wrap.className = "loadout-carousel difficulty-carousel";
+    wrap.innerHTML = `
+      <button type="button" class="loadout-carousel-arrow" data-dir="-1" aria-label="上一个难度">‹</button>
+      <button type="button" class="loadout-difficulty-card difficulty-card carousel-card${item.unlocked ? "" : " locked"}${item.completed ? " completed" : ""}${item.currentHighest ? " current" : ""} selected" ${item.unlocked ? "" : "disabled"}>
+        <span>${String(item.index + 1).padStart(2, "0")}</span>
+        <strong>${item.name}</strong>
+        <p>${item.unlocked ? item.desc : "击败上一难度解锁。"}</p>
+        <div class="difficulty-meta">
+          <i>敌人 ${Math.round(item.enemyHp * 100)}%</i>
+          <i>伤害 ${Math.round(item.enemyDamage * 100)}%</i>
+          <i>怪潮 ${Math.round(item.spawnRate * 100)}%</i>
+        </div>
+        <em>${item.completed ? `已通关 · ${formatTime(item.bestTime)}` : item.unlocked ? "可挑战" : "未解锁"}</em>
+      </button>
+      <button type="button" class="loadout-carousel-arrow" data-dir="1" aria-label="下一个难度">›</button>
+      <div class="loadout-carousel-count">${difficultyIndex + 1} / ${difficulties.length}</div>`;
+    for (const arrow of wrap.querySelectorAll(".loadout-carousel-arrow")) {
+      arrow.addEventListener("click", () => {
+        difficultyIndex = cycleCarouselIndex(difficultyIndex, Number(arrow.dataset.dir), difficulties.length);
+        renderDifficultyCarousel();
+        updateSummary();
+      });
+    }
+    ui.loadoutDifficultyList.appendChild(wrap);
+  }
+
+  function renderWeaponCarousel() {
+    ui.loadoutWeaponList.innerHTML = "";
+    if (!weapons.length) return;
+    weaponIndex = clampCarouselIndex(weaponIndex, weapons.length);
+    selectedWeapon = weapons[weaponIndex];
+    const item = selectedWeapon;
+    const info = WEAPON_INFO[item.id] || item;
+    const wrap = document.createElement("div");
+    wrap.className = "loadout-carousel weapon-carousel";
+    wrap.innerHTML = `
+      <button type="button" class="loadout-carousel-arrow" data-dir="-1" aria-label="上一个武器">‹</button>
+      <button type="button" class="loadout-weapon-card carousel-card selected">
+        <i>${item.icon}</i>
+        <strong>${item.name}</strong>
+        <p>${item.desc}</p>
+        <small>${(info.tags || []).join(" · ")}</small>
+      </button>
+      <button type="button" class="loadout-carousel-arrow" data-dir="1" aria-label="下一个武器">›</button>
+      <div class="loadout-carousel-count">${weaponIndex + 1} / ${weapons.length}</div>`;
+    for (const arrow of wrap.querySelectorAll(".loadout-carousel-arrow")) {
+      arrow.addEventListener("click", () => {
+        weaponIndex = cycleCarouselIndex(weaponIndex, Number(arrow.dataset.dir), weapons.length);
+        renderWeaponCarousel();
+        updateWeaponPreviewInfo();
+        updateSummary();
+      });
+    }
+    ui.loadoutWeaponList.appendChild(wrap);
+  }
+
   function updateWeaponPreviewInfo() {
     if (!selectedWeapon) return;
     const info = WEAPON_INFO[selectedWeapon.id] || selectedWeapon;
@@ -223,11 +296,11 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
   function updateSummary() {
     ui.loadoutDifficultyName.textContent = selectedDifficulty?.name || "未选择";
     ui.loadoutSelectedWeaponName.textContent = selectedWeapon?.name || "未选择";
-    ui.loadoutConfirmButton.disabled = !selectedDifficulty || !selectedWeapon;
+    ui.loadoutConfirmButton.disabled = !selectedDifficulty?.unlocked || !selectedWeapon;
   }
 
   ui.loadoutConfirmButton.onclick = () => {
-    if (confirmed || !selectedDifficulty || !selectedWeapon) return;
+    if (confirmed || !selectedDifficulty?.unlocked || !selectedWeapon) return;
     confirmed = true;
     ui.loadoutConfirmButton.disabled = true;
     onConfirm({ difficulty: selectedDifficulty, weapon: selectedWeapon });
@@ -240,8 +313,8 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
     };
   }
 
-  renderDifficultyList();
-  renderWeaponList();
+  renderDifficultyCarousel();
+  renderWeaponCarousel();
   updateWeaponPreviewInfo();
   updateSummary();
   stopPreview = startWeaponPreview(ui.loadoutWeaponPreview, () => selectedWeapon);

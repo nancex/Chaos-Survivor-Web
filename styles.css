@@ -947,19 +947,19 @@ canvas {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(66, 232, 255, 0.2);
-  padding: 18px 20px;
+  padding: 10px 16px;
 }
 
 .codex-head h2 {
   margin: 0;
   color: #f8fbff;
-  font-size: clamp(32px, 4vw, 54px);
+  font-size: clamp(24px, 2.8vw, 38px);
   text-shadow: 0 0 24px rgba(66, 232, 255, 0.36);
 }
 
 #codexCloseButton {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border: 1px solid rgba(255, 77, 109, 0.45);
   border-radius: 6px;
   background: rgba(255, 77, 109, 0.12);
@@ -972,10 +972,10 @@ canvas {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 170px minmax(260px, 1fr) minmax(320px, 0.9fr);
-  gap: 14px;
+  grid-template-columns: 138px minmax(420px, 1fr) minmax(320px, 0.86fr);
+  gap: 12px;
   min-height: 0;
-  padding: 16px;
+  padding: 12px;
 }
 
 .codex-tabs,
@@ -990,14 +990,15 @@ canvas {
 .codex-tabs {
   display: grid;
   align-content: start;
-  gap: 10px;
-  padding: 12px;
+  gap: 7px;
+  padding: 8px;
 }
 
 .codex-tabs button {
   border: 1px solid rgba(66, 232, 255, 0.18);
   border-radius: 6px;
-  padding: 12px;
+  min-height: 48px;
+  padding: 8px 9px;
   background: rgba(255, 255, 255, 0.045);
   color: #f8fbff;
   text-align: left;
@@ -1012,38 +1013,39 @@ canvas {
 .codex-tabs span {
   display: block;
   color: rgba(66, 232, 255, 0.72);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
 }
 
 .codex-tabs strong {
   display: block;
-  margin-top: 4px;
-  font-size: 20px;
+  margin-top: 2px;
+  font-size: 16px;
 }
 
 .codex-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(64px, 1fr)) auto;
   align-content: start;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
-  overflow: auto;
-  padding: 12px;
+  overflow: hidden;
+  padding: 10px;
 }
 
 .codex-card {
   --codex-color: #42e8ff;
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
-  gap: 10px;
+  gap: 9px;
   align-items: center;
-  min-height: 74px;
+  min-height: 64px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 3px solid var(--codex-color);
   border-radius: 7px;
-  padding: 10px;
+  padding: 8px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--codex-color) 16%, transparent), transparent 62%),
     rgba(255, 255, 255, 0.045);
@@ -1086,6 +1088,37 @@ canvas {
   color: rgba(203, 213, 225, 0.72);
   font-size: 11px;
   font-style: normal;
+}
+
+.codex-pagination {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding-top: 2px;
+}
+
+.codex-pagination button {
+  min-width: 78px;
+  border: 1px solid rgba(66, 232, 255, 0.28);
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: rgba(66, 232, 255, 0.08);
+  color: #f8fbff;
+  font-weight: 900;
+}
+
+.codex-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.codex-pagination span {
+  color: rgba(203, 213, 225, 0.84);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .codex-detail {
@@ -1847,21 +1880,21 @@ h2 {
 }
 
 .loadout-head {
-  padding: 18px 22px 15px;
+  padding: 10px 18px 9px;
   border-bottom: 1px solid rgba(66, 232, 255, 0.2);
 }
 
 .loadout-head h2 {
   margin: 0;
-  font-size: clamp(34px, 4vw, 58px);
+  font-size: clamp(24px, 2.6vw, 38px);
 }
 
 .loadout-head p:not(.eyebrow) {
-  max-width: 360px;
+  max-width: 300px;
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 12px;
+  line-height: 1.45;
   text-align: right;
 }
 
@@ -1869,10 +1902,10 @@ h2 {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(420px, 0.92fr) minmax(460px, 1.08fr);
-  gap: 16px;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(520px, 1.1fr);
+  gap: 15px;
   min-height: 0;
-  padding: 18px 22px;
+  padding: 14px 22px 18px;
 }
 
 .loadout-section {
@@ -1894,14 +1927,14 @@ h2 {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 14px 15px;
+  padding: 10px 13px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .loadout-section-title > span {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   border: 1px solid rgba(66, 232, 255, 0.34);
   border-radius: 6px;
@@ -1914,7 +1947,7 @@ h2 {
 .loadout-section-title h3 {
   margin: 0;
   color: var(--ink);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .loadout-section-title p {
@@ -1925,12 +1958,12 @@ h2 {
 
 .loadout-difficulty-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  gap: 11px;
+  grid-template-columns: 1fr;
+  align-content: stretch;
+  gap: 0;
   min-height: 0;
-  overflow: auto;
-  padding: 14px 15px 16px;
+  overflow: hidden;
+  padding: 16px;
 }
 
 .loadout-difficulty-card {
@@ -2008,12 +2041,61 @@ h2 {
 
 .loadout-weapon-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-content: start;
-  gap: 11px;
+  grid-template-columns: 1fr;
+  align-content: stretch;
+  gap: 0;
   min-height: 0;
-  overflow: auto;
-  padding: 14px 15px 16px;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.loadout-carousel {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 100%;
+}
+
+.loadout-carousel-arrow {
+  display: grid;
+  width: 54px;
+  min-height: 72px;
+  place-items: center;
+  border: 1px solid rgba(66, 232, 255, 0.32);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(66, 232, 255, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(3, 8, 16, 0.78);
+  color: #f8fbff;
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 14px rgba(66, 232, 255, 0.6);
+}
+
+.loadout-carousel-arrow:hover {
+  border-color: rgba(255, 209, 102, 0.64);
+  box-shadow: 0 0 22px rgba(66, 232, 255, 0.16);
+}
+
+.loadout-carousel-count {
+  grid-column: 2;
+  color: rgba(203, 213, 225, 0.82);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.loadout-carousel .carousel-card {
+  min-height: 260px;
+  align-content: center;
+}
+
+.weapon-carousel .carousel-card {
+  min-height: 210px;
 }
 
 .loadout-weapon-card {
@@ -2072,6 +2154,12 @@ h2 {
   font-style: normal;
   font-weight: 900;
   box-shadow: 0 0 18px rgba(66, 232, 255, 0.16);
+}
+
+.loadout-weapon-card.carousel-card i {
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
 }
 
 .loadout-weapon-card strong {
@@ -3138,9 +3226,12 @@ h2 {
     filter 160ms ease;
 }
 
-.codex-list,
 .codex-detail {
   overflow: auto;
+}
+
+.codex-list {
+  overflow: hidden;
 }
 
 .shop-card::before,
@@ -3327,7 +3418,7 @@ h2 {
   }
 
   .codex-head {
-    padding: 12px;
+    padding: 9px 10px;
   }
 
   .codex-body {
@@ -3335,21 +3426,25 @@ h2 {
     grid-template-rows: auto minmax(160px, 0.72fr) minmax(260px, 1fr);
     gap: 10px;
     padding: 10px;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .codex-tabs {
     display: flex;
     overflow-x: auto;
+    padding: 7px;
   }
 
   .codex-tabs button {
     min-width: 110px;
+    min-height: 42px;
+    padding: 7px 8px;
   }
 
   .codex-list {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    max-height: 260px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(5, minmax(54px, 1fr)) auto;
+    max-height: none;
   }
 
   .codex-detail {
@@ -3391,11 +3486,22 @@ h2 {
   .loadout-difficulty-list,
   .loadout-weapon-list {
     grid-template-columns: 1fr;
-    max-height: 360px;
+    max-height: none;
   }
 
   .loadout-difficulty-card {
     min-height: 224px;
+  }
+
+  .loadout-carousel {
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    gap: 8px;
+  }
+
+  .loadout-carousel-arrow {
+    width: 42px;
+    min-height: 58px;
+    font-size: 34px;
   }
 
   .loadout-weapon-preview-wrap {

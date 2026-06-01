@@ -15,6 +15,8 @@ const MAX_BODY_BEND = 0.58;
 const PHASE2_HP = 0.66;
 const PHASE3_HP = 0.32;
 const NET_LENGTH = 3600;
+const PORTAL_ENTER_TIME = 0.62;
+const PORTAL_EMERGE_TIME = 0.72;
 
 export class StormRailDevourer extends BaseEnemy {
   constructor(config, x, y) {
@@ -42,12 +44,24 @@ export class StormRailDevourer extends BaseEnemy {
     this.dashTime = 0;
     this.dashCoast = 0;
     this.dashLoops = 0;
+    this.dashVx = 0;
+    this.dashVy = 0;
     this.portalTimer = 0;
     this.portalLoops = 0;
+    this.portalState = "ready";
+    this.portalPhase = 0;
+    this.portalEnter = null;
+    this.portalExit = null;
     this.netTimer = 0;
     this.netCount = 0;
     this.deathLaserAngle = 0;
+    this.deathLaserTargetAngle = 0;
+    this.deathLaserSpin = 1;
     this.summoned = false;
+    this.roamAngle = Math.random() * TAU;
+    this.roamTimer = 0.7;
+    this.observeTimer = 1.4;
+    this.roamRadius = 780;
     this.path = [];
     this.segments = [];
     this.initFromEdge();
@@ -120,8 +134,9 @@ export class StormRailDevourer extends BaseEnemy {
     const half = WORLD_SIZE / 2;
     this.x = clamp(this.x, -half + this.r, half - this.r);
     this.y = clamp(this.y, -half + this.r, half - this.r);
-    this.recordPath();
+    this.recordPath(prevX, prevY);
     this.updateSegments();
+    if (this.mode === "death_laser") this.heatLaserSegments();
     this.damagePlayer();
     this.updateVisualHeading(dt, prevX, prevY);
     if (this.modeTimer <= 0) this.nextMode();
@@ -130,14 +145,31 @@ export class StormRailDevourer extends BaseEnemy {
   updateCruise(dt, dx, dy, d, boost = 1) {
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
-    const target = Math.atan2(dy, dx);
-    this.heading += angleDiff(target, this.heading) * Math.min(1, dt * (2.2 + this.phaseLevel * 0.45));
-    const speed = this.speed * boost * (1 + this.phaseLevel * 0.14);
+    this.roamTimer -= dt;
+    this.observeTimer = Math.max(0, this.observeTimer - dt);
+    if (this.roamTimer <= 0) {
+      const far = d < 560 ? 1 : d > 1100 ? -1 : Math.random() < 0.5 ? -1 : 1;
+      this.roamAngle = Math.atan2(dy, dx) + far * (Math.PI * (0.45 + Math.random() * 0.36));
+      this.roamRadius = 680 + Math.random() * 420 + this.phaseLevel * 70;
+      this.roamTimer = 0.7 + Math.random() * 0.75;
+    }
+    const p = state.player;
+    const desiredX = p.x - Math.cos(this.roamAngle) * this.roamRadius;
+    const desiredY = p.y - Math.sin(this.roamAngle) * this.roamRadius;
+    const toX = desiredX - this.x;
+    const toY = desiredY - this.y;
+    const toD = Math.max(1, Math.hypot(toX, toY));
+    const huntBias = this.observeTimer <= 0 && d < 980 ? 0.38 : d > 1250 ? 0.52 : 0.12;
+    const moveX = toX / toD * (1 - huntBias) + dx / d * huntBias;
+    const moveY = toY / toD * (1 - huntBias) + dy / d * huntBias;
+    const target = Math.atan2(moveY, moveX);
+    this.heading += angleDiff(target, this.heading) * Math.min(1, dt * (1.65 + this.phaseLevel * 0.36));
+    const speed = this.speed * boost * (1.08 + this.phaseLevel * 0.16);
     this.x += Math.cos(this.heading) * speed * dt;
     this.y += Math.sin(this.heading) * speed * dt;
-    if (this.fireTimer <= 0) {
+    if (this.observeTimer <= 0 && this.fireTimer <= 0 && d < 1050) {
       this.fireTimer = this.phaseLevel >= 3 ? 0.22 : this.phaseLevel === 2 ? 0.32 : 0.42;
-      this.fireHeadBarrage(this.heading);
+      this.fireHeadBarrage(Math.atan2(dy, dx));
     }
   }
 
@@ -153,24 +185,31 @@ export class StormRailDevourer extends BaseEnemy {
     }
     if (this.dashTime > 0) {
       this.dashTime -= dt;
-      const speed = this.speed * (this.phaseLevel >= 3 ? 8.2 : this.phaseLevel === 2 ? 6.7 : 5.6);
-      this.x += Math.cos(this.heading) * speed * dt;
-      this.y += Math.sin(this.heading) * speed * dt;
+      const speed = this.speed * (this.phaseLevel >= 3 ? 10.8 : this.phaseLevel === 2 ? 8.9 : 7.2);
+      this.dashVx = Math.cos(this.heading) * speed;
+      this.dashVy = Math.sin(this.heading) * speed;
+      this.x += this.dashVx * dt;
+      this.y += this.dashVy * dt;
       if (this.modeShotTimer <= 0) {
         this.modeShotTimer = 0.035;
         trail(this.x, this.y, this.x - Math.cos(this.heading) * 82, this.y - Math.sin(this.heading) * 82, this.phaseColor(), 20);
       }
-      if (this.dashTime <= 0) this.dashCoast = 0.28;
+      if (this.dashTime <= 0) this.dashCoast = this.phaseLevel >= 3 ? 0.46 : 0.36;
       return;
     }
     if (this.dashCoast > 0) {
       this.dashCoast -= dt;
-      this.x += Math.cos(this.heading) * this.speed * 3.1 * dt;
-      this.y += Math.sin(this.heading) * this.speed * 3.1 * dt;
+      const drag = Math.pow(0.08, dt);
+      this.dashVx *= drag;
+      this.dashVy *= drag;
+      this.x += this.dashVx * dt;
+      this.y += this.dashVy * dt;
       if (this.dashCoast <= 0 && this.dashLoops > 0) {
         this.dashLoops--;
         this.dashWindup = this.phaseLevel >= 3 ? 0.08 : 0.16;
         this.dashTime = this.phaseLevel >= 3 ? 0.5 : 0.42;
+        this.dashVx = 0;
+        this.dashVy = 0;
         this.turnToward(Math.atan2(state.player.y - this.y, state.player.x - this.x), dt, 18);
         this.visualHeading = this.heading;
       }
@@ -181,7 +220,7 @@ export class StormRailDevourer extends BaseEnemy {
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
     const p = state.player;
-    const radius = 245;
+    const radius = 330 + this.phaseLevel * 38;
     const orbitSpeed = (this.phaseLevel >= 3 ? 2.25 : this.phaseLevel === 2 ? 1.75 : 1.35) * (this.attackIndex % 2 ? -1 : 1);
     this.heading += orbitSpeed * dt;
     const targetX = p.x + Math.cos(this.heading) * radius;
@@ -197,10 +236,9 @@ export class StormRailDevourer extends BaseEnemy {
   updateLaserNet(dt) {
     this.bodyDamageEnabled = false;
     this.bodyAlpha = 0.28;
-    this.x += Math.cos(this.heading) * this.speed * 0.32 * dt;
-    this.y += Math.sin(this.heading) * this.speed * 0.32 * dt;
+    this.driftAroundPlayer(dt, 0.22);
     if (this.netTimer <= 0 && this.netCount < 3) {
-      this.netTimer = 0.55;
+      this.netTimer = 0.72;
       this.netCount++;
       this.spawnLaserNet(this.netCount % 2 ? "cross" : "diagonal");
     }
@@ -218,28 +256,68 @@ export class StormRailDevourer extends BaseEnemy {
   }
 
   updatePortalDash(dt, dx, dy, d) {
-    this.bodyDamageEnabled = true;
-    this.bodyAlpha = 0.72;
+    this.bodyDamageEnabled = this.portalState === "burst";
+    this.bodyAlpha = this.portalState === "ready" ? 0.86 : 1;
+    if (this.portalState === "enter") {
+      this.portalPhase += dt / PORTAL_ENTER_TIME;
+      this.bodyDamageEnabled = false;
+      if (this.portalPhase >= 1) this.finishPortalEnter();
+      return;
+    }
+    if (this.portalState === "emerge") {
+      this.portalPhase += dt / PORTAL_EMERGE_TIME;
+      this.bodyDamageEnabled = false;
+      this.heading += angleDiff(Math.atan2(state.player.y - this.y, state.player.x - this.x), this.heading) * Math.min(1, dt * 4.5);
+      if (this.portalPhase >= 1) {
+        this.portalState = "burst";
+        this.portalPhase = 1;
+        this.dashLoops = 0;
+        this.dashTime = this.phaseLevel >= 3 ? 0.5 : 0.42;
+        this.dashCoast = this.phaseLevel >= 3 ? 0.42 : 0.32;
+        this.firePurpleFireballs();
+        pulse(this.x, this.y, 112, "#b48cff", 0.32);
+      }
+      return;
+    }
+    if (this.portalState === "burst" && this.dashTime > 0) return this.updateDash(dt, dx, dy, d);
+    if (this.portalState === "burst" && this.dashCoast > 0) return this.updateDash(dt, dx, dy, d);
+    this.portalState = "ready";
     if (this.portalTimer > 0) return;
     if (this.portalLoops <= 0) {
       this.nextMode();
       return;
     }
     const p = state.player;
-    const enter = { x: this.x, y: this.y };
     const a = Math.random() * TAU;
-    this.x = clamp(p.x + Math.cos(a) * 620, -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r);
-    this.y = clamp(p.y + Math.sin(a) * 620, -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r);
-    this.heading = Math.atan2(p.y - this.y, p.x - this.x);
-    world.itemObjects.push({ kind: "storm_portal", x: enter.x, y: enter.y, r: 42, color: "#b48cff", life: 0.65, maxLife: 0.65 });
-    world.itemObjects.push({ kind: "storm_portal", x: this.x, y: this.y, r: 54, color: "#ff4dff", life: 0.8, maxLife: 0.8 });
-    this.dashWindup = 0;
-    this.dashTime = 0.42;
-    this.dashCoast = 0.22;
-    this.firePurpleFireballs();
+    this.portalEnter = { x: this.x, y: this.y, angle: this.heading };
+    this.portalExit = {
+      x: clamp(p.x + Math.cos(a) * (760 + Math.random() * 260), -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r),
+      y: clamp(p.y + Math.sin(a) * (760 + Math.random() * 260), -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r),
+    };
+    this.portalExit.angle = Math.atan2(p.y - this.portalExit.y, p.x - this.portalExit.x);
+    this.portalState = "enter";
+    this.portalPhase = 0;
+    world.itemObjects.push({ kind: "storm_portal", x: this.portalEnter.x, y: this.portalEnter.y, r: 48, color: "#b48cff", life: 1.05, maxLife: 1.05, phase: "enter" });
+    world.itemObjects.push({ kind: "storm_portal", x: this.portalExit.x, y: this.portalExit.y, r: 58, color: "#ff4dff", life: 1.32, maxLife: 1.32, phase: "exit" });
     this.portalLoops--;
-    this.portalTimer = this.phaseLevel >= 3 ? 0.62 : 0.86;
+    this.portalTimer = this.phaseLevel >= 3 ? 0.58 : 0.78;
     pulse(this.x, this.y, 92, "#b48cff", 0.28);
+  }
+
+  finishPortalEnter() {
+    if (!this.portalExit) return;
+    this.x = this.portalExit.x;
+    this.y = this.portalExit.y;
+    this.heading = this.portalExit.angle;
+    this.visualHeading = this.heading;
+    this.portalState = "emerge";
+    this.portalPhase = 0;
+    this.dashWindup = 0;
+    this.dashTime = 0;
+    this.dashCoast = 0;
+    this.dashVx = 0;
+    this.dashVy = 0;
+    this.seedPath();
   }
 
   updateSummon(dt) {
@@ -255,14 +333,12 @@ export class StormRailDevourer extends BaseEnemy {
   updateDeathLaser(dt) {
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
-    this.deathLaserAngle += dt * (this.phaseLevel >= 3 ? 4.4 : 3.2);
+    this.deathLaserTargetAngle = Math.atan2(state.player.y - this.y, state.player.x - this.x);
+    this.deathLaserAngle += angleDiff(this.deathLaserTargetAngle, this.deathLaserAngle) * Math.min(1, dt * (1.15 + this.phaseLevel * 0.28));
+    this.deathLaserAngle += this.deathLaserSpin * dt * (this.phaseLevel >= 3 ? 1.15 : 0.82);
     this.heading = this.deathLaserAngle;
     this.x += Math.cos(this.heading + Math.PI / 2) * this.speed * 0.32 * dt;
     this.y += Math.sin(this.heading + Math.PI / 2) * this.speed * 0.32 * dt;
-    if (this.fireTimer <= 0) {
-      this.fireTimer = 0.08;
-      this.fireDeathLaserPulse();
-    }
     this.damageDeathLaser(dt);
   }
 
@@ -295,9 +371,16 @@ export class StormRailDevourer extends BaseEnemy {
     this.netCount = 0;
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
+    this.portalState = "ready";
+    this.portalPhase = 0;
+    this.dashVx = 0;
+    this.dashVy = 0;
     const speed = this.phaseLevel >= 3 ? 0.72 : this.phaseLevel === 2 ? 0.86 : 1;
     if (mode === "emerge") this.modeTimer = 1.1;
-    if (mode === "cruise") this.modeTimer = (this.phaseLevel >= 3 ? 2.0 : 2.65) * speed;
+    if (mode === "cruise") {
+      this.modeTimer = (this.phaseLevel >= 3 ? 2.0 : 2.65) * speed;
+      this.observeTimer = this.phaseLevel >= 3 ? 0.65 : 0.95;
+    }
     if (mode === "coil") this.modeTimer = (this.phaseLevel >= 3 ? 2.6 : 3.5) * speed;
     if (mode === "reaper_flame") this.modeTimer = 2.4 * speed;
     if (mode === "laser_net") {
@@ -316,17 +399,20 @@ export class StormRailDevourer extends BaseEnemy {
       pulse(this.x, this.y, 96, this.phaseColor(), 0.28);
     }
     if (mode === "portal_dash") {
-      this.modeTimer = (this.phaseLevel >= 3 ? 3.4 : 2.8) * speed;
+      this.modeTimer = this.phaseLevel >= 3 ? 7.6 : 6.4;
       this.portalLoops = this.phaseLevel >= 3 ? 4 : 3;
       this.portalTimer = 0;
+      this.observeTimer = 0;
     }
     if (mode === "summon") {
       this.modeTimer = 2.6 * speed;
       this.summoned = false;
     }
     if (mode === "death_laser") {
-      this.modeTimer = 2.8 * speed;
+      this.modeTimer = this.phaseLevel >= 3 ? 5.2 : 4.6;
       this.deathLaserAngle = Math.atan2(state.player.y - this.y, state.player.x - this.x);
+      this.deathLaserTargetAngle = this.deathLaserAngle;
+      this.deathLaserSpin = Math.random() < 0.5 ? -1 : 1;
     }
   }
 
@@ -337,8 +423,13 @@ export class StormRailDevourer extends BaseEnemy {
     }
   }
 
-  recordPath() {
-    this.path.unshift({ x: this.x, y: this.y });
+  recordPath(prevX = this.x, prevY = this.y) {
+    const distance = Math.hypot(this.x - prevX, this.y - prevY);
+    const samples = Math.max(1, Math.min(8, Math.ceil(distance / 22)));
+    for (let i = samples; i >= 1; i--) {
+      const t = i / samples;
+      this.path.unshift({ x: prevX + (this.x - prevX) * t, y: prevY + (this.y - prevY) * t });
+    }
     const max = SEGMENT_COUNT * this.segmentGap + 90;
     if (this.path.length > max) this.path.length = max;
   }
@@ -357,7 +448,7 @@ export class StormRailDevourer extends BaseEnemy {
       if (Math.abs(bend) > maxBend) angle = leadAngle + Math.sign(bend) * maxBend;
       const targetX = leadX - Math.cos(angle) * this.segmentGap;
       const targetY = leadY - Math.sin(angle) * this.segmentGap;
-      const follow = this.mode === "dash" || this.mode === "portal_dash" ? 1 : 0.92;
+      const follow = this.mode === "dash" || this.mode === "portal_dash" ? 0.82 : 0.92;
       seg.x += (targetX - seg.x) * follow;
       seg.y += (targetY - seg.y) * follow;
       seg.angle = angle;
@@ -545,12 +636,28 @@ export class StormRailDevourer extends BaseEnemy {
   damageDeathLaser(dt) {
     const p = state.player;
     if (p.invuln > 0) return;
-    const dist = pointRayDistance(p.x, p.y, this.x, this.y, this.deathLaserAngle, 1150);
-    if (dist < p.r + 18) {
-      applyPlayerDamage(this.damage * 1.4 * dt, this);
+    const origin = this.laserOrigin();
+    const dist = pointRayDistance(p.x, p.y, origin.x, origin.y, this.deathLaserAngle, 1550);
+    if (dist < p.r + 34) {
+      applyPlayerDamage(this.damage * 1.7 * dt, this);
       p.invuln = Math.max(p.invuln, 0.08);
       state.flash = Math.max(state.flash, 0.12);
     }
+  }
+
+  heatLaserSegments() {
+    for (let i = 0; i < Math.min(8, this.segments.length); i++) {
+      this.segments[i].heat = Math.max(this.segments[i].heat, 0.58 - i * 0.045);
+      this.segments[i].angle += angleDiff(this.deathLaserAngle, this.segments[i].angle) * 0.18;
+    }
+  }
+
+  laserOrigin() {
+    const jaw = this.r * 1.54;
+    return {
+      x: this.x + Math.cos(this.deathLaserAngle) * jaw,
+      y: this.y + Math.sin(this.deathLaserAngle) * jaw,
+    };
   }
 
   fireOrb(x, y, angle, speed, damageMul, source, color = this.phaseColor(), split = false) {
@@ -584,13 +691,15 @@ export class StormRailDevourer extends BaseEnemy {
         y: p.y + offset,
         angle,
         length: NET_LENGTH,
-        width: 22,
+        width: 34,
+        surgeTime: 0.22,
         netWave,
         color,
         damage: this.damage * 0.72,
-        life: 1.05,
-        maxLife: 1.05,
+        life: 1.45,
+        maxLife: 1.45,
         armTime: 0.55,
+        armDuration: 0.55,
       });
       if (pattern === "cross") {
         world.hazards.push({
@@ -599,13 +708,15 @@ export class StormRailDevourer extends BaseEnemy {
           y: p.y,
           angle: Math.PI / 2,
           length: NET_LENGTH,
-          width: 22,
+          width: 34,
+          surgeTime: 0.22,
           netWave,
           color: "#ff4dff",
           damage: this.damage * 0.72,
-          life: 1.05,
-          maxLife: 1.05,
+          life: 1.45,
+          maxLife: 1.45,
           armTime: 0.55,
+          armDuration: 0.55,
         });
       }
     }
@@ -618,19 +729,23 @@ export class StormRailDevourer extends BaseEnemy {
       const a = i / 4 * TAU + Math.PI / 4;
       const worm = new MechWorm({
         id: "mech_worm",
-        name: "强化机械蠕虫",
-        hp: 120,
-        speed: 116,
-        damage: 18,
-        radius: 16,
+        name: "雷铸机械蠕虫",
+        hp: 260 + state.wave * 18,
+        speed: 136,
+        damage: 28,
+        radius: 18,
         xp: 0,
         color: "#b48cff",
         behavior: "mech_worm",
       }, p.x + Math.cos(a) * 420, p.y + Math.sin(a) * 420);
       worm.empowered = true;
-      worm.hp *= 1.8;
+      worm.hp *= 2.4;
       worm.maxHp = worm.hp;
-      worm.speed *= 1.25;
+      worm.speed *= 1.42;
+      worm.damage *= 1.35;
+      worm.knockbackResistance = Math.max(worm.knockbackResistance, 0.68);
+      worm.cooldown = 0.35 + i * 0.08;
+      worm.color = i % 2 ? "#ff4dff" : "#42e8ff";
       world.enemies.push(worm);
     }
     pulse(this.x, this.y, 180, "#b48cff", 0.36);
@@ -702,7 +817,7 @@ export class StormRailDevourer extends BaseEnemy {
   drawBodyLinks(ctx) {
     const color = this.phaseColor();
     ctx.save();
-    ctx.globalAlpha = this.bodyAlpha;
+    ctx.globalAlpha = this.bodyAlpha * this.portalBodyAlpha();
     ctx.strokeStyle = colorWithAlpha(color, this.mode === "coil" ? 0.78 : 0.42);
     ctx.lineWidth = this.mode === "coil" ? 5 : 3;
     ctx.lineCap = "round";
@@ -722,8 +837,10 @@ export class StormRailDevourer extends BaseEnemy {
   drawSegment(ctx, seg, i) {
     const color = this.phaseColor();
     const r = this.segmentRadius(seg);
+    const portalAlpha = this.portalSegmentAlpha(i + 1);
+    if (portalAlpha <= 0.02) return;
     ctx.save();
-    ctx.globalAlpha = this.bodyAlpha;
+    ctx.globalAlpha = this.bodyAlpha * portalAlpha;
     ctx.translate(seg.x, seg.y);
     ctx.rotate(seg.angle);
     ctx.fillStyle = this.flash > 0 || seg.heat > 0.55 ? "#ffffff" : seg.node ? "#151b35" : "#101827";
@@ -752,7 +869,10 @@ export class StormRailDevourer extends BaseEnemy {
 
   drawHead(ctx) {
     const color = this.phaseColor();
+    const portalAlpha = this.portalSegmentAlpha(0);
+    if (portalAlpha <= 0.02) return;
     ctx.save();
+    ctx.globalAlpha = portalAlpha;
     ctx.translate(this.x, this.y);
     ctx.rotate(this.visualHeading);
     ctx.fillStyle = this.flash > 0 ? "#ffffff" : "#111827";
@@ -783,23 +903,44 @@ export class StormRailDevourer extends BaseEnemy {
   }
 
   drawDeathLaser(ctx) {
+    const origin = this.laserOrigin();
     ctx.save();
-    ctx.translate(this.x, this.y);
+    ctx.translate(origin.x, origin.y);
     ctx.rotate(this.deathLaserAngle);
     ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = colorWithAlpha("#ff4dff", 0.42);
-    ctx.lineWidth = 22;
+    const pulse = 0.82 + Math.sin(this.phase * 18) * 0.18;
+    ctx.strokeStyle = colorWithAlpha("#ff4dff", 0.5);
+    ctx.lineWidth = 46 * pulse;
     ctx.beginPath();
-    ctx.moveTo(this.r, 0);
-    ctx.lineTo(1150, 0);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(1550, 0);
+    ctx.stroke();
+    ctx.strokeStyle = colorWithAlpha("#42e8ff", 0.3);
+    ctx.lineWidth = 70 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(1550, 0);
     ctx.stroke();
     ctx.strokeStyle = "rgba(255,255,255,0.8)";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 10;
     ctx.beginPath();
-    ctx.moveTo(this.r, 0);
-    ctx.lineTo(1150, 0);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(1550, 0);
     ctx.stroke();
     ctx.restore();
+  }
+
+  portalBodyAlpha() {
+    if (this.portalState !== "enter" && this.portalState !== "emerge") return 1;
+    return 0.34 + this.portalPhase * 0.28;
+  }
+
+  portalSegmentAlpha(index) {
+    if (this.portalState !== "enter" && this.portalState !== "emerge") return 1;
+    const order = index / (this.segments.length + 1);
+    const sweep = this.portalPhase * 1.18 - order;
+    if (this.portalState === "enter") return clamp(1 - sweep * 4.2, 0, 1);
+    return clamp(sweep * 4.2, 0, 1);
   }
 }
 

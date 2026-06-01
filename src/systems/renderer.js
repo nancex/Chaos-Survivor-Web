@@ -2707,7 +2707,6 @@ function drawBossBar(ctx) {
   if (!b || b.dead) return;
   const layout = bossHudLayout(viewport, b);
   const { x, y, w } = layout.bar;
-  drawBossTitle(ctx, layout.title.text, layout.title.x, layout.title.y, layout.title.w);
   if (b.shared?.members) {
     drawTwinBossBar(ctx, b, x, y, w);
     return;
@@ -2736,13 +2735,19 @@ function drawStormPortal(ctx, obj) {
   ctx.save();
   ctx.translate(obj.x, obj.y);
   ctx.globalCompositeOperation = "lighter";
-  const r = obj.r * (0.72 + (1 - alpha) * 0.42);
-  glow(ctx, 0, 0, r * 1.5, alpha * 0.42, obj.color);
+  const pulse = 0.86 + Math.sin(state.time * 12 + obj.x * 0.01) * 0.1;
+  const r = obj.r * (0.72 + (1 - alpha) * 0.42) * pulse;
+  glow(ctx, 0, 0, r * 1.75, alpha * 0.52, obj.color);
   ctx.strokeStyle = hexToRgba(obj.color, alpha * 0.86);
-  ctx.lineWidth = 4;
-  ctx.rotate(state.time * 4);
+  ctx.lineWidth = obj.phase === "exit" ? 5.5 : 4;
+  ctx.rotate(state.time * (obj.phase === "exit" ? -5 : 4));
   ctx.beginPath();
   ctx.ellipse(0, 0, r * 0.66, r, 0, 0, TAU);
+  ctx.stroke();
+  ctx.strokeStyle = hexToRgba("#42e8ff", alpha * 0.42);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.92, r * 1.18, 0, 0, TAU);
   ctx.stroke();
   ctx.strokeStyle = hexToRgba("#ffffff", alpha * 0.58);
   ctx.lineWidth = 1.4;
@@ -2755,12 +2760,17 @@ function drawStormPortal(ctx, obj) {
 function drawStormLaserNetHazard(ctx, h, alpha) {
   const armed = (h.armTime || 0) <= 0;
   const warn = Math.max(0, h.armTime || 0) / 0.55;
+  const age = Math.max(0, (h.maxLife || 1) - h.life);
+  const activeAge = Math.max(0, age - (h.armDuration || 0.55));
+  const surge = armed ? Math.max(0, 1 - Math.abs(activeAge - (h.surgeTime || 0.22)) / 0.18) : 0;
+  const flicker = armed ? 0.72 + Math.sin(state.time * 46 + h.x * 0.01) * 0.28 : 1;
+  const power = armed ? Math.max(0.42, flicker + surge * 1.35) : 1;
   ctx.save();
   ctx.translate(h.x, h.y);
   ctx.rotate(h.angle || 0);
   ctx.globalCompositeOperation = "lighter";
-  ctx.strokeStyle = hexToRgba(armed ? h.color : "#ffffff", armed ? alpha * 0.86 : 0.24 + (1 - warn) * 0.36);
-  ctx.lineWidth = armed ? h.width || 22 : 5;
+  ctx.strokeStyle = hexToRgba(armed ? h.color : "#ffffff", armed ? alpha * Math.min(1, 0.58 + power * 0.34) : 0.24 + (1 - warn) * 0.36);
+  ctx.lineWidth = armed ? (h.width || 22) * power : 5;
   ctx.lineCap = "round";
   if (!armed) ctx.setLineDash([28, 16]);
   ctx.beginPath();
@@ -2768,8 +2778,16 @@ function drawStormLaserNetHazard(ctx, h, alpha) {
   ctx.lineTo((h.length || 1200) / 2, 0);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.strokeStyle = hexToRgba("#ffffff", armed ? alpha * 0.82 : 0.5);
-  ctx.lineWidth = armed ? 3 : 1.5;
+  if (armed) {
+    ctx.strokeStyle = hexToRgba("#ff4dff", alpha * surge * 0.58);
+    ctx.lineWidth = (h.width || 22) * 1.7;
+    ctx.beginPath();
+    ctx.moveTo(-(h.length || 1200) / 2, 0);
+    ctx.lineTo((h.length || 1200) / 2, 0);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = hexToRgba("#ffffff", armed ? alpha * Math.min(1, 0.62 + surge * 0.38) : 0.5);
+  ctx.lineWidth = armed ? 5 + surge * 6 : 1.5;
   ctx.beginPath();
   ctx.moveTo(-(h.length || 1200) / 2, 0);
   ctx.lineTo((h.length || 1200) / 2, 0);

@@ -11,12 +11,13 @@ const lastPlayed = new Map();
 const MUSIC_BPM = 152;
 const MUSIC_STEP_MS = Math.round(60000 / MUSIC_BPM / 2);
 const MUSIC_STEP_SECONDS = MUSIC_STEP_MS / 1000;
-const MUSIC_MASTER_GAIN = 0.19;
+const MUSIC_MASTER_GAIN = 0.32;
 const MUSIC_LOOKAHEAD_STEPS = 6;
-const MUSIC_SCALE = [55, 65.41, 73.42, 82.41, 98, 110, 130.81, 146.83, 164.81, 196];
-const LEAD_PATTERN = [12, 14, 15, 17, 19, 17, 15, 14, 12, 10, 8, 10, 12, 15, 17, 22];
-const BASS_PATTERN = [0, 0, 3, 0, 5, 0, 6, 5, 0, 0, 3, 5, 6, 5, 3, 0];
-const ARP_PATTERN = [0, 3, 5, 8, 7, 5, 3, 5, 0, 3, 6, 8, 9, 8, 6, 3];
+const MUSIC_SCALE = [55, 61.74, 65.41, 73.42, 82.41, 92.5, 98, 110, 123.47, 130.81, 146.83, 164.81, 196];
+const LEAD_PATTERN = [12, 14, 15, 17, 19, 17, 15, 14, 12, 10, 8, 10, 12, 15, 17, 22, 24, 22, 19, 17, 15, 17, 19, 15, 14, 12, 10, 12, 15, 17, 19, 22];
+const BASS_PATTERN = [0, 0, 3, 0, 5, 0, 7, 5, 0, 0, 3, 5, 8, 7, 5, 3, 0, 0, 5, 0, 7, 5, 3, 0, 8, 7, 5, 3, 0, 3, 5, 7];
+const ARP_PATTERN = [0, 3, 7, 10, 8, 7, 3, 7, 0, 5, 8, 12, 10, 8, 5, 8, 0, 3, 8, 12, 10, 8, 3, 8, 0, 5, 10, 12, 11, 10, 5, 8];
+const CHORD_ROOTS = [0, 5, 3, 7, 0, 8, 5, 3];
 
 export function setMuted(value) {
   muted = value;
@@ -103,7 +104,7 @@ export function proceduralMusicArrangement() {
     masterGain: MUSIC_MASTER_GAIN,
     lookaheadSteps: MUSIC_LOOKAHEAD_STEPS,
     key: "A Phrygian dominant / neon minor",
-    instruments: ["kick", "snare", "hat", "bass", "lead", "pad", "arpeggio"],
+    instruments: ["kick", "snare", "closed hat", "open hat", "ride", "tom", "sub bass", "distorted bass", "pad", "choir stab", "arpeggio", "lead", "counter lead", "impact"],
   };
 }
 
@@ -113,11 +114,11 @@ function startProceduralMusic() {
     const ctx = ensureAudio();
     musicGain ||= ctx.createGain();
     musicCompressor ||= ctx.createDynamicsCompressor();
-    musicCompressor.threshold.value = -18;
-    musicCompressor.knee.value = 18;
-    musicCompressor.ratio.value = 5;
-    musicCompressor.attack.value = 0.008;
-    musicCompressor.release.value = 0.16;
+    musicCompressor.threshold.value = -20;
+    musicCompressor.knee.value = 20;
+    musicCompressor.ratio.value = 6;
+    musicCompressor.attack.value = 0.006;
+    musicCompressor.release.value = 0.18;
     musicGain.gain.value = MUSIC_MASTER_GAIN;
     try {
       musicGain.disconnect();
@@ -166,33 +167,43 @@ function playMusicNote(freq, duration, type, gainValue, delay = 0, at = null) {
 
 function scheduleMusicStep(step, at = null) {
   const beat = step % 16;
-  const phrase = Math.floor(step / 16) % 4;
+  const phrase = Math.floor(step / 16) % 8;
+  const patternIndex = step % 32;
+  const barStart = beat === 0;
+  const phraseLift = phrase >= 4 ? 1.14 : 1;
   const heavyKick = beat === 0 || beat === 8;
-  if (heavyKick || beat === 3 || beat === 6 || beat === 10 || beat === 14) playMusicKick(heavyKick ? 1.2 : 0.78, at);
-  if (beat === 4 || beat === 12) playMusicSnare(phrase > 1 ? 1.05 : 0.9, at);
-  if ((phrase > 1 && beat === 7) || beat === 15) playMusicSnare(0.32, at);
-  playMusicHat(beat % 4 === 0 ? 0.026 : beat % 2 === 1 ? 0.04 : 0.032, 0, at);
-  if (phrase > 0 && beat % 2 === 0) playMusicHat(0.018, MUSIC_STEP_SECONDS * 0.48, at);
+  if (barStart) playMusicImpact(phrase >= 4 ? 0.72 : 0.48, at);
+  if (heavyKick || beat === 3 || beat === 6 || beat === 10 || beat === 14 || (phrase >= 5 && beat === 12)) playMusicKick((heavyKick ? 1.28 : 0.82) * phraseLift, at);
+  if (beat === 4 || beat === 12) playMusicSnare((phrase >= 4 ? 1.18 : 0.96) * phraseLift, at);
+  if ((phrase > 2 && beat === 7) || beat === 15) playMusicSnare(phrase >= 6 ? 0.46 : 0.32, at);
+  if (phrase >= 5 && (beat === 6 || beat === 14)) playMusicTom(beat === 6 ? 128 : 96, 0.62, at);
+  playMusicHat(beat % 4 === 0 ? 0.03 : beat % 2 === 1 ? 0.052 : 0.038, 0, at);
+  if (phrase > 0 && beat % 2 === 0) playMusicHat(0.024, MUSIC_STEP_SECONDS * 0.48, at);
+  if (beat === 2 || beat === 10 || (phrase >= 4 && beat === 14)) playMusicOpenHat(phrase >= 4 ? 0.05 : 0.038, at);
+  if (phrase >= 3 && beat % 4 === 1) playMusicRide(0.024, at);
+
+  const bass = MUSIC_SCALE[BASS_PATTERN[patternIndex] % MUSIC_SCALE.length] * (phrase >= 6 && beat > 10 ? 2 : 1);
   if (beat % 2 === 0 || phrase >= 2) {
-    const bass = MUSIC_SCALE[BASS_PATTERN[beat] % MUSIC_SCALE.length] * (phrase === 3 && beat > 10 ? 2 : 1);
-    playMusicNote(bass, phrase >= 2 ? 0.17 : 0.24, "sawtooth", phrase >= 2 ? 0.052 : 0.044, 0, at);
-    if (beat === 0 || beat === 8) playMusicNote(bass * 0.5, 0.34, "sine", 0.05, 0, at);
+    playMusicNote(bass, phrase >= 4 ? 0.15 : 0.22, "sawtooth", phrase >= 4 ? 0.066 : 0.052, 0, at);
+    playMusicNote(bass * 0.5, beat === 0 || beat === 8 ? 0.38 : 0.18, "sine", beat === 0 || beat === 8 ? 0.068 : 0.034, 0, at);
   }
+
   if (beat % 4 === 0) {
-    const root = MUSIC_SCALE[(phrase * 2) % MUSIC_SCALE.length];
-    playMusicNote(root * 2, 1.85, "triangle", 0.032, 0, at);
-    playMusicNote(root * 3, 1.55, "sine", 0.02, 0.03, at);
-    playMusicNote(root * 4, 0.72, "triangle", 0.012, 0.08, at);
+    const root = MUSIC_SCALE[CHORD_ROOTS[(Math.floor(step / 16) + beat / 4) % CHORD_ROOTS.length] % MUSIC_SCALE.length];
+    playMusicChord(root, phrase, at);
   }
   if (beat % 2 === 1 || phrase >= 2) {
-    const arp = MUSIC_SCALE[ARP_PATTERN[(beat + phrase * 4) % ARP_PATTERN.length] % MUSIC_SCALE.length];
-    playMusicNote(arp * 4, 0.09, "triangle", phrase >= 2 ? 0.022 : 0.015, 0.01, at);
+    const arp = MUSIC_SCALE[ARP_PATTERN[(patternIndex + phrase * 3) % ARP_PATTERN.length] % MUSIC_SCALE.length];
+    playMusicNote(arp * 4, 0.075, "triangle", phrase >= 4 ? 0.028 : 0.019, 0.01, at);
+    if (phrase >= 5) playMusicNote(arp * 8, 0.052, "sine", 0.012, MUSIC_STEP_SECONDS * 0.28, at);
   }
-  if ((phrase > 0 && beat % 2 === 0) || phrase === 3) {
-    const degree = LEAD_PATTERN[(beat + phrase * 3) % LEAD_PATTERN.length] % MUSIC_SCALE.length;
-    const octave = LEAD_PATTERN[(beat + phrase * 3) % LEAD_PATTERN.length] > 11 ? 4 : 3;
-    playMusicNote(MUSIC_SCALE[degree] * octave, phrase === 3 ? 0.14 : 0.2, "square", phrase === 3 ? 0.026 : 0.019, 0.02, at);
-    if (phrase >= 2 && beat % 4 === 2) playMusicNote(MUSIC_SCALE[degree] * octave * 1.5, 0.1, "triangle", 0.014, 0.08, at);
+  if ((phrase > 0 && beat % 2 === 0) || phrase >= 4) {
+    const leadIndex = (patternIndex + phrase * 4) % LEAD_PATTERN.length;
+    const degree = LEAD_PATTERN[leadIndex] % MUSIC_SCALE.length;
+    const octave = LEAD_PATTERN[leadIndex] > 15 ? 4 : 3;
+    playMusicNote(MUSIC_SCALE[degree] * octave, phrase >= 4 ? 0.15 : 0.21, "square", phrase >= 4 ? 0.032 : 0.022, 0.02, at);
+    if (phrase >= 3 && beat % 4 === 2) playMusicNote(MUSIC_SCALE[degree] * octave * 1.5, 0.11, "triangle", 0.018, 0.08, at);
+    if (phrase >= 6 && beat % 4 === 0) playMusicNote(MUSIC_SCALE[(degree + 3) % MUSIC_SCALE.length] * octave * 2, 0.16, "sine", 0.016, 0.12, at);
   }
 }
 
@@ -213,6 +224,23 @@ function playMusicKick(power, at = null) {
   osc.stop(start + 0.2);
 }
 
+function playMusicTom(freq, power, at = null) {
+  const ctx = ensureAudio();
+  const start = at ?? ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(freq, start);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(48, freq * 0.48), start + 0.18);
+  gain.gain.setValueAtTime(0.001, start);
+  gain.gain.exponentialRampToValueAtTime(0.052 * power, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + 0.24);
+  osc.connect(gain);
+  gain.connect(musicGain || ctx.destination);
+  osc.start(start);
+  osc.stop(start + 0.28);
+}
+
 function playMusicSnare(power, at = null) {
   playMusicNoise({ d: 0.11, g: 0.065 * power, filter: 1800, type: "bandpass" }, at);
   playMusicNote(185, 0.06, "triangle", 0.016 * power, 0, at);
@@ -220,6 +248,44 @@ function playMusicSnare(power, at = null) {
 
 function playMusicHat(gainValue, delay = 0, at = null) {
   playMusicNoise({ d: 0.035, g: gainValue * 1.4, filter: 7200, type: "highpass", delay }, at);
+}
+
+function playMusicOpenHat(gainValue, at = null) {
+  playMusicNoise({ d: 0.14, g: gainValue, filter: 6400, type: "highpass" }, at);
+}
+
+function playMusicRide(gainValue, at = null) {
+  const ctx = ensureAudio();
+  const start = at ?? ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.001, start);
+  gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
+  for (const freq of [2960, 4210, 6150]) {
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, start);
+    osc.connect(gain);
+    osc.start(start);
+    osc.stop(start + 0.3);
+  }
+  gain.connect(musicGain || ctx.destination);
+}
+
+function playMusicChord(root, phrase, at = null) {
+  const chord = phrase % 2 ? [1, 2.25, 3, 4.5] : [1, 2, 3, 4];
+  for (let i = 0; i < chord.length; i++) {
+    const gain = i === 0 ? 0.038 : 0.02;
+    playMusicNote(root * chord[i], i === 0 ? 1.7 : 1.15, i === 0 ? "triangle" : "sine", gain, i * 0.018, at);
+  }
+  if (phrase >= 2) playMusicNote(root * 6, 0.32, "square", 0.012, 0.06, at);
+  if (phrase >= 5) playMusicNoise({ d: 0.22, g: 0.012, filter: 2600, type: "bandpass", delay: 0.02 }, at);
+}
+
+function playMusicImpact(power, at = null) {
+  playMusicNoise({ d: 0.18, g: 0.034 * power, filter: 680, type: "lowpass" }, at);
+  playMusicNote(74, 0.22, "sawtooth", 0.026 * power, 0, at);
+  playMusicNote(148, 0.14, "triangle", 0.012 * power, 0.025, at);
 }
 
 function playMusicNoise(spec, at = null) {

@@ -21,7 +21,7 @@
     { "id": "gloves", "icon": "▣", "name": "拳套", "basePrice": 24, "singleQuality": true, "desc": "暴击率 +7%。" },
     { "id": "knife", "icon": "†", "name": "小刀", "basePrice": 25, "desc": "攻击伤害 +8%/10%/12%/14%/18%。" },
     { "id": "healing_aura", "icon": "✺", "name": "治愈光环", "basePrice": 32, "desc": "每秒生命回复 +1/2/3/4/5。" },
-    { "id": "tardigrade", "icon": "⬡", "name": "水熊虫", "basePrice": 30, "singleQuality": true, "desc": "每波免疫 1 次攻击伤害，可叠加次数。" },
+    { "id": "tardigrade", "icon": "⬡", "name": "水熊虫", "basePrice": 50, "singleQuality": true, "desc": "每波免疫 1 次攻击伤害，可叠加次数。" },
     { "id": "heavy_armor", "icon": "▰", "name": "重甲", "basePrice": 28, "singleQuality": true, "desc": "防御 +8，移动速度 -10。" },
     { "id": "turret", "icon": "♜", "name": "炮塔", "basePrice": 38, "singleQuality": true, "desc": "每波在玩家当前位置附近部署 1 座自动炮塔。" },
     { "id": "thief_mark", "icon": "¢", "name": "窃贼印记", "basePrice": 24, "singleQuality": true, "unique": true, "desc": "只能购买 1 个。敌人金币掉落 +20%，被攻击时损失当前金币 6%。" },

@@ -59,11 +59,12 @@ export function trail(x, y, px, py, color, size = 5) {
 export function spawnDamageText(amount, target, options = {}) {
   const critical = Boolean(options.critical);
   particle("damageText", target?.x ?? options.x ?? 0, (target?.y ?? options.y ?? 0) - (target?.r ?? 12) - 8, {
-    vx: (Math.random() - 0.5) * 14,
-    vy: -34 - Math.random() * 18,
-    life: critical ? 0.72 : 0.58,
-    size: critical ? 18 : 14,
-    color: critical ? "#ff4d6d" : "#fff3b0",
+    vx: (Math.random() - 0.5) * (critical ? 18 : 12),
+    vy: critical ? -74 - Math.random() * 26 : -54 - Math.random() * 20,
+    life: critical ? 0.98 : 0.82,
+    size: critical ? 28 : 19,
+    radius: critical ? 34 : 22,
+    color: critical ? "#ff345f" : "#fff1a8",
     alpha: 1,
     text: String(Math.max(1, Math.round(amount))),
     critical,
@@ -309,19 +310,37 @@ export function drawEffects(ctx) {
 function drawDamageText(ctx, p, alpha) {
   const a = alpha * p.alpha;
   const s = Math.max(12, p.size);
+  const progress = clamp(p.t / Math.max(0.001, p.maxLife), 0, 1);
+  const punch = p.critical
+    ? 1 + Math.max(0, 1 - progress * 4.2) * 0.44
+    : 1 + Math.max(0, 1 - progress * 4.8) * 0.14;
+  const lift = Math.sin(progress * Math.PI) * (p.critical ? 5 : 3);
   ctx.save();
-  ctx.translate(Math.round(p.x), Math.round(p.y));
+  ctx.translate(Math.round(p.x), Math.round(p.y - lift));
+  ctx.scale(punch, punch);
   ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = hexToRgba(p.critical ? "#ff174d" : "#ffd166", a);
+  ctx.shadowBlur = p.critical ? 18 : 10;
   ctx.font = `${s}px "Zpix", "Fusion Pixel 12px Monospaced SC", "Cubic 11", "Press Start 2P", "Courier New", monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = p.critical ? 8 : 6;
+  ctx.strokeStyle = `rgba(1,3,10,${a * 0.96})`;
+  ctx.strokeText(p.text, 0, 0);
   ctx.lineWidth = p.critical ? 4 : 3;
-  ctx.strokeStyle = `rgba(3,8,16,${a * 0.88})`;
+  ctx.strokeStyle = hexToRgba(p.critical ? "#ffffff" : "#5b2b00", a * (p.critical ? 0.78 : 0.52));
   ctx.strokeText(p.text, 0, 0);
   ctx.fillStyle = hexToRgba(p.color, a);
   ctx.fillText(p.text, 0, 0);
-  ctx.fillStyle = hexToRgba("#ffffff", a * (p.critical ? 0.9 : 0.54));
-  ctx.fillRect(-s * 0.22, -s * 0.52, Math.max(2, s * 0.18), 2);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = hexToRgba("#ffffff", a * (p.critical ? 0.95 : 0.68));
+  ctx.fillRect(-s * 0.28, -s * 0.55, Math.max(3, s * 0.26), p.critical ? 3 : 2);
+  if (p.critical) {
+    ctx.font = `${Math.max(8, s * 0.34)}px "Zpix", "Fusion Pixel 12px Monospaced SC", "Courier New", monospace`;
+    ctx.fillStyle = hexToRgba("#ffffff", a * 0.86);
+    ctx.fillText("CRIT", 0, -s * 0.95);
+  }
   ctx.restore();
 }
 

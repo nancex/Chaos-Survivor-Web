@@ -171,13 +171,13 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
 
   function renderDifficultyList() {
     ui.loadoutDifficultyList.innerHTML = "";
-    for (const item of difficulties) {
+    difficulties.forEach((item, index) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `loadout-difficulty-card difficulty-card${item.unlocked ? "" : " locked"}${item.completed ? " completed" : ""}${item.currentHighest ? " current" : ""}${selectedDifficulty?.id === item.id ? " selected" : ""}`;
+      button.className = `loadout-difficulty-card difficulty-card terminal-card${item.unlocked ? "" : " locked"}${item.completed ? " completed" : ""}${item.currentHighest ? " current" : ""}${selectedDifficulty?.id === item.id ? " selected" : ""}`;
       button.disabled = !item.unlocked;
       button.innerHTML = `
-        <span>${String(item.index + 1).padStart(2, "0")}</span>
+        <span class="loadout-card-index">${String(item.index + 1).padStart(2, "0")}</span>
         <strong>${item.name}</strong>
         <p>${item.unlocked ? item.desc : "击败上一难度解锁。"}</p>
         <div class="difficulty-meta">
@@ -187,34 +187,36 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
         </div>
         <em>${item.completed ? `已通关 · ${formatTime(item.bestTime)}` : item.unlocked ? "可挑战" : "未解锁"}</em>`;
       button.addEventListener("click", () => {
+        difficultyIndex = index;
         selectedDifficulty = item;
         renderDifficultyList();
         updateSummary();
       });
       ui.loadoutDifficultyList.appendChild(button);
-    }
+    });
   }
 
   function renderWeaponList() {
     ui.loadoutWeaponList.innerHTML = "";
-    for (const item of weapons) {
+    weapons.forEach((item, index) => {
       const info = WEAPON_INFO[item.id] || item;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `loadout-weapon-card${selectedWeapon?.id === item.id ? " selected" : ""}`;
+      button.className = `loadout-weapon-card terminal-card${selectedWeapon?.id === item.id ? " selected" : ""}`;
       button.innerHTML = `
         <i>${item.icon}</i>
         <strong>${item.name}</strong>
         <p>${item.desc}</p>
         <small>${(info.tags || []).join(" · ")}</small>`;
       button.addEventListener("click", () => {
+        weaponIndex = index;
         selectedWeapon = item;
         renderWeaponList();
         updateWeaponPreviewInfo();
         updateSummary();
       });
       ui.loadoutWeaponList.appendChild(button);
-    }
+    });
   }
 
   function renderDifficultyCarousel() {
@@ -298,6 +300,44 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
     ui.loadoutConfirmButton.disabled = !selectedDifficulty?.unlocked || !selectedWeapon;
   }
 
+  function cycleDifficulty(direction) {
+    if (!difficulties.length) return;
+    let nextIndex = difficultyIndex;
+    for (let attempts = 0; attempts < difficulties.length; attempts++) {
+      nextIndex = cycleCarouselIndex(nextIndex, direction, difficulties.length);
+      if (difficulties[nextIndex]?.unlocked) break;
+    }
+    difficultyIndex = nextIndex;
+    selectedDifficulty = difficulties[difficultyIndex];
+    renderDifficultyList();
+    updateSummary();
+  }
+
+  function cycleWeapon(direction) {
+    if (!weapons.length) return;
+    weaponIndex = cycleCarouselIndex(weaponIndex, direction, weapons.length);
+    selectedWeapon = weapons[weaponIndex];
+    renderWeaponList();
+    updateWeaponPreviewInfo();
+    updateSummary();
+  }
+
+  ui.loadoutOverlay.onkeydown = (event) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      cycleWeapon(-1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      cycleWeapon(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      cycleDifficulty(-1);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      cycleDifficulty(1);
+    }
+  };
+
   ui.loadoutConfirmButton.onclick = () => {
     if (confirmed || !selectedDifficulty?.unlocked || !selectedWeapon) return;
     confirmed = true;
@@ -312,13 +352,15 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
     };
   }
 
-  renderDifficultyCarousel();
-  renderWeaponCarousel();
+  renderDifficultyList();
+  renderWeaponList();
   updateWeaponPreviewInfo();
   updateSummary();
   stopPreview = startWeaponPreview(ui.loadoutWeaponPreview, () => selectedWeapon);
   ui.loadoutOverlay.classList.add("active");
   ui.loadoutOverlay.setAttribute("aria-hidden", "false");
+  ui.loadoutOverlay.tabIndex = -1;
+  ui.loadoutOverlay.focus({ preventScroll: true });
 }
 
 export function hideRunSetup() {

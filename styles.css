@@ -4061,3 +4061,341 @@ h2 {
     min-width: 0;
   }
 }
+
+/* Beta 0.12 command terminal loadout override */
+.loadout-overlay {
+  align-items: stretch;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 18% 14%, rgba(66, 232, 255, 0.2), transparent 28%),
+    radial-gradient(circle at 84% 76%, rgba(255, 209, 102, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(1, 5, 13, 0.98), rgba(2, 7, 16, 1) 54%, rgba(12, 8, 24, 0.98));
+}
+
+.loadout-panel {
+  width: min(1440px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  border-radius: 4px;
+  border-color: rgba(66, 232, 255, 0.58);
+  background:
+    linear-gradient(180deg, rgba(16, 25, 45, 0.96), rgba(3, 8, 18, 0.98) 44%, rgba(5, 5, 14, 0.98)),
+    rgba(3, 8, 16, 0.96);
+}
+
+.loadout-head {
+  padding: 12px 18px;
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.16), rgba(255, 209, 102, 0.08) 48%, rgba(255, 255, 255, 0.035)),
+    rgba(0, 0, 0, 0.2);
+}
+
+.loadout-head h2 {
+  font-size: clamp(30px, 3vw, 46px);
+  letter-spacing: 0;
+}
+
+.loadout-body {
+  grid-template-columns: minmax(250px, 0.72fr) minmax(0, 2.1fr);
+  grid-template-areas: "difficulty weapon";
+  gap: 10px;
+  padding: 10px;
+}
+
+.loadout-difficulty-section {
+  grid-area: difficulty;
+}
+
+.loadout-weapon-section {
+  grid-area: weapon;
+  display: grid;
+  grid-template-columns: minmax(410px, 1.55fr) minmax(240px, 0.85fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "weaponTitle weaponTitle"
+    "preview weaponList";
+}
+
+.loadout-weapon-section .loadout-section-title {
+  grid-area: weaponTitle;
+}
+
+.loadout-section {
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(66, 232, 255, 0.08), transparent 34%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 9px),
+    rgba(2, 8, 18, 0.86);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 18px 42px rgba(0, 0, 0, 0.34);
+}
+
+.loadout-section-title {
+  min-height: 58px;
+  padding: 8px 12px;
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.13), transparent 72%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.loadout-section-title > span {
+  width: 34px;
+  height: 34px;
+  border-radius: 1px;
+  font-size: 14px;
+}
+
+.loadout-section-title h3 {
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.loadout-section-title p {
+  font-size: 11px;
+}
+
+.loadout-difficulty-list {
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.loadout-difficulty-card {
+  min-height: 0;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 5px 10px;
+  padding: 10px;
+  border-radius: 2px;
+}
+
+.loadout-difficulty-card .loadout-card-index {
+  grid-row: 1 / span 3;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(66, 232, 255, 0.28);
+  background: rgba(66, 232, 255, 0.08);
+  color: var(--cyan);
+}
+
+.loadout-difficulty-card strong,
+.loadout-difficulty-card em,
+.loadout-difficulty-card p,
+.loadout-difficulty-card .difficulty-meta {
+  grid-column: 2;
+}
+
+.loadout-difficulty-card p {
+  min-height: 0;
+  margin: 0;
+  line-height: 1.38;
+}
+
+.loadout-difficulty-card em {
+  justify-self: start;
+  align-self: start;
+  margin: 0;
+  color: var(--gold);
+  font-size: 11px;
+}
+
+.loadout-difficulty-card .difficulty-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.loadout-difficulty-card .difficulty-meta i {
+  padding: 4px 3px;
+  font-size: 10px;
+}
+
+.loadout-difficulty-card.selected {
+  transform: none;
+  border-color: rgba(66, 232, 255, 0.94);
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.18), rgba(255, 209, 102, 0.06)),
+    rgba(2, 8, 18, 0.9);
+}
+
+.loadout-weapon-preview-wrap {
+  grid-area: preview;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(260px, 1fr) auto;
+  gap: 10px;
+  min-height: 0;
+  padding: 10px;
+  border-right: 1px solid rgba(66, 232, 255, 0.16);
+  border-bottom: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 209, 102, 0.13), transparent 42%),
+    linear-gradient(180deg, rgba(66, 232, 255, 0.06), transparent);
+}
+
+.loadout-weapon-preview {
+  height: 100%;
+  min-height: 260px;
+  border-radius: 2px;
+  border-color: rgba(255, 209, 102, 0.46);
+  background-size: 16px 16px, 16px 16px, 100% 100%, 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    0 0 34px rgba(255, 209, 102, 0.12);
+}
+
+.loadout-weapon-info {
+  align-content: start;
+  gap: 8px;
+  border: 1px solid rgba(66, 232, 255, 0.18);
+  border-radius: 2px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.loadout-weapon-info strong {
+  font-size: clamp(24px, 3vw, 40px);
+  letter-spacing: 0;
+}
+
+.loadout-weapon-info p {
+  line-height: 1.5;
+}
+
+.loadout-weapon-list {
+  grid-area: weaponList;
+  align-content: start;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.loadout-weapon-card {
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  padding: 9px;
+  border-radius: 2px;
+}
+
+.loadout-weapon-card i {
+  width: 38px;
+  height: 38px;
+  border-radius: 2px;
+  color: var(--gold);
+}
+
+.loadout-weapon-card strong {
+  display: block;
+  font-size: 15px;
+}
+
+.loadout-weapon-card p {
+  display: none;
+}
+
+.loadout-weapon-card small {
+  display: block;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loadout-weapon-card.selected {
+  transform: none;
+  border-color: rgba(255, 209, 102, 0.88);
+  background:
+    linear-gradient(90deg, rgba(255, 209, 102, 0.18), rgba(66, 232, 255, 0.08)),
+    rgba(4, 10, 18, 0.9);
+}
+
+.loadout-footer {
+  padding: 10px 14px;
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.12), rgba(255, 209, 102, 0.08)),
+    rgba(0, 0, 0, 0.28);
+}
+
+.loadout-summary span {
+  border-radius: 2px;
+  padding: 8px 10px;
+}
+
+@media (max-width: 820px) {
+  .loadout-overlay {
+    padding: 8px;
+  }
+
+  .loadout-panel {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
+
+  .loadout-body {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "difficulty"
+      "weapon";
+    overflow: auto;
+    padding: 8px;
+  }
+
+  .loadout-weapon-section {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "weaponTitle"
+      "preview"
+      "weaponList";
+  }
+
+  .loadout-section {
+    overflow: hidden;
+  }
+
+  .loadout-difficulty-list {
+    max-height: 228px;
+    overflow-y: auto;
+  }
+
+  .loadout-weapon-list {
+    max-height: 214px;
+    overflow-y: auto;
+  }
+
+  .loadout-weapon-preview-wrap {
+    border-right: 0;
+    border-bottom: 1px solid rgba(66, 232, 255, 0.16);
+    grid-template-rows: auto auto;
+  }
+
+  .loadout-weapon-preview {
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .loadout-difficulty-card {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .loadout-difficulty-card .difficulty-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .loadout-weapon-card {
+    min-height: 62px;
+  }
+
+  .loadout-footer,
+  .loadout-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  #loadoutBackButton,
+  #loadoutConfirmButton {
+    width: 100%;
+  }
+}

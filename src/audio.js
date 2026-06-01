@@ -5,16 +5,20 @@ let musicGain = null;
 let proceduralPaused = false;
 let musicStep = 0;
 let musicSection = 0;
+let nextMusicTime = 0;
 const lastPlayed = new Map();
 const MUSIC_BPM = 138;
 const MUSIC_STEP_MS = Math.round(60000 / MUSIC_BPM / 2);
+const MUSIC_STEP_SECONDS = MUSIC_STEP_MS / 1000;
+const MUSIC_MASTER_GAIN = 0.11;
+const MUSIC_LOOKAHEAD_STEPS = 4;
 const MUSIC_SCALE = [55, 65.41, 73.42, 82.41, 98, 110, 130.81, 146.83];
 const LEAD_PATTERN = [12, 14, 15, 10, 12, 17, 15, 14, 12, 10, 8, 10, 12, 15, 17, 19];
 const BASS_PATTERN = [0, 0, 3, 0, 5, 5, 3, 0, 0, 0, 3, 0, 6, 5, 3, 0];
 
 export function setMuted(value) {
   muted = value;
-  if (musicGain) musicGain.gain.value = muted ? 0.0001 : 0.035;
+  if (musicGain) musicGain.gain.value = muted ? 0.0001 : MUSIC_MASTER_GAIN;
   if (!muted && !proceduralTimer) startMusic();
 }
 
@@ -93,6 +97,9 @@ export function proceduralMusicArrangement() {
   return {
     externalTracks: false,
     bpm: MUSIC_BPM,
+    continuous: true,
+    masterGain: MUSIC_MASTER_GAIN,
+    lookaheadSteps: MUSIC_LOOKAHEAD_STEPS,
     key: "A Phrygian dominant / neon minor",
     instruments: ["kick", "snare", "hat", "bass", "lead", "pad", "arpeggio"],
   };
@@ -103,14 +110,19 @@ function startProceduralMusic() {
   try {
     const ctx = ensureAudio();
     musicGain ||= ctx.createGain();
-    musicGain.gain.value = 0.045;
+    musicGain.gain.value = MUSIC_MASTER_GAIN;
     musicGain.connect(ctx.destination);
-    const playStep = () => {
+    nextMusicTime = ctx.currentTime + 0.035;
+    const schedule = () => {
       if (muted) return;
-      scheduleMusicStep(musicStep++);
+      const now = ctx.currentTime;
+      while (nextMusicTime < now + MUSIC_STEP_SECONDS * MUSIC_LOOKAHEAD_STEPS) {
+        scheduleMusicStep(musicStep++, nextMusicTime);
+        nextMusicTime += MUSIC_STEP_SECONDS;
+      }
     };
-    playStep();
-    proceduralTimer = window.setInterval(playStep, MUSIC_STEP_MS);
+    schedule();
+    proceduralTimer = window.setInterval(schedule, Math.max(35, MUSIC_STEP_MS * 0.45));
   } catch {
     muted = true;
   }
@@ -123,9 +135,9 @@ function stopProceduralMusic() {
   }
 }
 
-function playMusicNote(freq, duration, type, gainValue, delay = 0) {
+function playMusicNote(freq, duration, type, gainValue, delay = 0, at = null) {
   const ctx = ensureAudio();
-  const start = ctx.currentTime + delay;
+  const start = (at ?? ctx.currentTime) + delay;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
@@ -139,38 +151,38 @@ function playMusicNote(freq, duration, type, gainValue, delay = 0) {
   osc.stop(start + duration + 0.05);
 }
 
-function scheduleMusicStep(step) {
+function scheduleMusicStep(step, at = null) {
   const beat = step % 16;
   const phrase = Math.floor(step / 16) % 4;
-  if (beat === 0 || beat === 8 || beat === 11) playMusicKick(beat === 0 ? 1 : 0.72);
-  if (beat === 4 || beat === 12) playMusicSnare(phrase > 1 ? 0.78 : 0.62);
-  if (beat % 2 === 1 || (phrase > 0 && beat % 4 === 2)) playMusicHat(beat % 4 === 3 ? 0.034 : 0.022);
+  if (beat === 0 || beat === 8 || beat === 11) playMusicKick(beat === 0 ? 1 : 0.72, at);
+  if (beat === 4 || beat === 12) playMusicSnare(phrase > 1 ? 0.78 : 0.62, at);
+  if (beat % 2 === 1 || (phrase > 0 && beat % 4 === 2)) playMusicHat(beat % 4 === 3 ? 0.034 : 0.022, at);
   if (beat % 2 === 0) {
     const bass = MUSIC_SCALE[BASS_PATTERN[beat] % MUSIC_SCALE.length] * (phrase === 3 && beat > 10 ? 2 : 1);
-    playMusicNote(bass, 0.22, "sawtooth", 0.018);
+    playMusicNote(bass, 0.22, "sawtooth", 0.032, 0, at);
   }
   if (beat % 4 === 0) {
     const root = MUSIC_SCALE[(phrase * 2) % MUSIC_SCALE.length];
-    playMusicNote(root * 2, 1.65, "triangle", 0.011);
-    playMusicNote(root * 3, 1.4, "sine", 0.007, 0.03);
+    playMusicNote(root * 2, 1.65, "triangle", 0.022, 0, at);
+    playMusicNote(root * 3, 1.4, "sine", 0.014, 0.03, at);
   }
   if ((phrase > 0 && beat % 2 === 0) || phrase === 3) {
     const degree = LEAD_PATTERN[(beat + phrase * 3) % LEAD_PATTERN.length] % MUSIC_SCALE.length;
     const octave = LEAD_PATTERN[(beat + phrase * 3) % LEAD_PATTERN.length] > 11 ? 4 : 3;
-    playMusicNote(MUSIC_SCALE[degree] * octave, phrase === 3 ? 0.14 : 0.2, "square", phrase === 3 ? 0.01 : 0.007, 0.02);
+    playMusicNote(MUSIC_SCALE[degree] * octave, phrase === 3 ? 0.14 : 0.2, "square", phrase === 3 ? 0.018 : 0.013, 0.02, at);
   }
 }
 
-function playMusicKick(power) {
+function playMusicKick(power, at = null) {
   const ctx = ensureAudio();
-  const start = ctx.currentTime;
+  const start = at ?? ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "sine";
   osc.frequency.setValueAtTime(95, start);
   osc.frequency.exponentialRampToValueAtTime(38, start + 0.12);
   gain.gain.setValueAtTime(0.001, start);
-  gain.gain.exponentialRampToValueAtTime(0.045 * power, start + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.08 * power, start + 0.006);
   gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
   osc.connect(gain);
   gain.connect(musicGain || ctx.destination);
@@ -178,18 +190,18 @@ function playMusicKick(power) {
   osc.stop(start + 0.2);
 }
 
-function playMusicSnare(power) {
-  playMusicNoise({ d: 0.11, g: 0.038 * power, filter: 1800, type: "bandpass" });
-  playMusicNote(185, 0.06, "triangle", 0.008 * power);
+function playMusicSnare(power, at = null) {
+  playMusicNoise({ d: 0.11, g: 0.065 * power, filter: 1800, type: "bandpass" }, at);
+  playMusicNote(185, 0.06, "triangle", 0.016 * power, 0, at);
 }
 
-function playMusicHat(gainValue) {
-  playMusicNoise({ d: 0.035, g: gainValue, filter: 7200, type: "highpass" });
+function playMusicHat(gainValue, at = null) {
+  playMusicNoise({ d: 0.035, g: gainValue * 1.4, filter: 7200, type: "highpass" }, at);
 }
 
-function playMusicNoise(spec) {
+function playMusicNoise(spec, at = null) {
   const ctx = ensureAudio();
-  const start = ctx.currentTime;
+  const start = at ?? ctx.currentTime;
   const length = Math.max(1, Math.floor(ctx.sampleRate * spec.d));
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
   const data = buffer.getChannelData(0);

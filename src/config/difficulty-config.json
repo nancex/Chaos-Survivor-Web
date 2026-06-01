@@ -71,7 +71,7 @@
   },
   "void_crown": {
     "name": "废弃实验室 难度6",
-    "desc": "最高难度，怪潮和 Boss 都会进入极限压制。",
+    "desc": "最疯狂的难度，怪潮和 Boss 都会进入极限压制，不是人能打的。",
     "enemyLimit": 999,
     "spawnRate": 2.0,
     "enemyHp": 2.5,

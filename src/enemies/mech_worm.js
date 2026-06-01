@@ -123,7 +123,8 @@ export class MechWorm extends BaseEnemy {
 
   recordPath() {
     this.path.unshift({ x: this.x, y: this.y });
-    const max = this.segmentCount * this.segmentGap + 24;
+    const rawMax = this.segmentCount * this.segmentGap + 24;
+    const max = Number.isFinite(rawMax) ? Math.max(1, Math.ceil(rawMax)) : 96;
     if (this.path.length > max) this.path.length = max;
   }
 

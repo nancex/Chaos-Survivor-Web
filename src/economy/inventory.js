@@ -42,12 +42,6 @@ export const WEAPON_INFO = {
     desc: "无人机会离身攻击，电量不足时返回玩家身边充电。",
     tags: ["自动炮台", "电量循环", "持续输出"],
   },
-  pulse: {
-    icon: "●",
-    name: "脉冲新星",
-    desc: "周期性范围爆发，击退周围敌人。",
-    tags: ["范围爆发", "击退"],
-  },
   prism_railgun: {
     icon: "⟐",
     name: "棱镜轨道炮",

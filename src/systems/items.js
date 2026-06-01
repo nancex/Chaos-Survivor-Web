@@ -31,7 +31,7 @@ export const ITEM_DEFS = [
   { id: "speed_boots", icon: "»", name: "速度靴", basePrice: 20, singleQuality: true, desc: "移动速度 +18。", apply: ({ player }) => { player.speed += 18; } },
   { id: "rapid_cord", icon: "⟲", name: "速射索", basePrice: 28, singleQuality: true, desc: "攻击速度 +12%。", apply: ({ player }) => { player.attackSpeedBonus += 0.12; } },
   { id: "fang", icon: "⋏", name: "尖牙", basePrice: 30, singleQuality: true, desc: "攻击附加 7 DPS 流血，持续 2.8 秒。", apply: ({ player }) => { player.bleedDps += 7; player.bleedDuration = Math.max(player.bleedDuration, 2.8); } },
-  { id: "split_shot", icon: "≋", name: "分裂弹", basePrice: 34, singleQuality: true, desc: "随机强化一个武器槽：该武器投射物 +1，该武器伤害 -20%。", apply: ({ player }) => applySplitShot(player) },
+  { id: "split_shot", icon: "≋", name: "分裂弹", basePrice: 34, singleQuality: true, desc: "随机强化一个武器槽：按武器类型增加传递、数量、范围或宽度，该武器伤害 -20%。", apply: ({ player }) => applySplitShot(player) },
   { id: "lucky_clover", icon: "♣", name: "幸运草", basePrice: 26, singleQuality: true, desc: "幸运值 +10，商店更容易出现高品质商品。", apply: ({ player }) => { player.luck += 10; } },
   { id: "gloves", icon: "▣", name: "拳套", basePrice: 24, singleQuality: true, desc: "暴击率 +7%。", apply: ({ player }) => { player.critChance = clamp(player.critChance + 0.07, 0, 0.7); } },
   { id: "knife", icon: "†", name: "小刀", basePrice: 25, desc: "攻击伤害 +8%/10%/12%/14%/18%。", apply: ({ player, scale }) => { player.damageScale += 0.08 * scale; } },
@@ -194,7 +194,7 @@ export function canPurchaseItem(itemId) {
   const item = ITEM_DEFS.find((entry) => entry.id === itemId);
   if (!item) return { ok: false, reason: "道具不存在" };
   if (item.unique && hasPurchasedUniqueItem(item.id)) return { ok: false, reason: "该道具只能购买一次" };
-  if (item.id === "split_shot" && !state.inventory?.weaponSlots.some((slot) => ["ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain", "starfall_scepter", "phase_needler", "echo_tuning_fork", "rift_loom"].includes(slot.id))) return { ok: false, reason: "需要至少一把投射物武器" };
+  if (item.id === "split_shot" && !state.inventory?.weaponSlots.some((slot) => splitShotWeaponIds().includes(slot.id))) return { ok: false, reason: "需要至少一把投射物武器" };
   return { ok: true };
 }
 
@@ -203,7 +203,7 @@ export function offerQualityForItem(item, rarity) {
 }
 
 function applySplitShot(player) {
-  const slots = (state.inventory?.weaponSlots || []).filter((slot) => ["ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain", "starfall_scepter", "phase_needler", "echo_tuning_fork", "rift_loom"].includes(slot.id));
+  const slots = (state.inventory?.weaponSlots || []).filter((slot) => splitShotWeaponIds().includes(slot.id));
   if (!slots.length) return;
   const slot = slots[Math.floor(Math.random() * slots.length)];
   slot.projectileBonus = (slot.projectileBonus || 0) + 1;
@@ -211,6 +211,10 @@ function applySplitShot(player) {
   player.projectileBonus = 0;
   player.splitDamagePenalty = 0;
   recomputeAllWeapons();
+}
+
+function splitShotWeaponIds() {
+  return ["arc", "ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain", "starfall_scepter", "phase_needler", "echo_tuning_fork", "rift_loom"];
 }
 
 function updateAirburst(p, dt) {

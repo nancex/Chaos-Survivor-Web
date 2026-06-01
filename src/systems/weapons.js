@@ -145,7 +145,6 @@ export function updateWeapons(dt) {
   updateMissileWeapon(dt);
   updateBoomerangWeapon(dt);
   updateDroneWeapon(dt);
-  updatePulseWeapon(dt);
   updatePrismRailgunWeapon(dt);
   updateVoidSingularityWeapon(dt);
   updateTeslaMineChainWeapon(dt);
@@ -182,6 +181,10 @@ function weaponSplitDamageMultiplier(w) {
   return Math.max(0.25, 1 - Math.min(0.75, w?.splitDamagePenalty || 0));
 }
 
+function weaponSplitBonus(w) {
+  return Math.max(0, weaponProjectileBonus(w));
+}
+
 function weaponQualityAt(w, index) {
   const qualities = w?.slotQualities || [];
   return index < qualities.length ? qualities[index] : w?.quality || "common";
@@ -205,7 +208,7 @@ function updateArcWeapon(dt) {
   let source = { x: p.x, y: p.y };
   let target = first;
   let damage = weaponPower(w, w.damage);
-  const chains = w.chains + (rank >= 1 ? 1 : 0);
+  const chains = w.chains + (rank >= 1 ? 1 : 0) + weaponSplitBonus(w);
 
   for (let i = 0; i < chains && target; i++) {
     visited.add(target);
@@ -383,6 +386,7 @@ function updateBoomerangWeapon(dt) {
       knockback: shotRank >= 2 ? 154 : 118,
       farBurst: shotRank >= 3,
       returnBounceLeft: shotRank >= 4 ? 1 : 0,
+      chainHitsLeft: weaponSplitBonus(w),
       damage: weaponPower(shot, w.damage),
     });
   }
@@ -509,6 +513,8 @@ function moveDrone(d, x, y, dt, speed) {
 
 function fireDroneBullet(x, y, angle, w, drone) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
+  const linked = randomDroneLinkedWeapon();
+  if (linked && fireDroneLinkedWeapon(x, y, angle, w, drone, linked)) return;
   const rank = drone?.qualityRank ?? qualityRank(w);
   const color = drone?.color ?? qualityColor(w, "#77ff8a");
   const quality = drone?.quality || w.quality || "common";
@@ -553,6 +559,128 @@ function fireDroneBullet(x, y, angle, w, drone) {
   }
 }
 
+function randomDroneLinkedWeapon() {
+  const slots = (state.inventory?.weaponSlots || []).filter((slot) => slot.id !== "drone" && state.weapons?.[slot.id]?.level > 0);
+  if (!slots.length) return null;
+  return slots[Math.floor(Math.random() * slots.length)];
+}
+
+function fireDroneLinkedWeapon(x, y, angle, droneWeapon, drone, slot) {
+  const base = state.weapons?.[slot.id];
+  if (!base) return false;
+  const shot = weaponViewForQuality(base, slot.quality);
+  const rank = qualityRank(shot);
+  const color = qualityColor(shot, drone?.color || "#77ff8a");
+  const source = { x, y };
+  const target = nearestEnemy(x, y, base.range || droneWeapon.attackRange || 640);
+  const aim = target ? Math.atan2(target.y - y, target.x - x) : angle;
+
+  if (slot.id === "void_singularity") {
+    fireSingularity(aim, base, shot, rank, color, 0, source, { sourceWeaponId: slot.id });
+    return true;
+  }
+  if (slot.id === "missile") {
+    fireProjectile(aim, base, {
+      source,
+      sourceWeaponId: slot.id,
+      shape: "missile",
+      variant: rank >= 1 ? "burnMissile" : "missile",
+      quality: slot.quality,
+      color,
+      tracking: true,
+      turnSpeed: base.turnSpeed,
+      pierce: 1,
+      radius: rank >= 1 ? 7 : 6,
+      life: 3.2,
+      explodeRadius: base.explodeRadius + rank * 8,
+      explodeDamage: base.explodeDamage,
+      knockback: 125,
+      damage: weaponPower(shot, base.damage) * 0.82,
+    });
+    return true;
+  }
+  if (slot.id === "ice") {
+    fireProjectile(aim, base, {
+      source,
+      sourceWeaponId: slot.id,
+      shape: "ice",
+      variant: rank >= 2 ? "iceShard" : "ice",
+      quality: slot.quality,
+      color,
+      tracking: true,
+      turnSpeed: base.turnSpeed,
+      pierce: rank >= 3 ? 2 : 1,
+      radius: 5 + rank * 0.4,
+      life: 2,
+      freezeDuration: base.freezeDuration,
+      knockback: 82,
+      damage: weaponPower(shot, base.damage) * 0.78,
+    });
+    return true;
+  }
+  if (slot.id === "boomerang") {
+    fireProjectile(aim, base, {
+      source,
+      sourceWeaponId: slot.id,
+      shape: "boomerang",
+      variant: rank >= 1 ? "dualBoomerang" : "boomerang",
+      quality: slot.quality,
+      color,
+      returning: true,
+      returnAfter: base.returnAfter,
+      returnSpeed: base.returnSpeed,
+      pierce: 4,
+      radius: 7 + rank * 0.4,
+      speed: base.speed,
+      life: 2,
+      knockback: 96,
+      chainHitsLeft: weaponSplitBonus(base),
+      damage: weaponPower(shot, base.damage) * 0.72,
+    });
+    return true;
+  }
+  if (slot.id === "phase_needler") {
+    firePhaseNeedle(aim, base, shot, rank, color, 0, Math.random().toString(36).slice(2), false, source, slot.id);
+    return true;
+  }
+  if (slot.id === "starfall_scepter" && target) {
+    spawnStarfallProjectile(base, shot, rank, color, target.x, target.y, 0, false);
+    return true;
+  }
+  if (slot.id === "tesla_mine_chain" && target) {
+    placeTeslaNode(base, shot, rank, color, { x: target.x, y: target.y, angle: aim }, 0, 1, false);
+    return true;
+  }
+  if (slot.id === "rift_loom" && target) {
+    spawnRiftLoom(target.x, target.y, base, shot, rank, color, false, 0, 0.72 + weaponSplitBonus(base) * 0.14);
+    return true;
+  }
+  if (slot.id === "echo_tuning_fork") {
+    fireEchoCone(aim, base, shot, rank, color, false, 0, 0.72, 1, source, weaponSplitBonus(base), slot.id);
+    return true;
+  }
+  if (slot.id === "prism_railgun" && target) {
+    fireDronePrismRail(source, target, base, shot, rank, color, slot.id);
+    return true;
+  }
+  if (slot.id === "arc" && target) {
+    damageEnemy(target, weaponPower(shot, base.damage) * 0.7, target.x, target.y);
+    world.weaponFx.push({ kind: "arc", segments: [{ x1: x, y1: y, x2: target.x, y2: target.y, seed: Math.random() * 999 }], life: 0.14, maxLife: 0.14, color });
+    return true;
+  }
+  return false;
+}
+
+function fireDronePrismRail(source, target, base, shot, rank, color, sourceWeaponId) {
+  const angle = Math.atan2(target.y - source.y, target.x - source.x);
+  const range = Math.min(base.range, Math.max(260, Math.hypot(target.x - source.x, target.y - source.y) + 120));
+  const width = base.width + rank * 1.2 + weaponSplitBonus(base) * 6;
+  const x2 = source.x + Math.cos(angle) * range;
+  const y2 = source.y + Math.sin(angle) * range;
+  damageEnemy(target, weaponPower(shot, base.damage) * 0.72, target.x, target.y);
+  world.weaponFx.push({ kind: "prismRail", x1: source.x, y1: source.y, x2, y2, width, color, rank, secondary: true, sourceWeaponId, impacts: [{ x: target.x, y: target.y }], life: 0.18, maxLife: 0.18, seed: Math.random() * 999 });
+}
+
 function fireDroneBeam(drone, target, w, color, legendary) {
   const damage = w.bulletDamage * (drone.qualityMult || w.qualityMult || 1) * weaponSplitDamageMultiplier(w) * (legendary ? 3.4 : 1.45);
   damageEnemy(target, damage, drone.x, drone.y);
@@ -580,41 +708,12 @@ function fireDroneBeam(drone, target, w, color, legendary) {
   });
 }
 
-function updatePulseWeapon(dt) {
-  const w = state.weapons.pulse;
-  if (!tickWeapon(w, dt)) return;
-  const rank = qualityRank(w);
-  const color = qualityColor(w, "#77ff8a");
-  const radius = w.radius + (rank >= 1 ? 18 : 0) + weaponRangeBonus() * 0.25;
-  const hits = [];
-  queryEnemies(state.player.x, state.player.y, radius, hits);
-  for (const e of hits) {
-    damageEnemy(e, weaponPower(w, w.damage), e.x, e.y);
-    applyKnockback(e, e.x - state.player.x, e.y - state.player.y, 105);
-  }
-  if (hits.length) addCameraShake(Math.min(5, 1.8 + hits.length * 0.2));
-  if (rank >= 2) {
-    const outer = [];
-    queryEnemies(state.player.x, state.player.y, radius + 42, outer);
-    for (const e of outer) {
-      if (hits.includes(e)) continue;
-      damageEnemy(e, weaponPower(w, w.damage) * 0.42, state.player.x, state.player.y);
-      applyKnockback(e, e.x - state.player.x, e.y - state.player.y, 82);
-    }
-  }
-  if (rank >= 3 && hits.length >= 5) w.timer = Math.max(0.55, w.timer - Math.min(0.42, hits.length * 0.025));
-  w.pulseCount = (w.pulseCount || 0) + 1;
-  const doublePulse = rank >= 4 && w.pulseCount % 3 === 0;
-  pulse(state.player.x, state.player.y, radius, color, 0.34);
-  world.weaponFx.push({ kind: doublePulse ? "doublePulse" : "pulse", x: state.player.x, y: state.player.y, radius, life: 0.36, maxLife: 0.36, color });
-  playSfx("explode");
-}
-
 function updatePrismRailgunWeapon(dt) {
   const w = state.weapons.prism_railgun;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
-  const count = Math.max(1, w.count || 1) + weaponProjectileBonus(w);
+  const count = Math.max(1, w.count || 1);
+  const splitBonus = weaponSplitBonus(w);
   const targets = choosePrismRailTargets(w, count);
   if (!targets.length) return;
   let fired = 0;
@@ -626,10 +725,10 @@ function updatePrismRailgunWeapon(dt) {
     const rank = qualityRank(shot);
     const color = qualityColor(shot, "#7df9ff");
     const spread = (i - (count - 1) / 2) * 0.055;
-    firePrismRail(shot, w, base + spread, color, rank, 1, i, count, false);
+    firePrismRail(shot, w, base + spread, color, rank, 1, i, count, false, splitBonus);
     fired++;
     if (rank >= 4) {
-      firePrismRail(shot, w, base + spread * 0.45, color, rank, 0.46, i + 0.5, count, true);
+      firePrismRail(shot, w, base + spread * 0.45, color, rank, 0.46, i + 0.5, count, true, splitBonus);
       fired++;
     }
   }
@@ -662,10 +761,10 @@ function choosePrismRailTargets(w, count) {
   return selected.map((entry) => entry.enemy);
 }
 
-function firePrismRail(shot, base, angle, color, rank, damageScale, beamIndex, beamCount, secondary) {
+function firePrismRail(shot, base, angle, color, rank, damageScale, beamIndex, beamCount, secondary, splitBonus = 0) {
   const p = state.player;
   const range = base.range + weaponRangeBonus();
-  const width = (base.width + (rank >= 1 ? 4 : 0) + rank * 1.2) * (secondary ? 0.68 : 1);
+  const width = (base.width + (rank >= 1 ? 4 : 0) + rank * 1.2 + splitBonus * 6) * (secondary ? 0.68 : 1);
   const nx = -Math.sin(angle);
   const ny = Math.cos(angle);
   const offset = (beamIndex - (beamCount - 1) / 2) * 12 + (secondary ? 26 : 0);
@@ -778,29 +877,31 @@ function updateVoidSingularityWeapon(dt) {
   if (!target) return;
 
   const base = Math.atan2(target.y - p.y, target.x - p.x);
-  const count = Math.max(1, w.count || 1) + weaponProjectileBonus(w);
+  const count = Math.max(1, w.count || 1);
+  const splitBonus = weaponSplitBonus(w);
   for (let i = 0; i < count; i++) {
     const quality = weaponQualityAt(w, i);
     const shot = weaponViewForQuality(w, quality);
     const rank = qualityRank(shot);
     const color = qualityColor(shot, "#8b5cf6");
     const spread = (i - (count - 1) / 2) * 0.2;
-    fireSingularity(base + spread, w, shot, rank, color, i);
+    fireSingularity(base + spread, w, shot, rank, color, i, null, null, splitBonus);
   }
   playSfx("shoot");
 }
 
-function fireSingularity(angle, base, shot, rank, color, index) {
+function fireSingularity(angle, base, shot, rank, color, index, source = null, extra = null, splitBonus = 0) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
   const p = state.player;
   const speed = base.speed * (rank >= 4 ? 0.92 : 1);
-  const x = p.x + Math.cos(angle) * 22;
-  const y = p.y + Math.sin(angle) * 22;
+  const origin = source || p;
+  const x = origin.x + Math.cos(angle) * 22;
+  const y = origin.y + Math.sin(angle) * 22;
   world.projectiles.push({
     x,
     y,
-    px: p.x,
-    py: p.y,
+    px: origin.x,
+    py: origin.y,
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
     speed,
@@ -817,7 +918,7 @@ function fireSingularity(angle, base, shot, rank, color, index) {
     qualityRank: rank,
     tracking: false,
     returning: false,
-    pullRadius: base.pullRadius + (rank >= 1 ? 28 : 0) + rank * 8 + weaponRangeBonus() * 0.12,
+    pullRadius: base.pullRadius + (rank >= 1 ? 28 : 0) + rank * 8 + splitBonus * 34 + weaponRangeBonus() * 0.12,
     damageRadius: base.damageRadius + rank * 7,
     collapseRadius: base.collapseRadius + (rank >= 3 ? 28 : 0) + rank * 5,
     pullStrength: base.pullStrength * (1 + rank * 0.12),
@@ -831,6 +932,7 @@ function fireSingularity(angle, base, shot, rank, color, index) {
     trailTimer: 0,
     seed: Math.random() * 999 + index * 31,
     secondCollapse: rank >= 4,
+    ...(extra || {}),
   });
   pulse(x, y, base.pullRadius * 0.38, color, 0.16);
 }
@@ -1214,9 +1316,9 @@ function choosePhaseNeedlerTarget(w) {
   return best || nearestEnemy(p.x, p.y, range);
 }
 
-function firePhaseNeedle(angle, base, shot, rank, color, index, volleyId, major) {
+function firePhaseNeedle(angle, base, shot, rank, color, index, volleyId, major, source = null, sourceWeaponId = null) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
-  const p = state.player;
+  const p = source || state.player;
   const speed = base.speed * (rank >= 1 ? 1.08 : 1) * (major ? 0.92 : 1);
   const sx = p.x + Math.cos(angle) * 16 - Math.sin(angle) * (major ? 0 : (index % 3 - 1) * 5);
   const sy = p.y + Math.sin(angle) * 16 + Math.cos(angle) * (major ? 0 : (index % 3 - 1) * 5);
@@ -1257,6 +1359,7 @@ function firePhaseNeedle(angle, base, shot, rank, color, index, volleyId, major)
     phaseDamage,
     volleyId,
     major,
+    sourceWeaponId,
     hitIds: new Set(),
     spin: Math.random() * TAU,
     trailTimer: 0,
@@ -1271,27 +1374,17 @@ function updateEchoTuningForkWeapon(dt) {
   const p = state.player;
   const target = chooseEchoTarget(w);
   const baseAngle = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
-  const slots = Math.max(1, w.count || 1);
-  const bonus = weaponProjectileBonus(w);
-  let fired = 0;
-  for (let slot = 0; slot < slots; slot++) {
-    const quality = weaponQualityAt(w, slot);
-    const shot = weaponViewForQuality(w, quality);
-    const rank = qualityRank(shot);
-    const color = qualityColor(shot, "#7dfcff");
-    fireEchoCone(baseAngle + (slot - (slots - 1) / 2) * 0.12, w, shot, rank, color, false, slot);
-    fired++;
-    for (let extra = 0; extra < bonus && slot === 0; extra++) {
-      const side = extra % 2 === 0 ? 1 : -1;
-      fireEchoCone(baseAngle + side * (0.18 + Math.floor(extra / 2) * 0.1), w, shot, rank, color, true, extra + 10);
-      fired++;
-    }
-    if (rank >= 4) {
-      fireEchoCone(baseAngle, w, shot, rank, "#ffd166", true, slot + 30, 0.62, 1.2);
-      fired++;
-    }
+  const slotBonus = Math.max(0, (w.slotCount || w.count || 1) - 1);
+  const splitBonus = weaponSplitBonus(w);
+  const enhancement = slotBonus + splitBonus;
+  const shot = weaponViewForQuality(w, w.quality || weaponQualityAt(w, 0));
+  const rank = qualityRank(shot);
+  const color = qualityColor(shot, "#7dfcff");
+  fireEchoCone(baseAngle, w, shot, rank, color, false, 0, 1 + slotBonus * 0.28, 1, null, enhancement);
+  if (rank >= 4) {
+    fireEchoCone(baseAngle, w, shot, rank, "#ffd166", true, 30, 0.62, 1.2, null, enhancement);
   }
-  if (fired) playSfx("shoot");
+  playSfx("shoot");
 }
 
 function chooseEchoTarget(w) {
@@ -1316,12 +1409,12 @@ function chooseEchoTarget(w) {
   return best || nearestEnemy(p.x, p.y, range);
 }
 
-function fireEchoCone(angle, base, shot, rank, color, secondary, index, damageScale = 1, angleScale = 1) {
-  const p = state.player;
-  const range = (base.range + weaponRangeBonus() + (rank >= 1 ? 42 : 0) + rank * 8) * (secondary ? 0.92 : 1);
-  const coneAngle = (base.angle + (rank >= 1 ? 0.08 : 0) + rank * 0.018) * angleScale;
-  const damage = weaponPower(shot, base.damage) * damageScale * (secondary ? 0.72 : 1);
-  const echoDamage = weaponPower(shot, base.echoDamage) * damageScale * (secondary ? 0.7 : 1);
+function fireEchoCone(angle, base, shot, rank, color, secondary, index, damageScale = 1, angleScale = 1, source = null, enhancement = 0, sourceWeaponId = null) {
+  const p = source || state.player;
+  const range = (base.range + weaponRangeBonus() + (rank >= 1 ? 42 : 0) + rank * 8 + enhancement * 58) * (secondary ? 0.92 : 1);
+  const coneAngle = (base.angle + (rank >= 1 ? 0.08 : 0) + rank * 0.018 + enhancement * 0.085) * angleScale;
+  const damage = weaponPower(shot, base.damage) * damageScale * (1 + enhancement * 0.18) * (secondary ? 0.72 : 1);
+  const echoDamage = weaponPower(shot, base.echoDamage) * damageScale * (1 + enhancement * 0.14) * (secondary ? 0.7 : 1);
   const hits = [];
   const hitPoints = [];
   queryEnemies(p.x, p.y, range + 70, hits);
@@ -1350,6 +1443,7 @@ function fireEchoCone(angle, base, shot, rank, color, secondary, index, damageSc
     color,
     rank,
     secondary,
+    sourceWeaponId,
     life: secondary ? 0.28 : 0.34,
     maxLife: secondary ? 0.28 : 0.34,
     seed: Math.random() * 999 + index * 17,
@@ -1420,18 +1514,14 @@ function updateRiftLoomWeapon(dt) {
   if (!tickWeapon(w, dt)) return;
   const anchor = chooseRiftLoomAnchor(w);
   const slots = Math.max(1, w.count || 1);
-  const bonus = weaponProjectileBonus(w);
+  const splitBonus = weaponSplitBonus(w);
   for (let slot = 0; slot < slots; slot++) {
     const quality = weaponQualityAt(w, slot);
     const shot = weaponViewForQuality(w, quality);
     const rank = qualityRank(shot);
     const color = qualityColor(shot, "#9d7cff");
     const offset = (slot - (slots - 1) / 2) * 34;
-    spawnRiftLoom(anchor.x + Math.cos(anchor.angle + Math.PI / 2) * offset, anchor.y + Math.sin(anchor.angle + Math.PI / 2) * offset, w, shot, rank, color, false, slot);
-    for (let extra = 0; extra < bonus && slot === 0; extra++) {
-      const side = extra % 2 === 0 ? 1 : -1;
-      spawnRiftLoom(anchor.x + Math.cos(anchor.angle + side * 1.2) * 68, anchor.y + Math.sin(anchor.angle + side * 1.2) * 68, w, shot, rank, color, true, extra + 10);
-    }
+    spawnRiftLoom(anchor.x + Math.cos(anchor.angle + Math.PI / 2) * offset, anchor.y + Math.sin(anchor.angle + Math.PI / 2) * offset, w, shot, rank, color, false, slot, 1 + splitBonus * 0.18);
     if (rank >= 4) spawnRiftLoom(anchor.x, anchor.y, w, shot, rank, "#ffd166", true, slot + 30, 1.22, -1);
   }
   playSfx("shoot");
@@ -1503,14 +1593,15 @@ function tickWeapon(w, dt) {
 function fireProjectile(angle, w, opt) {
   if (world.projectiles.length >= PROJECTILE_LIMIT) return;
   const p = state.player;
+  const origin = opt.source || p;
   const speed = opt.speed || w.speed || 520;
-  const sx = p.x + Math.cos(angle) * 12;
-  const sy = p.y + Math.sin(angle) * 12;
+  const sx = origin.x + Math.cos(angle) * 12;
+  const sy = origin.y + Math.sin(angle) * 12;
   world.projectiles.push({
     x: sx,
     y: sy,
-    px: p.x,
-    py: p.y,
+    px: origin.x,
+    py: origin.y,
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed,
     speed,
@@ -1543,6 +1634,8 @@ function fireProjectile(angle, w, opt) {
     farBurst: opt.farBurst || false,
     farBurstDone: false,
     returnBounceLeft: opt.returnBounceLeft || 0,
+    chainHitsLeft: opt.chainHitsLeft || 0,
+    sourceWeaponId: opt.sourceWeaponId || null,
     hitIds: new Set(),
     spin: Math.random() * TAU,
     trailTimer: 0,
@@ -1596,6 +1689,7 @@ function updateProjectiles(dt) {
       world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, life: 0.18, maxLife: 0.18, color: b.color });
       if (b.shape === "ice" && b.iceRing) iceRingBurst(b);
       if (b.shape === "ice" && b.frostZone && !e.dead) frostZone(b);
+      if (b.shape === "boomerang" && b.chainHitsLeft > 0) chainBoomerangToNextTarget(b, e);
       playSfx("hit");
       if (b.explodeRadius) {
         explode(b);
@@ -1618,6 +1712,35 @@ function updateProjectiles(dt) {
     const expired = !b.noLifeExpire && b.life <= 0;
     if (expired || b.pierce <= 0 || Math.abs(b.x) > half || Math.abs(b.y) > half) world.projectiles.splice(i, 1);
   }
+}
+
+function chainBoomerangToNextTarget(b, sourceEnemy) {
+  const next = nextBoomerangTarget(b, sourceEnemy);
+  if (!next) return;
+  b.chainHitsLeft--;
+  b.returnTimer = 0;
+  b.farBurstDone = false;
+  b.life = Math.max(b.life, 0.9);
+  const angle = Math.atan2(next.y - b.y, next.x - b.x);
+  b.vx = Math.cos(angle) * b.speed;
+  b.vy = Math.sin(angle) * b.speed;
+  b.angle = angle;
+}
+
+function nextBoomerangTarget(b, sourceEnemy) {
+  const hits = [];
+  queryEnemies(sourceEnemy.x, sourceEnemy.y, 520, hits);
+  let best = null;
+  let bestD = Infinity;
+  for (const e of hits) {
+    if (e.dead || b.hitIds.has(e)) continue;
+    const d = distSq(sourceEnemy.x, sourceEnemy.y, e.x, e.y);
+    if (d < bestD) {
+      bestD = d;
+      best = e;
+    }
+  }
+  return best;
 }
 
 function updateSingularityProjectile(b, index, dt) {

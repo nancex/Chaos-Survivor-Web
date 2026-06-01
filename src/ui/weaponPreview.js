@@ -52,7 +52,7 @@ export function drawWeaponPreview(ctx, canvas, weapon, t) {
   const cy = h / 2;
   if (!weapon) return;
   const rank = qualityRank(weapon);
-  const baseColor = { arc: "#42e8ff", ice: "#9ff4ff", missile: "#ffb347", boomerang: "#ff65d8", drone: "#77ff8a", pulse: "#77ff8a", prism_railgun: "#7df9ff", void_singularity: "#8b5cf6", tesla_mine_chain: "#42e8ff", starfall_scepter: "#ffd166", phase_needler: "#b48cff", echo_tuning_fork: "#7dfcff", rift_loom: "#9d7cff" }[weapon.id] || "#42e8ff";
+  const baseColor = { arc: "#42e8ff", ice: "#9ff4ff", missile: "#ffb347", boomerang: "#ff65d8", drone: "#77ff8a", prism_railgun: "#7df9ff", void_singularity: "#8b5cf6", tesla_mine_chain: "#42e8ff", starfall_scepter: "#ffd166", phase_needler: "#b48cff", echo_tuning_fork: "#7dfcff", rift_loom: "#9d7cff" }[weapon.id] || "#42e8ff";
   const color = qualityColor(weapon, baseColor);
   const scale = Math.min(1, Math.max(0.46, Math.min((w * 0.5 - 24) / 190, (h * 0.5 - 22) / 96)));
   ctx.save();
@@ -64,7 +64,6 @@ export function drawWeaponPreview(ctx, canvas, weapon, t) {
   else if (weapon.id === "missile") drawMissile(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "boomerang") drawBoomerang(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "drone") drawDrones(ctx, 0, 0, t, rank, color);
-  else if (weapon.id === "pulse") drawPulse(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "prism_railgun") drawPrismRailgun(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "void_singularity") drawVoidSingularity(ctx, 0, 0, t, rank, color);
   else if (weapon.id === "tesla_mine_chain") drawTeslaMineChain(ctx, 0, 0, t, rank, color);

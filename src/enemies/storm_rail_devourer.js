@@ -7,11 +7,17 @@ import { BaseEnemy } from "./BaseEnemy.js";
 import { MechWorm } from "./mech_worm.js";
 import { applyPlayerDamage } from "../systems/items.js";
 
-const SEGMENT_COUNT = 42;
+const SEGMENT_COUNT = 64;
 const SEGMENT_GAP = 26;
 const NODE_STEP = 4;
 const BODY_RADIUS_SCALE = 0.58;
 const MAX_BODY_BEND = 0.58;
+const PATH_EXTRA_LENGTH = 180;
+const CRUISE_TURN_RATE = 1.05;
+const HIGH_SPEED_TURN_RATE = 0.48;
+const BURST_TURN_RATE = 0.14;
+const DASH_APPROACH_MIN = 360;
+const DASH_APPROACH_MAX = 460;
 const PHASE2_HP = 0.66;
 const PHASE3_HP = 0.32;
 const NET_LENGTH = 3600;
@@ -46,6 +52,17 @@ export class StormRailDevourer extends BaseEnemy {
     this.dashLoops = 0;
     this.dashVx = 0;
     this.dashVy = 0;
+    this.moveVx = 0;
+    this.moveVy = 0;
+    this.currentSpeed = this.speed;
+    this.targetSpeed = this.speed;
+    this.dashState = "idle";
+    this.highSpeedTimer = 0;
+    this.burstTimer = 0;
+    this.coastTimer = 0;
+    this.dashTargetAngle = 0;
+    this.dashApproachDistance = 420;
+    this.dashCanBurst = false;
     this.portalTimer = 0;
     this.portalLoops = 0;
     this.portalState = "ready";
@@ -86,6 +103,10 @@ export class StormRailDevourer extends BaseEnemy {
     }
     this.heading = Math.atan2(p.y - this.y, p.x - this.x);
     this.visualHeading = this.heading;
+    this.moveVx = Math.cos(this.heading) * this.speed;
+    this.moveVy = Math.sin(this.heading) * this.speed;
+    this.currentSpeed = this.speed;
+    this.targetSpeed = this.speed;
     for (let i = 0; i < SEGMENT_COUNT; i++) {
       this.segments.push({
         x: this.x - Math.cos(this.heading) * (i + 1) * this.segmentGap,
@@ -142,16 +163,74 @@ export class StormRailDevourer extends BaseEnemy {
     if (this.modeTimer <= 0) this.nextMode();
   }
 
+  moveWithSteering(dt, targetAngle, targetSpeed, turnRate, accelRate) {
+    const turn = clamp(angleDiff(targetAngle, this.heading), -turnRate * dt, turnRate * dt);
+    this.heading += turn;
+    this.targetSpeed = targetSpeed;
+    this.currentSpeed += (this.targetSpeed - this.currentSpeed) * Math.min(1, accelRate * dt);
+    const desiredVx = Math.cos(this.heading) * this.currentSpeed;
+    const desiredVy = Math.sin(this.heading) * this.currentSpeed;
+    const blend = Math.min(1, accelRate * dt);
+    this.moveVx += (desiredVx - this.moveVx) * blend;
+    this.moveVy += (desiredVy - this.moveVy) * blend;
+    this.x += this.moveVx * dt;
+    this.y += this.moveVy * dt;
+  }
+
+  predictedPlayerAngle(lead = 0.35) {
+    const p = state.player;
+    const speed = p.speed || 0;
+    const leadX = (p.dirX || 0) * speed * lead;
+    const leadY = (p.dirY || 0) * speed * lead;
+    return Math.atan2(p.y + leadY - this.y, p.x + leadX - this.x);
+  }
+
+  startHighSpeedRun() {
+    this.dashState = "high_speed";
+    this.highSpeedTimer = this.phaseLevel >= 3 ? 2.5 : this.phaseLevel === 2 ? 2.35 : 2.15;
+    this.highSpeedTimer += Math.random() * 0.45;
+    this.burstTimer = 0;
+    this.coastTimer = 0;
+    this.dashCanBurst = true;
+    this.dashApproachDistance = DASH_APPROACH_MIN + Math.random() * (DASH_APPROACH_MAX - DASH_APPROACH_MIN);
+    this.dashTargetAngle = this.predictedPlayerAngle(0.46);
+    this.currentSpeed = Math.max(this.currentSpeed, this.speed * 2.2);
+    if (Math.hypot(this.moveVx, this.moveVy) < this.speed) {
+      this.moveVx = Math.cos(this.heading) * this.currentSpeed;
+      this.moveVy = Math.sin(this.heading) * this.currentSpeed;
+    }
+  }
+
+  startBurstDash() {
+    this.dashState = "burst_dash";
+    this.dashCanBurst = false;
+    this.burstTimer = this.phaseLevel >= 3 ? 0.56 : this.phaseLevel === 2 ? 0.5 : 0.45;
+    this.dashTime = this.burstTimer;
+    this.dashTargetAngle = this.predictedPlayerAngle(0.3);
+    pulse(this.x, this.y, 126, this.phaseColor(), 0.35);
+    state.shake = Math.max(state.shake, 8);
+  }
+
+  startCoast() {
+    this.dashState = "coast";
+    this.burstTimer = 0;
+    this.dashTime = 0;
+    this.coastTimer = (this.phaseLevel >= 3 ? 1.25 : 1.08) + Math.random() * 0.36;
+    this.dashCoast = this.coastTimer;
+  }
+
   updateCruise(dt, dx, dy, d, boost = 1) {
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
     this.roamTimer -= dt;
     this.observeTimer = Math.max(0, this.observeTimer - dt);
     if (this.roamTimer <= 0) {
-      const far = d < 560 ? 1 : d > 1100 ? -1 : Math.random() < 0.5 ? -1 : 1;
-      this.roamAngle = Math.atan2(dy, dx) + far * (Math.PI * (0.45 + Math.random() * 0.36));
-      this.roamRadius = 680 + Math.random() * 420 + this.phaseLevel * 70;
-      this.roamTimer = 0.7 + Math.random() * 0.75;
+      const side = Math.random() < 0.5 ? -1 : 1;
+      const base = Math.atan2(dy, dx);
+      const sweep = d < 620 ? 0.64 : d > 1280 ? 0.18 : 0.42;
+      this.roamAngle = base + side * Math.PI * (sweep + Math.random() * 0.22);
+      this.roamRadius = 760 + Math.random() * 520 + this.phaseLevel * 80;
+      this.roamTimer = 2.2 + Math.random() * 1.2;
     }
     const p = state.player;
     const desiredX = p.x - Math.cos(this.roamAngle) * this.roamRadius;
@@ -159,14 +238,13 @@ export class StormRailDevourer extends BaseEnemy {
     const toX = desiredX - this.x;
     const toY = desiredY - this.y;
     const toD = Math.max(1, Math.hypot(toX, toY));
-    const huntBias = this.observeTimer <= 0 && d < 980 ? 0.38 : d > 1250 ? 0.52 : 0.12;
+    const huntBias = d > 1350 ? 0.82 : this.observeTimer <= 0 && d < 980 ? 0.32 : d > 1120 ? 0.46 : 0.1;
     const moveX = toX / toD * (1 - huntBias) + dx / d * huntBias;
     const moveY = toY / toD * (1 - huntBias) + dy / d * huntBias;
     const target = Math.atan2(moveY, moveX);
-    this.heading += angleDiff(target, this.heading) * Math.min(1, dt * (1.65 + this.phaseLevel * 0.36));
-    const speed = this.speed * boost * (1.08 + this.phaseLevel * 0.16);
-    this.x += Math.cos(this.heading) * speed * dt;
-    this.y += Math.sin(this.heading) * speed * dt;
+    const speedBoost = d > 1350 ? 1.72 : d > 1120 ? 1.38 : 1;
+    const speed = this.speed * boost * speedBoost * (1.1 + this.phaseLevel * 0.14);
+    this.moveWithSteering(dt, target, speed, CRUISE_TURN_RATE + this.phaseLevel * 0.16, 1.85 + this.phaseLevel * 0.28);
     if (this.observeTimer <= 0 && this.fireTimer <= 0 && d < 1050) {
       this.fireTimer = this.phaseLevel >= 3 ? 0.22 : this.phaseLevel === 2 ? 0.32 : 0.42;
       this.fireHeadBarrage(Math.atan2(dy, dx));
@@ -176,42 +254,49 @@ export class StormRailDevourer extends BaseEnemy {
   updateDash(dt, dx, dy, d) {
     this.bodyDamageEnabled = true;
     this.bodyAlpha = 1;
-    if (this.dashWindup > 0) {
-      this.dashWindup -= dt;
-      this.turnToward(Math.atan2(dy, dx), dt, 9.5);
-      if (this.dashWindup <= 0) this.heading = Math.atan2(state.player.y - this.y, state.player.x - this.x);
-      this.visualHeading = this.heading;
-      return;
-    }
-    if (this.dashTime > 0) {
-      this.dashTime -= dt;
-      const speed = this.speed * (this.phaseLevel >= 3 ? 10.8 : this.phaseLevel === 2 ? 8.9 : 7.2);
-      this.dashVx = Math.cos(this.heading) * speed;
-      this.dashVy = Math.sin(this.heading) * speed;
-      this.x += this.dashVx * dt;
-      this.y += this.dashVy * dt;
+    if (this.dashState === "idle") this.startHighSpeedRun();
+    if (this.dashState === "high_speed") {
+      this.highSpeedTimer -= dt;
+      const target = this.predictedPlayerAngle(0.52);
+      const speed = this.speed * (this.phaseLevel >= 3 ? 5.15 : this.phaseLevel === 2 ? 4.55 : 3.95);
+      this.moveWithSteering(dt, target, speed, HIGH_SPEED_TURN_RATE + this.phaseLevel * 0.08, 2.7 + this.phaseLevel * 0.35);
       if (this.modeShotTimer <= 0) {
-        this.modeShotTimer = 0.035;
-        trail(this.x, this.y, this.x - Math.cos(this.heading) * 82, this.y - Math.sin(this.heading) * 82, this.phaseColor(), 20);
+        this.modeShotTimer = 0.07;
+        trail(this.x, this.y, this.x - Math.cos(this.heading) * 64, this.y - Math.sin(this.heading) * 64, this.phaseColor(), 14);
       }
-      if (this.dashTime <= 0) this.dashCoast = this.phaseLevel >= 3 ? 0.46 : 0.36;
+      if (this.dashCanBurst && d <= this.dashApproachDistance) this.startBurstDash();
+      else if (this.highSpeedTimer <= 0 && !this.dashCanBurst) this.startCoast();
       return;
     }
-    if (this.dashCoast > 0) {
-      this.dashCoast -= dt;
-      const drag = Math.pow(0.08, dt);
-      this.dashVx *= drag;
-      this.dashVy *= drag;
-      this.x += this.dashVx * dt;
-      this.y += this.dashVy * dt;
-      if (this.dashCoast <= 0 && this.dashLoops > 0) {
-        this.dashLoops--;
-        this.dashWindup = this.phaseLevel >= 3 ? 0.08 : 0.16;
-        this.dashTime = this.phaseLevel >= 3 ? 0.5 : 0.42;
-        this.dashVx = 0;
-        this.dashVy = 0;
-        this.turnToward(Math.atan2(state.player.y - this.y, state.player.x - this.x), dt, 18);
-        this.visualHeading = this.heading;
+    if (this.dashState === "burst_dash") {
+      this.burstTimer -= dt;
+      const speed = this.speed * (this.phaseLevel >= 3 ? 11.2 : this.phaseLevel === 2 ? 9.6 : 8.2);
+      this.moveWithSteering(dt, this.dashTargetAngle, speed, BURST_TURN_RATE, 6.8);
+      if (this.modeShotTimer <= 0) {
+        this.modeShotTimer = 0.028;
+        trail(this.x, this.y, this.x - Math.cos(this.heading) * 104, this.y - Math.sin(this.heading) * 104, this.phaseColor(), 24);
+      }
+      if (this.burstTimer <= 0) this.startCoast();
+      return;
+    }
+    if (this.dashState === "coast") {
+      this.coastTimer -= dt;
+      const target = this.heading + angleDiff(this.predictedPlayerAngle(0.24), this.heading) * 0.22;
+      const speed = this.speed * (this.phaseLevel >= 3 ? 4.35 : this.phaseLevel === 2 ? 3.95 : 3.45);
+      this.moveWithSteering(dt, target, speed, 0.2 + this.phaseLevel * 0.04, 1.15);
+      if (this.modeShotTimer <= 0) {
+        this.modeShotTimer = 0.09;
+        trail(this.x, this.y, this.x - Math.cos(this.heading) * 70, this.y - Math.sin(this.heading) * 70, this.phaseColor(), 16);
+      }
+      if (this.coastTimer <= 0) {
+        if (this.mode === "portal_dash") {
+          this.dashState = "idle";
+          this.dashCoast = 0;
+        } else if (this.modeTimer > 1.9 && d > 560) {
+          this.startHighSpeedRun();
+        } else {
+          this.modeTimer = Math.min(this.modeTimer, 0);
+        }
       }
     }
   }
@@ -272,15 +357,22 @@ export class StormRailDevourer extends BaseEnemy {
         this.portalState = "burst";
         this.portalPhase = 1;
         this.dashLoops = 0;
-        this.dashTime = this.phaseLevel >= 3 ? 0.5 : 0.42;
-        this.dashCoast = this.phaseLevel >= 3 ? 0.42 : 0.32;
+        this.dashState = "burst_dash";
+        this.dashTargetAngle = this.predictedPlayerAngle(0.34);
+        this.burstTimer = this.phaseLevel >= 3 ? 0.54 : 0.46;
+        this.coastTimer = this.phaseLevel >= 3 ? 1.35 : 1.12;
+        this.dashTime = this.burstTimer;
+        this.dashCoast = 0;
+        this.dashCanBurst = false;
+        this.currentSpeed = Math.max(this.currentSpeed, this.speed * 5.2);
+        this.moveVx = Math.cos(this.heading) * this.currentSpeed;
+        this.moveVy = Math.sin(this.heading) * this.currentSpeed;
         this.firePurpleFireballs();
         pulse(this.x, this.y, 112, "#b48cff", 0.32);
       }
       return;
     }
-    if (this.portalState === "burst" && this.dashTime > 0) return this.updateDash(dt, dx, dy, d);
-    if (this.portalState === "burst" && this.dashCoast > 0) return this.updateDash(dt, dx, dy, d);
+    if (this.portalState === "burst" && this.dashState !== "idle") return this.updateDash(dt, dx, dy, d);
     this.portalState = "ready";
     if (this.portalTimer > 0) return;
     if (this.portalLoops <= 0) {
@@ -317,6 +409,12 @@ export class StormRailDevourer extends BaseEnemy {
     this.dashCoast = 0;
     this.dashVx = 0;
     this.dashVy = 0;
+    this.dashState = "idle";
+    this.burstTimer = 0;
+    this.coastTimer = 0;
+    this.currentSpeed = Math.max(this.currentSpeed, this.speed * 2.8);
+    this.moveVx = Math.cos(this.heading) * this.currentSpeed;
+    this.moveVy = Math.sin(this.heading) * this.currentSpeed;
     this.seedPath();
   }
 
@@ -375,6 +473,10 @@ export class StormRailDevourer extends BaseEnemy {
     this.portalPhase = 0;
     this.dashVx = 0;
     this.dashVy = 0;
+    this.dashState = "idle";
+    this.dashWindup = 0;
+    this.dashTime = 0;
+    this.dashCoast = 0;
     const speed = this.phaseLevel >= 3 ? 0.72 : this.phaseLevel === 2 ? 0.86 : 1;
     if (mode === "emerge") this.modeTimer = 1.1;
     if (mode === "cruise") {
@@ -389,13 +491,9 @@ export class StormRailDevourer extends BaseEnemy {
       this.bodyAlpha = 0.28;
     }
     if (mode === "dash") {
-      this.modeTimer = (this.phaseLevel >= 3 ? 2.25 : 2.6) * speed;
-      this.dashLoops = this.phaseLevel >= 3 ? 4 : this.phaseLevel === 2 ? 3 : 2;
-      this.dashWindup = this.phaseLevel >= 3 ? 0.08 : 0.18;
-      this.dashTime = this.phaseLevel >= 3 ? 0.52 : 0.42;
-      this.dashCoast = 0;
-      this.heading = Math.atan2(state.player.y - this.y, state.player.x - this.x);
-      this.visualHeading = this.heading;
+      this.modeTimer = this.phaseLevel >= 3 ? 7.6 : this.phaseLevel === 2 ? 6.8 : 5.8;
+      this.startHighSpeedRun();
+      this.dashTargetAngle = this.predictedPlayerAngle(0.46);
       pulse(this.x, this.y, 96, this.phaseColor(), 0.28);
     }
     if (mode === "portal_dash") {
@@ -418,19 +516,19 @@ export class StormRailDevourer extends BaseEnemy {
 
   seedPath() {
     this.path.length = 0;
-    for (let i = 0; i < SEGMENT_COUNT * this.segmentGap + 90; i++) {
+    for (let i = 0; i < SEGMENT_COUNT * this.segmentGap + PATH_EXTRA_LENGTH; i++) {
       this.path.push({ x: this.x - Math.cos(this.heading) * i, y: this.y - Math.sin(this.heading) * i });
     }
   }
 
   recordPath(prevX = this.x, prevY = this.y) {
     const distance = Math.hypot(this.x - prevX, this.y - prevY);
-    const samples = Math.max(1, Math.min(8, Math.ceil(distance / 22)));
+    const samples = Math.max(1, Math.min(14, Math.ceil(distance / 18)));
     for (let i = samples; i >= 1; i--) {
       const t = i / samples;
       this.path.unshift({ x: prevX + (this.x - prevX) * t, y: prevY + (this.y - prevY) * t });
     }
-    const max = SEGMENT_COUNT * this.segmentGap + 90;
+    const max = SEGMENT_COUNT * this.segmentGap + PATH_EXTRA_LENGTH;
     if (this.path.length > max) this.path.length = max;
   }
 
@@ -438,7 +536,8 @@ export class StormRailDevourer extends BaseEnemy {
     let leadX = this.x;
     let leadY = this.y;
     let leadAngle = this.heading;
-    const maxBend = this.mode === "coil" ? 0.74 : this.mode === "dash" || this.mode === "portal_dash" ? 0.5 : MAX_BODY_BEND;
+    const isFast = this.mode === "dash" || (this.mode === "portal_dash" && this.portalState === "burst");
+    const maxBend = this.mode === "coil" ? 0.74 : isFast ? 0.42 : MAX_BODY_BEND;
     for (let i = 0; i < this.segments.length; i++) {
       const seg = this.segments[i];
       const pathTarget = this.samplePath((i + 1) * this.segmentGap);
@@ -446,9 +545,9 @@ export class StormRailDevourer extends BaseEnemy {
       let angle = pathTarget ? Math.atan2((pathFront?.y ?? leadY) - pathTarget.y, (pathFront?.x ?? leadX) - pathTarget.x) : Math.atan2(leadY - seg.y, leadX - seg.x);
       const bend = angleDiff(angle, leadAngle);
       if (Math.abs(bend) > maxBend) angle = leadAngle + Math.sign(bend) * maxBend;
-      const targetX = leadX - Math.cos(angle) * this.segmentGap;
-      const targetY = leadY - Math.sin(angle) * this.segmentGap;
-      const follow = this.mode === "dash" || this.mode === "portal_dash" ? 0.82 : 0.92;
+      const targetX = pathTarget ? pathTarget.x : leadX - Math.cos(angle) * this.segmentGap;
+      const targetY = pathTarget ? pathTarget.y : leadY - Math.sin(angle) * this.segmentGap;
+      const follow = isFast ? 0.64 : this.mode === "coil" ? 0.8 : 0.74;
       seg.x += (targetX - seg.x) * follow;
       seg.y += (targetY - seg.y) * follow;
       seg.angle = angle;
@@ -513,8 +612,8 @@ export class StormRailDevourer extends BaseEnemy {
   }
 
   updateVisualHeading(dt, prevX, prevY) {
-    if (this.mode === "dash" || this.mode === "portal_dash" || this.dashWindup > 0) {
-      this.visualHeading = this.heading;
+    if (this.mode === "dash" || this.mode === "portal_dash") {
+      this.visualHeading += angleDiff(this.heading, this.visualHeading) * Math.min(1, dt * 10);
       return;
     }
     const moveX = this.x - prevX;
@@ -786,13 +885,13 @@ export class StormRailDevourer extends BaseEnemy {
   }
 
   drawTelegraphs(ctx) {
-    if (this.mode !== "dash" || this.dashWindup <= 0) return;
+    if (this.mode !== "dash" || this.dashState !== "high_speed" || !this.dashCanBurst) return;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.visualHeading);
     ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = colorWithAlpha(this.phaseColor(), 0.65);
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = colorWithAlpha(this.phaseColor(), 0.38);
+    ctx.lineWidth = 2.5;
     ctx.setLineDash([18, 12]);
     ctx.beginPath();
     ctx.moveTo(this.r, 0);

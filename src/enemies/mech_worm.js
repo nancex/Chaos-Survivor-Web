@@ -199,8 +199,10 @@ function drawWormShadow(ctx, e) {
   ctx.fillStyle = "rgba(0,0,0,0.26)";
   for (let i = e.segments.length - 1; i >= 0; i--) {
     const seg = e.segments[i];
+    const rx = Math.max(e.r * 0.18, e.r * (0.72 - i * 0.025));
+    const ry = Math.max(e.r * 0.08, e.r * 0.24);
     ctx.beginPath();
-    ctx.ellipse(seg.x, seg.y + 10, e.r * (0.72 - i * 0.025), e.r * 0.24, seg.angle, 0, TAU);
+    ctx.ellipse(seg.x, seg.y + 10, rx, ry, seg.angle, 0, TAU);
     ctx.fill();
   }
   ctx.beginPath();

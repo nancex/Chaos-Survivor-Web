@@ -168,7 +168,7 @@ function createWeaponOffer() {
     name: `${QUALITY_INFO[rarity].name}${info.name}`,
     rarity,
     category: "武器",
-    price: Math.floor((18 + rank * rank * 13 + state.wave * 3) * (weaponId === state.initialWeaponId ? 0.92 : 1)),
+    price: Math.floor((18 + rank * rank * 13 + state.wave * 3) * premiumQualityPriceMultiplier(rarity) * (weaponId === state.initialWeaponId ? 0.92 : 1)),
     maxPurchases: 1,
     purchaseCount: 0,
     quantity: 1,
@@ -191,7 +191,7 @@ function createItemOffer() {
     name: template.singleQuality ? template.name : `${quality.name}${template.name}`,
     rarity,
     category: "道具",
-    price: Math.floor((template.basePrice + state.wave * (1.5 + rank * 0.8)) * (QUALITY_INFO[rarity]?.mult || 1)),
+    price: Math.floor((template.basePrice + state.wave * (1.5 + rank * 0.8)) * (QUALITY_INFO[rarity]?.mult || 1) * premiumQualityPriceMultiplier(rarity)),
     maxPurchases: 1,
     purchaseCount: 0,
     quantity: 1,
@@ -209,6 +209,12 @@ function itemWeight(item) {
   const lateGame = state.wave >= 6 ? 1.15 : 1;
   const expensive = item.basePrice >= 34 ? 0.82 : 1;
   return Math.max(0.5, lateGame * expensive);
+}
+
+function premiumQualityPriceMultiplier(quality) {
+  if (quality === "legendary") return 1.55;
+  if (quality === "epic") return 1.28;
+  return 1;
 }
 
 function weightedChoice(entries) {

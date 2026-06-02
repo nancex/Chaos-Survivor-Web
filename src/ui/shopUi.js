@@ -104,7 +104,7 @@ function renderOffer(offer) {
   lock.type = "button";
   lock.className = `shop-lock${offer.locked ? " active" : ""}`;
   lock.textContent = offer.locked ? text.locked : text.lock;
-  lock.disabled = soldOut || offer.blackMarket;
+  lock.disabled = soldOut;
   lock.addEventListener("click", () => {
     toggleOfferLock(offer.uid);
     renderShop();
@@ -126,7 +126,7 @@ function renderOffer(offer) {
       <i>${offer.icon}</i>
       <div>
         <strong>${offer.name}</strong>
-        <span style="color:${quality.color}">${quality.name} · ${offer.blackMarket ? "黑市" : offer.category}</span>
+        <span style="color:${quality.color}">${quality.name} · ${offer.category}</span>
       </div>
     </div>
     <p>${offer.desc}</p>

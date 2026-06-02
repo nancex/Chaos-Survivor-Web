@@ -4,7 +4,7 @@ import { clamp, distSq } from "../utils.js";
 import { burst, pulse, spawnDamageText } from "../effects.js";
 import { playSfx } from "../audio.js";
 import { currentDifficulty } from "../difficulty.js";
-import { applyPlayerDamage, enemyTarget, onEnemyKilled } from "../systems/items.js";
+import { applyPlayerDamage } from "../systems/items.js";
 import { maybeTriggerBossSignature } from "../systems/easterEggs.js";
 
 export class BaseEnemy {
@@ -45,7 +45,7 @@ export class BaseEnemy {
   }
 
   update(dt) {
-    const p = enemyTarget(this);
+    const p = state.player;
     const dx = p.x - this.x;
     const dy = p.y - this.y;
     const d = Math.max(1, Math.hypot(dx, dy));
@@ -59,12 +59,6 @@ export class BaseEnemy {
     const half = WORLD_SIZE / 2;
     this.x = clamp(this.x, -half + this.r, half - this.r);
     this.y = clamp(this.y, -half + this.r, half - this.r);
-
-    if (p !== state.player && d < p.r + this.r) {
-      p.hp = Math.max(0, (p.hp || 0) - this.damage * 0.4);
-      this.hitTimer = 0.16;
-      return;
-    }
 
     if (d < p.r + this.r && p.invuln <= 0) {
       applyPlayerDamage(this.damage, this);
@@ -182,7 +176,6 @@ export class BaseEnemy {
   kill() {
     this.dead = true;
     state.kills++;
-    onEnemyKilled(this);
     if (this.boss) maybeTriggerBossSignature(this);
     if (this.boss && world.boss === this) world.boss = null;
     burst(this.x, this.y, this.boss ? 48 : 12, this.color, this.boss ? 240 : 140);

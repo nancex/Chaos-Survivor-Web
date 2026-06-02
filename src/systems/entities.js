@@ -6,7 +6,7 @@ import { playSfx } from "../audio.js";
 import { isBossWave, randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
 import { updateBlackhole } from "../blackhole.js";
 import { difficultyMultiplier, currentDifficulty } from "../difficulty.js";
-import { applyPlayerDamage, coinDropMultiplier, interceptEnemyProjectile, maybeTriggerOvercharge, onWeaponHit, repayDebtFromCoin, rollWeaponDamage, waveSpawnMultiplier } from "./items.js";
+import { applyPlayerDamage, coinDropMultiplier, onWeaponHit, rollWeaponDamage, waveSpawnMultiplier } from "./items.js";
 import { spawnDamageText } from "../effects.js";
 import { emberSpawnRateForWave } from "../config/ember-wave-scenarios.js";
 import { activeWaveEffect } from "./waveScenarios.js";
@@ -150,7 +150,6 @@ export function damageEnemy(e, amount, x, y) {
     damageText: spawnDamageText,
   });
   onWeaponHit(e, x, y);
-  maybeTriggerOvercharge(e, x, y);
 }
 
 export function applyKnockback(e, dx, dy, force) {
@@ -226,7 +225,7 @@ export function updateCoins(dt) {
       c.y += (dy / dist) * pull * dt;
     }
     if (dist < p.r + 12) {
-      state.gold += repayDebtFromCoin(c.value);
+      state.gold += c.value;
       world.coins.splice(i, 1);
       playSfx("coin");
     }
@@ -306,7 +305,7 @@ export function collectAllExperience() {
 
 export function collectAllCoins() {
   const total = world.coins.reduce((sum, c) => sum + Math.max(1, Math.round(c.value || 1)), 0);
-  if (total > 0) state.gold += repayDebtFromCoin(Math.max(1, Math.floor(total * 0.5)));
+  if (total > 0) state.gold += Math.max(1, Math.floor(total * 0.5));
   world.coins.length = 0;
 }
 
@@ -334,10 +333,6 @@ function updateEnemyProjectiles(dt) {
   for (let i = world.enemyProjectiles.length - 1; i >= 0; i--) {
     const b = world.enemyProjectiles[i];
     updateSpecialEnemyProjectile(b, dt);
-    if (interceptEnemyProjectile(b)) {
-      world.enemyProjectiles.splice(i, 1);
-      continue;
-    }
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= dt;

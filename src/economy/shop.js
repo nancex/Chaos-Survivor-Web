@@ -25,32 +25,24 @@ export function createShopState() {
 
 export function prepareShopOffers({ preserveLocked = true } = {}) {
   ensureShop();
-  prepareShopItemMechanics();
   const kept = preserveLocked ? state.shop.offers.filter((offer) => offer.locked && !isSoldOut(offer)) : [];
   state.shop.offers = kept;
   while (state.shop.offers.length < SHOP_SLOTS) state.shop.offers.push(createOffer());
-  if (hasBlackMarketSlot()) state.shop.offers.push(createOffer({ blackMarket: true }));
   state.shop.refreshCount = 0;
   return state.shop.offers;
 }
 
 export function refreshShopOffers() {
   ensureShop();
-  if ((state.player?.debt || 0) > 0) {
-    playSfx("deny");
-    return false;
-  }
   const cost = refreshCost();
-  const free = consumeFreeShopUse();
-  if (!free && state.gold < cost) {
+  if (state.gold < cost) {
     playSfx("deny");
     return false;
   }
-  if (!free) state.gold -= cost;
+  state.gold -= cost;
   state.shop.refreshCount++;
   state.shop.offers = state.shop.offers.filter((offer) => offer.locked && !isSoldOut(offer));
   while (state.shop.offers.length < SHOP_SLOTS) state.shop.offers.push(createOffer());
-  if (hasBlackMarketSlot()) state.shop.offers.push(createOffer({ blackMarket: true }));
   playSfx("select");
   return true;
 }
@@ -71,9 +63,7 @@ export function purchaseOffer(uid, options = {}) {
     playSfx("deny");
     return { ok: false, reason: disabled };
   }
-  const free = consumeFreeShopUse();
-  const debtPaid = !free ? payOrBorrowForOffer(offer.price) : true;
-  if (!debtPaid) {
+  if (state.gold < offer.price) {
     playSfx("deny");
     return { ok: false, reason: "金币不足" };
   }
@@ -81,9 +71,9 @@ export function purchaseOffer(uid, options = {}) {
     playSfx("deny");
     return { ok: false, reason: "无法合成该武器" };
   }
+  state.gold -= offer.price;
   if (offer.category === "武器") buyWeapon(offer, options);
   else applyItemPurchase(offer);
-  maybeCreateCopiedOffer(offer);
   offer.purchaseCount++;
   if (isSoldOut(offer)) offer.locked = false;
   playSfx("buy");
@@ -91,7 +81,6 @@ export function purchaseOffer(uid, options = {}) {
 }
 
 export function refreshCost() {
-  if ((state.player?.freeShopUses || 0) > 0) return 0;
   const wave = Math.max(1, state.wave || 1);
   return 8 + wave * 2 + (state.shop?.refreshCount || 0) * 4;
 }
@@ -103,7 +92,7 @@ export function purchaseDisabledReason(offer) {
     const check = canPurchaseItem(offer.itemId || offer.id);
     if (!check.ok) return check.reason;
   }
-  if ((state.player?.freeShopUses || 0) <= 0 && !canPayOrBorrow(offer.price)) return "金币不足";
+  if (state.gold < offer.price) return "金币不足";
   if (offer.category === "武器" && !canAcceptWeapon(offer.weaponId, offer.rarity)) return "武器槽已满，且无法合成";
   return "";
 }
@@ -162,13 +151,13 @@ function findOffer(uid) {
   return state.shop.offers.find((offer) => offer.uid === uid) || null;
 }
 
-function createOffer(options = {}) {
-  return Math.random() < 0.58 ? createWeaponOffer(options) : createItemOffer(options);
+function createOffer() {
+  return Math.random() < 0.58 ? createWeaponOffer() : createItemOffer();
 }
 
-function createWeaponOffer(options = {}) {
+function createWeaponOffer() {
   const weaponId = weightedWeaponId();
-  const rarity = options.blackMarket ? weightedChoice([["epic", 70], ["legendary", 30]]) : weightedQuality(RARITY_WEIGHTS);
+  const rarity = weightedQuality(RARITY_WEIGHTS);
   const info = WEAPON_INFO[weaponId];
   const rank = QUALITY_ORDER.indexOf(rarity);
   return {
@@ -179,20 +168,19 @@ function createWeaponOffer(options = {}) {
     name: `${QUALITY_INFO[rarity].name}${info.name}`,
     rarity,
     category: "武器",
-    price: Math.floor((18 + rank * rank * 13 + state.wave * 3) * (weaponId === state.initialWeaponId ? 0.92 : 1) * (options.blackMarket ? 1.45 : 1)),
+    price: Math.floor((18 + rank * rank * 13 + state.wave * 3) * (weaponId === state.initialWeaponId ? 0.92 : 1)),
     maxPurchases: 1,
     purchaseCount: 0,
     quantity: 1,
     locked: false,
-    blackMarket: Boolean(options.blackMarket),
     desc: `获得一把新的 ${info.name}。同类武器也会占用新的武器槽。`,
   };
 }
 
-function createItemOffer(options = {}) {
+function createItemOffer() {
   const candidates = ITEM_DEFS.filter((item) => (!item.unique || !hasPurchasedUniqueItem(item.id)) && canPurchaseItem(item.id).ok);
   const template = weightedChoice((candidates.length ? candidates : ITEM_DEFS).map((item) => [item, itemWeight(item)]));
-  const rarity = offerQualityForItem(template, options.blackMarket ? weightedChoice([["epic", 70], ["legendary", 30]]) : weightedQuality(ITEM_RARITY_WEIGHTS));
+  const rarity = offerQualityForItem(template, weightedQuality(ITEM_RARITY_WEIGHTS));
   const rank = QUALITY_ORDER.indexOf(rarity);
   const quality = QUALITY_INFO[rarity] || QUALITY_INFO.common;
   return {
@@ -203,72 +191,13 @@ function createItemOffer(options = {}) {
     name: template.singleQuality ? template.name : `${quality.name}${template.name}`,
     rarity,
     category: "道具",
-    price: Math.floor((template.basePrice + state.wave * (1.5 + rank * 0.8)) * (QUALITY_INFO[rarity]?.mult || 1) * (options.blackMarket ? 1.45 : 1)),
+    price: Math.floor((template.basePrice + state.wave * (1.5 + rank * 0.8)) * (QUALITY_INFO[rarity]?.mult || 1)),
     maxPurchases: 1,
     purchaseCount: 0,
     quantity: 1,
     locked: false,
-    blackMarket: Boolean(options.blackMarket),
     desc: itemDescription(template, rarity),
   };
-}
-
-function prepareShopItemMechanics() {
-  const p = state.player;
-  if (!p) return;
-  p.freeShopUses = p.freeShopPasses || 0;
-  p.debtUses = p.debtChips || 0;
-  p.copyFilmUses = p.copyFilmCharges || 0;
-}
-
-function hasBlackMarketSlot() {
-  return Boolean(state.player?.blackMarketInvite) && (state.wave || 1) % 3 === 0;
-}
-
-function consumeFreeShopUse() {
-  const p = state.player;
-  if (!p || (p.freeShopUses || 0) <= 0) return false;
-  p.freeShopUses--;
-  return true;
-}
-
-function canPayOrBorrow(price) {
-  const p = state.player;
-  if (state.gold >= price) return true;
-  return (p?.debtUses || 0) > 0;
-}
-
-function payOrBorrowForOffer(price) {
-  const p = state.player;
-  if (state.gold >= price) {
-    state.gold -= price;
-    return true;
-  }
-  if (!p || (p.debtUses || 0) <= 0) return false;
-  const debt = price - state.gold;
-  state.gold = 0;
-  p.debt = (p.debt || 0) + debt;
-  p.debtUses--;
-  return true;
-}
-
-function maybeCreateCopiedOffer(offer) {
-  const p = state.player;
-  if (!p || offer.category !== "道具" || offer.copied || (p.copyFilmUses || 0) <= 0) return;
-  const item = ITEM_DEFS.find((entry) => entry.id === (offer.itemId || offer.id));
-  if (!item || item.unique) return;
-  p.copyFilmUses--;
-  state.shop.offers.push({
-    ...offer,
-    uid: state.shop.nextOfferUid++,
-    id: `${offer.id}_copy_${state.shop.nextOfferUid}`,
-    purchaseCount: 0,
-    locked: false,
-    copied: true,
-    blackMarket: false,
-    price: Math.max(2, Math.floor(offer.price * 0.55)),
-    desc: `${offer.desc} 复制品：不会再次触发复制。`,
-  });
 }
 
 function weightedWeaponId() {

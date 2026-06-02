@@ -23,7 +23,7 @@ import { closeShop, initShopUi, openShop } from "../ui/shopUi.js";
 import { isBossWave, setupEnemyRegistry } from "../systems/enemyRegistry.js";
 import { updatePlayer, updateSpawning, updateEnemies, rebuildGrid, updateGems, updateCoins, collectAllExperience, collectAllCoins, clearEnemies } from "../systems/entities.js";
 import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon, refreshStarterWeapons } from "../systems/weapons.js";
-import { consumeNextWaveSpawnBonus, startWaveItems, trySavePlayerFromDeath, updateItems } from "../systems/items.js";
+import { consumeNextWaveSpawnBonus, startWaveItems, updateItems } from "../systems/items.js";
 import { updateEasterEggs } from "../systems/easterEggs.js";
 import { applyWaveStartScenario, resetWaveScenarioState } from "../systems/waveScenarios.js";
 import { createShopState } from "../economy/shop.js";
@@ -241,7 +241,7 @@ export async function bootGame() {
     effects.updateEffects(dt);
     updateCamera(dt);
     checkLevelUps();
-    if (state.player.hp <= 0 && !trySavePlayerFromDeath()) endGame(false);
+    if (state.player.hp <= 0) endGame(false);
     if (state.mode === "playing" && bossWave && !world.boss && state.spawnedBossWaves?.has(state.wave)) completeWave();
     if (state.mode === "playing" && !bossWave && state.waveTimeLeft <= 0) completeWave();
   }

@@ -250,63 +250,122 @@ export class SlimeKing extends BaseEnemy {
 
 function drawSlimeKing(ctx, e) {
   const flash = e.flash > 0;
-  const body = flash ? "#ffffff" : e.phase2 ? "#ffd166" : e.color;
-  const core = flash ? "#ffffff" : e.phase2 ? "#fff2a8" : "#caffb8";
-  const squash = 1 + Math.sin(e.anim * 2.1) * 0.055;
+  const body = flash ? "#ffffff" : e.phase2 ? "#ffd166" : e.color || "#77ff8a";
+  const dark = flash ? "#eaffef" : e.phase2 ? "#a65a22" : "#2f8b4b";
+  const light = flash ? "#ffffff" : e.phase2 ? "#fff1b7" : "#caffb8";
+  const core = flash ? "#ffffff" : e.phase2 ? "#fff2a8" : "#9dffac";
+  const wobble = Math.sin(e.anim * 2.1) * e.r * 0.06;
+  const squash = 1 + Math.sin(e.anim * 2.1) * 0.06;
   ctx.scale(squash, 1 / squash);
   ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.beginPath();
-  ctx.ellipse(0, e.r * 0.72, e.r * 1.02, e.r * 0.2, 0, 0, TAU);
+  ctx.ellipse(0, e.r * 0.78, e.r * 1.08, e.r * 0.22, 0, 0, TAU);
   ctx.fill();
+
+  ctx.save();
   ctx.fillStyle = body;
   ctx.beginPath();
-  ctx.moveTo(-e.r * 1.06, e.r * 0.18);
-  ctx.bezierCurveTo(-e.r * 1.1, -e.r * 0.5, -e.r * 0.48, -e.r * 1.05, 0, -e.r * 1.0);
-  ctx.bezierCurveTo(e.r * 0.78, -e.r * 0.96, e.r * 1.14, -e.r * 0.28, e.r * 1.06, e.r * 0.2);
-  ctx.bezierCurveTo(e.r * 0.9, e.r * 0.72, e.r * 0.46, e.r * 0.96, e.r * 0.08, e.r * 0.82);
-  ctx.bezierCurveTo(-e.r * 0.18, e.r * 1.02, -e.r * 0.72, e.r * 0.92, -e.r * 1.06, e.r * 0.18);
+  ctx.moveTo(-e.r * 1.12, e.r * 0.2);
+  ctx.bezierCurveTo(-e.r * 1.18 + wobble, -e.r * 0.48, -e.r * 0.7, -e.r * 0.98, -e.r * 0.18, -e.r * 1.04);
+  ctx.bezierCurveTo(e.r * 0.08, -e.r * 1.2, e.r * 0.44, -e.r * 1.05, e.r * 0.58, -e.r * 0.86);
+  ctx.bezierCurveTo(e.r * 1.02 + wobble, -e.r * 0.66, e.r * 1.2, -e.r * 0.16, e.r * 1.08, e.r * 0.22);
+  ctx.bezierCurveTo(e.r * 1.0, e.r * 0.68, e.r * 0.56, e.r * 0.98, e.r * 0.16, e.r * 0.9);
+  ctx.bezierCurveTo(0, e.r * 1.06, -e.r * 0.3, e.r * 1.02, -e.r * 0.44, e.r * 0.88);
+  ctx.bezierCurveTo(-e.r * 0.84, e.r * 0.84, -e.r * 1.04, e.r * 0.58, -e.r * 1.12, e.r * 0.2);
+  ctx.closePath();
   ctx.fill();
+
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = Math.max(4, e.r * 0.075);
+  ctx.stroke();
+
+  ctx.globalCompositeOperation = "screen";
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.beginPath();
+  ctx.ellipse(-e.r * 0.24, -e.r * 0.2, e.r * 0.72, e.r * 0.52, -0.28, 0, TAU);
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+
   ctx.fillStyle = core;
   ctx.beginPath();
-  ctx.ellipse(0, -e.r * 0.02, e.r * 0.62, e.r * 0.48, 0, 0, TAU);
+  ctx.ellipse(e.r * 0.06, -e.r * 0.02, e.r * 0.58, e.r * 0.42, 0.08, 0, TAU);
   ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.beginPath();
+  ctx.ellipse(-e.r * 0.12, -e.r * 0.16, e.r * 0.32, e.r * 0.18, -0.16, 0, TAU);
+  ctx.fill();
+
   for (const side of [-1, 1]) {
-    ctx.fillStyle = flash ? "#ffffff" : side > 0 ? "rgba(255,209,102,0.56)" : "rgba(119,255,138,0.5)";
+    ctx.fillStyle = side > 0 ? "rgba(255,209,102,0.5)" : "rgba(119,255,138,0.46)";
     ctx.beginPath();
-    ctx.ellipse(side * e.r * 0.72, e.r * 0.2 + Math.sin(e.anim + side) * 3, e.r * 0.26, e.r * 0.18, side * 0.25, 0, TAU);
+    ctx.ellipse(side * e.r * 0.72, e.r * 0.22 + Math.sin(e.anim + side) * 3, e.r * 0.24, e.r * 0.16, side * 0.25, 0, TAU);
     ctx.fill();
   }
-  ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  drawCrown(ctx, e);
-  ctx.fillStyle = "#173b1c";
+  ctx.strokeStyle = light;
+  ctx.lineWidth = Math.max(2, e.r * 0.035);
   ctx.beginPath();
-  ctx.arc(-e.r * 0.24, -e.r * 0.1, e.r * 0.075, 0, TAU);
-  ctx.arc(e.r * 0.28, -e.r * 0.1, e.r * 0.075, 0, TAU);
+  ctx.moveTo(-e.r * 0.66, -e.r * 0.44);
+  ctx.bezierCurveTo(-e.r * 0.66, -e.r * 0.44, -e.r * 0.36, -e.r * 0.72, e.r * 0.22, -e.r * 0.65);
+  ctx.stroke();
+  ctx.restore();
+
+  drawCrown(ctx, e);
+
+  ctx.fillStyle = "#173b1c";
+  const blink = Math.sin(e.anim * 1.8) > 0.96;
+  if (blink) {
+    ctx.fillRect(-e.r * 0.34, -e.r * 0.13, e.r * 0.22, 3);
+    ctx.fillRect(e.r * 0.18, -e.r * 0.13, e.r * 0.22, 3);
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(-e.r * 0.24, -e.r * 0.1, e.r * 0.085, e.r * 0.12, -0.08, 0, TAU);
+    ctx.ellipse(e.r * 0.28, -e.r * 0.1, e.r * 0.085, e.r * 0.12, 0.08, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(-e.r * 0.2, -e.r * 0.16, e.r * 0.026, 0, TAU);
+    ctx.arc(e.r * 0.32, -e.r * 0.16, e.r * 0.026, 0, TAU);
+    ctx.fill();
+  }
+  ctx.fillStyle = e.phase2 ? "rgba(255,122,26,0.34)" : "rgba(255,154,176,0.34)";
+  ctx.beginPath();
+  ctx.ellipse(-e.r * 0.48, e.r * 0.08, e.r * 0.12, e.r * 0.055, -0.15, 0, TAU);
+  ctx.ellipse(e.r * 0.5, e.r * 0.08, e.r * 0.12, e.r * 0.055, 0.15, 0, TAU);
   ctx.fill();
   ctx.strokeStyle = e.phase2 ? "#7c2d12" : "#20662d";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round";
   ctx.beginPath();
-  ctx.arc(0, e.r * 0.08, e.r * 0.24, 0.12 * Math.PI, 0.88 * Math.PI);
+  if (e.phase2) ctx.arc(0, e.r * 0.22, e.r * 0.18, Math.PI * 1.12, Math.PI * 1.88);
+  else ctx.arc(0, e.r * 0.08, e.r * 0.24, 0.12 * Math.PI, 0.88 * Math.PI);
   ctx.stroke();
+  ctx.lineCap = "butt";
 }
 
 function drawCrown(ctx, e) {
   ctx.save();
-  ctx.rotate(Math.sin(e.crownSpin) * 0.08);
+  ctx.translate(0, -e.r * 0.88 + Math.sin(e.crownSpin * 1.2) * 2);
+  ctx.rotate(Math.sin(e.crownSpin) * 0.06);
   ctx.fillStyle = e.flash > 0 ? "#ffffff" : "#ffd166";
   ctx.strokeStyle = "#fff2a8";
-  ctx.lineWidth = 2;
-  for (let i = -2; i <= 2; i++) {
-    const h = i === 0 ? 34 : i % 2 ? 25 : 18;
-    ctx.beginPath();
-    ctx.moveTo(i * 15, -e.r * 0.92 - h + Math.sin(e.anim + i) * 3);
-    ctx.lineTo(i * 15 + 10, -e.r * 0.68);
-    ctx.lineTo(i * 15 - 10, -e.r * 0.68);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
+  ctx.lineWidth = Math.max(2, e.r * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(-e.r * 0.56, e.r * 0.05);
+  ctx.bezierCurveTo(-e.r * 0.5, -e.r * 0.22, -e.r * 0.34, -e.r * 0.32, -e.r * 0.18, -e.r * 0.08);
+  ctx.bezierCurveTo(-e.r * 0.1, -e.r * 0.44, e.r * 0.08, -e.r * 0.5, e.r * 0.18, -e.r * 0.08);
+  ctx.bezierCurveTo(e.r * 0.34, -e.r * 0.32, e.r * 0.5, -e.r * 0.22, e.r * 0.56, e.r * 0.05);
+  ctx.quadraticCurveTo(0, e.r * 0.18, -e.r * 0.56, e.r * 0.05);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = e.phase2 ? "#ff7a1a" : "#77ff8a";
+  ctx.beginPath();
+  ctx.ellipse(0, -e.r * 0.04, e.r * 0.1, e.r * 0.07, 0, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.beginPath();
+  ctx.ellipse(-e.r * 0.28, -e.r * 0.06, e.r * 0.075, e.r * 0.04, -0.25, 0, TAU);
+  ctx.ellipse(e.r * 0.28, -e.r * 0.06, e.r * 0.075, e.r * 0.04, 0.25, 0, TAU);
+  ctx.fill();
   ctx.restore();
 }

@@ -47,6 +47,7 @@ function spawnScenarioEvent(scenario) {
   if (state.spawnedWaveEvents.has(key)) return;
   if (event.type === "hazard_ring") spawnHazardRing(event);
   if (event.type === "hazard_line") spawnHazardLine(event);
+  if (event.type === "hazard_field") spawnHazardField(event);
   state.spawnedWaveEvents.add(key);
 }
 
@@ -69,6 +70,30 @@ function spawnHazardLine(event) {
   for (let i = 0; i < count; i++) {
     const offset = (i - (count - 1) / 2) * step;
     addScenarioHazard(p.x + Math.cos(angle) * offset, p.y + Math.sin(angle) * offset, event, angle);
+  }
+}
+
+function spawnHazardField(event) {
+  const count = event.count || 18;
+  const columns = Math.ceil(Math.sqrt(count * 1.25));
+  const rows = Math.ceil(count / columns);
+  const half = WORLD_SIZE / 2 - 140;
+  const stepX = (half * 2) / Math.max(1, columns - 1);
+  const stepY = (half * 2) / Math.max(1, rows - 1);
+  const offsetX = (Math.random() - 0.5) * stepX * 0.35;
+  const offsetY = (Math.random() - 0.5) * stepY * 0.35;
+  const minPlayerDistance = event.minPlayerDistance || 240;
+  let spawned = 0;
+  for (let row = 0; row < rows && spawned < count; row++) {
+    for (let col = 0; col < columns && spawned < count; col++) {
+      const jitterX = (Math.random() - 0.5) * stepX * 0.42;
+      const jitterY = (Math.random() - 0.5) * stepY * 0.42;
+      const x = -half + col * stepX + offsetX + jitterX;
+      const y = -half + row * stepY + offsetY + jitterY;
+      if (Math.hypot(x - state.player.x, y - state.player.y) < minPlayerDistance) continue;
+      addScenarioHazard(x, y, event, Math.random() * TAU);
+      spawned++;
+    }
   }
 }
 
@@ -98,7 +123,7 @@ function markElite(enemy, variant) {
   enemy.name = variant === "giant" ? `巨型${enemy.name || ""}` : `精英${enemy.name || ""}`;
   const scale = variant === "giant" ? 1.75 : 1.35;
   enemy.r *= scale;
-  enemy.hp *= 20;
+  enemy.hp *= 50;
   enemy.maxHp = enemy.hp;
   enemy.damage *= variant === "giant" ? 1.55 : 1.35;
   enemy.speed *= variant === "giant" ? 0.72 : 1.08;

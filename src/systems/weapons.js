@@ -5,7 +5,7 @@ import { applyKnockback, damageEnemy, nearestEnemy, queryEnemies } from "./entit
 import { burst, pulse, trail } from "../effects.js";
 import { playSfx } from "../audio.js";
 import { addWeaponToInventory, QUALITY_INFO, QUALITY_ORDER, WEAPON_INFO } from "../economy/inventory.js";
-import { attackSpeedMultiplier, weaponProjectileBonus, weaponRangeBonus } from "./items.js";
+import { attackSpeedMultiplier, weaponProjectileBonus, weaponRangeBonus, weaponRangeScale } from "./items.js";
 
 const STARTER_WEAPON_IDS = ["arc", "ice", "missile", "boomerang", "drone", "prism_railgun", "void_singularity", "tesla_mine_chain", "starfall_scepter", "phase_needler", "echo_tuning_fork", "rift_loom"];
 
@@ -192,6 +192,10 @@ function weaponSplitBonus(w) {
   return Math.max(0, weaponProjectileBonus(w));
 }
 
+function effectiveWeaponRange(baseRange) {
+  return Math.max(80, (baseRange || 0) * weaponRangeScale() + weaponRangeBonus());
+}
+
 function weaponQualityAt(w, index) {
   const qualities = w?.slotQualities || [];
   return index < qualities.length ? qualities[index] : w?.quality || "common";
@@ -205,7 +209,7 @@ function updateArcWeapon(dt) {
   const w = state.weapons.arc;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
-  const first = nearestEnemy(p.x, p.y, w.range + weaponRangeBonus());
+  const first = nearestEnemy(p.x, p.y, effectiveWeaponRange(w.range));
   if (!first) return;
 
   const rank = qualityRank(w);
@@ -306,7 +310,7 @@ function updateIceWeapon(dt) {
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
   const rank = qualityRank(w);
-  const target = nearestEnemy(p.x, p.y, w.range + weaponRangeBonus());
+  const target = nearestEnemy(p.x, p.y, effectiveWeaponRange(w.range));
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   const count = w.count + (rank >= 1 ? 1 : 0) + weaponProjectileBonus(w);
   for (let i = 0; i < count; i++) {
@@ -340,7 +344,7 @@ function updateMissileWeapon(dt) {
   const p = state.player;
   const rank = qualityRank(w);
   const color = qualityColor(w, "#ffb347");
-  const target = nearestEnemy(p.x, p.y, w.range + weaponRangeBonus());
+  const target = nearestEnemy(p.x, p.y, effectiveWeaponRange(w.range));
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   const count = 1 + weaponProjectileBonus(w);
   for (let i = 0; i < count; i++) {
@@ -370,7 +374,7 @@ function updateBoomerangWeapon(dt) {
   const w = state.weapons.boomerang;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
-  const target = nearestEnemy(p.x, p.y, w.range + weaponRangeBonus());
+  const target = nearestEnemy(p.x, p.y, effectiveWeaponRange(w.range));
   const base = target ? Math.atan2(target.y - p.y, target.x - p.x) : Math.atan2(p.dirY, p.dirX);
   const count = w.count + weaponProjectileBonus(w);
   for (let i = 0; i < count; i++) {
@@ -413,7 +417,7 @@ function updateDroneWeapon(dt) {
     const orbitAngle = w.angle + (i / w.drones.length) * TAU;
     const orbitX = p.x + Math.cos(orbitAngle) * w.orbitRadius;
     const orbitY = p.y + Math.sin(orbitAngle) * w.orbitRadius;
-    const target = nearestEnemy(d.x, d.y, w.acquireRange + weaponRangeBonus());
+    const target = nearestEnemy(d.x, d.y, effectiveWeaponRange(w.acquireRange));
     d.fireTimer = Math.max(0, d.fireTimer - dt);
     d.beamTimer = Math.max(0, (d.beamTimer || 0) - dt);
     d.anim += dt;
@@ -441,7 +445,7 @@ function updateDroneWeapon(dt) {
       const desiredX = target.x - Math.cos(orbitAngle) * 92;
       const desiredY = target.y - Math.sin(orbitAngle) * 92;
       moveDrone(d, desiredX, desiredY, dt, 520);
-      const attackRange = w.attackRange + weaponRangeBonus();
+      const attackRange = effectiveWeaponRange(w.attackRange);
       if (d.fireTimer <= 0 && distSq(d.x, d.y, target.x, target.y) <= attackRange * attackRange) {
         d.fireTimer = w.fireCooldown / attackSpeedMultiplier();
         d.energy = Math.max(0, d.energy - w.shotCost);
@@ -579,7 +583,7 @@ function fireDroneLinkedWeapon(x, y, angle, droneWeapon, drone, slot) {
   const rank = qualityRank(shot);
   const color = qualityColor(shot, drone?.color || "#77ff8a");
   const source = { x, y };
-  const target = nearestEnemy(x, y, base.range || droneWeapon.attackRange || 640);
+  const target = nearestEnemy(x, y, effectiveWeaponRange(base.range || droneWeapon.attackRange || 640));
   const aim = target ? Math.atan2(target.y - y, target.x - x) : angle;
 
   if (slot.id === "void_singularity") {
@@ -747,7 +751,7 @@ function updatePrismRailgunWeapon(dt) {
 
 function choosePrismRailTargets(w, count) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   const enemies = candidates
@@ -770,7 +774,7 @@ function choosePrismRailTargets(w, count) {
 
 function firePrismRail(shot, base, angle, color, rank, damageScale, beamIndex, beamCount, secondary, splitBonus = 0) {
   const p = state.player;
-  const range = base.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(base.range);
   const width = (base.width + (rank >= 1 ? 4 : 0) + rank * 1.2 + splitBonus * 6) * (secondary ? 0.68 : 1);
   const nx = -Math.sin(angle);
   const ny = Math.cos(angle);
@@ -880,7 +884,7 @@ function updateVoidSingularityWeapon(dt) {
   const w = state.weapons.void_singularity;
   if (!tickWeapon(w, dt)) return;
   const p = state.player;
-  const target = nearestEnemy(p.x, p.y, w.range + weaponRangeBonus());
+  const target = nearestEnemy(p.x, p.y, effectiveWeaponRange(w.range));
   if (!target) return;
 
   const base = Math.atan2(target.y - p.y, target.x - p.x);
@@ -962,7 +966,7 @@ function updateTeslaMineChainWeapon(dt) {
 
 function chooseTeslaAnchor(w) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   let best = null;
@@ -1155,7 +1159,7 @@ function updateStarfallScepterWeapon(dt) {
 
 function chooseStarfallAnchor(w) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   let best = null;
@@ -1307,7 +1311,7 @@ function updatePhaseNeedlerWeapon(dt) {
 
 function choosePhaseNeedlerTarget(w) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   let best = null;
@@ -1401,7 +1405,7 @@ function updateEchoTuningForkWeapon(dt) {
 
 function chooseEchoTarget(w) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   let best = null;
@@ -1423,7 +1427,7 @@ function chooseEchoTarget(w) {
 
 function fireEchoCone(angle, base, shot, rank, color, secondary, index, damageScale = 1, angleScale = 1, source = null, enhancement = 0, sourceWeaponId = null) {
   const p = source || state.player;
-  const range = (base.range + weaponRangeBonus() + (rank >= 1 ? 42 : 0) + rank * 8 + enhancement * 58) * (secondary ? 0.92 : 1);
+  const range = (effectiveWeaponRange(base.range) + (rank >= 1 ? 42 : 0) * weaponRangeScale() + rank * 8 * weaponRangeScale() + enhancement * 58 * weaponRangeScale()) * (secondary ? 0.92 : 1);
   const coneAngle = (base.angle + (rank >= 1 ? 0.08 : 0) + rank * 0.018 + enhancement * 0.085) * angleScale;
   const damage = weaponPower(shot, base.damage) * damageScale * (1 + enhancement * 0.18) * (secondary ? 0.72 : 1);
   const echoDamage = weaponPower(shot, base.echoDamage) * damageScale * (1 + enhancement * 0.14) * (secondary ? 0.7 : 1);
@@ -1541,7 +1545,7 @@ function updateRiftLoomWeapon(dt) {
 
 function chooseRiftLoomAnchor(w) {
   const p = state.player;
-  const range = w.range + weaponRangeBonus();
+  const range = effectiveWeaponRange(w.range);
   const candidates = [];
   queryEnemies(p.x, p.y, range, candidates);
   let best = null;

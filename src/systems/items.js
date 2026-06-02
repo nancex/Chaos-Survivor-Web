@@ -130,7 +130,12 @@ export function rollWeaponDamage(amount, weapon = null) {
 }
 
 export function weaponRangeBonus() {
-  return state.player?.attackRangeBonus || 0;
+  const bonus = state.player?.attackRangeBonus || 0;
+  return state.waveScenario?.effect === "blind" ? bonus * 0.25 : bonus;
+}
+
+export function weaponRangeScale() {
+  return state.waveScenario?.effect === "blind" ? 0.25 : 1;
 }
 
 export function attackSpeedMultiplier() {

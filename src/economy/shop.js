@@ -212,8 +212,9 @@ function itemWeight(item) {
 }
 
 function premiumQualityPriceMultiplier(quality) {
-  if (quality === "legendary") return 1.55;
-  if (quality === "epic") return 1.28;
+  if (quality === "legendary") return 3.1;
+  if (quality === "epic") return 2.56;
+  if (quality === "rare") return 1.75;
   return 1;
 }
 

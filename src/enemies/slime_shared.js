@@ -228,34 +228,48 @@ function drawSlimeShadow(ctx, e, lift) {
 function drawSlimeBody(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
   const flash = e.flash > 0;
-  const side = Math.sin(e.anim * 2.1) * r * 0.06;
+  const wobble = Math.sin(e.anim * 2.1) * r * 0.07;
+  const crown = Math.sin(e.anim * 1.6 + lift) * r * 0.035;
   const color = flash ? "#ffffff" : e.slimeColors.body;
   const dark = flash ? "#eaffef" : e.slimeColors.dark;
   const light = flash ? "#ffffff" : e.slimeColors.light;
 
+  ctx.save();
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.moveTo(-r * 0.98, r * 0.18);
-  ctx.bezierCurveTo(-r * 0.96 + side, -r * 0.62, -r * 0.44, -r * 0.95 - lift * 2, 0, -r * 0.95);
-  ctx.bezierCurveTo(r * 0.48, -r * 0.95 + lift * 2, r * 0.98 + side, -r * 0.58, r * 0.98, r * 0.16);
-  ctx.bezierCurveTo(r * 0.82, r * 0.72, r * 0.36, r * 0.95, 0, r * 0.86);
-  ctx.bezierCurveTo(-r * 0.45, r * 0.95, -r * 0.86, r * 0.72, -r * 0.98, r * 0.18);
+  ctx.moveTo(-r * 1.03, r * 0.18);
+  ctx.bezierCurveTo(-r * 1.08 + wobble, -r * 0.42, -r * 0.7, -r * 0.82, -r * 0.28, -r * 0.92 - crown);
+  ctx.bezierCurveTo(-r * 0.1, -r * 1.1 - lift * 2, r * 0.2, -r * 1.08 + lift * 2, r * 0.4, -r * 0.9 + crown);
+  ctx.bezierCurveTo(r * 0.82 + wobble * 0.35, -r * 0.74, r * 1.1 + wobble, -r * 0.28, r * 1.04, r * 0.18);
+  ctx.bezierCurveTo(r * 0.98, r * 0.58, r * 0.58, r * 0.88, r * 0.18, r * 0.86);
+  ctx.bezierCurveTo(r * 0.04, r * 0.98, -r * 0.22, r * 0.98, -r * 0.38, r * 0.86);
+  ctx.bezierCurveTo(-r * 0.78, r * 0.84, -r * 1.0, r * 0.58, -r * 1.03, r * 0.18);
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.globalCompositeOperation = "screen";
+  ctx.fillStyle = "rgba(255,255,255,0.26)";
   ctx.beginPath();
-  ctx.ellipse(-r * 0.22, -r * 0.1, r * 0.72, r * 0.62, -0.2, 0, TAU);
+  ctx.ellipse(-r * 0.25, -r * 0.18, r * 0.64, r * 0.52, -0.28, 0, TAU);
   ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
 
   ctx.strokeStyle = dark;
   ctx.lineWidth = Math.max(2, r * 0.08);
   ctx.stroke();
-  ctx.strokeStyle = light;
-  ctx.lineWidth = Math.max(1, r * 0.035);
+  ctx.strokeStyle = hexToRgbaLocal(light, 0.78);
+  ctx.lineWidth = Math.max(1.2, r * 0.038);
   ctx.beginPath();
-  ctx.arc(-r * 0.16, -r * 0.18, r * 0.62, Math.PI * 1.1, Math.PI * 1.72);
+  ctx.moveTo(-r * 0.66, -r * 0.4);
+  ctx.bezierCurveTo(-r * 0.66, -r * 0.4, -r * 0.34, -r * 0.72, r * 0.18, -r * 0.66);
   ctx.stroke();
+  ctx.fillStyle = hexToRgbaLocal(dark, 0.2);
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(side * r * 0.56, r * 0.63, r * 0.18, r * 0.08, side * 0.25, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawSlimeCore(ctx, e, lift) {
@@ -263,14 +277,24 @@ function drawSlimeCore(ctx, e, lift) {
   const flash = e.flash > 0;
   const coreX = r * 0.08;
   const coreY = r * 0.02 + lift * 0.4;
+  ctx.save();
+  ctx.globalAlpha = 0.9;
   ctx.fillStyle = flash ? "rgba(255,255,255,0.82)" : e.slimeColors.core;
   ctx.beginPath();
-  ctx.ellipse(coreX, coreY, r * 0.68, r * 0.52, 0, 0, TAU);
+  ctx.ellipse(coreX, coreY, r * 0.58, r * 0.42, 0.08, 0, TAU);
   ctx.fill();
-  ctx.fillStyle = flash ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.2)";
+  ctx.fillStyle = flash ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.24)";
   ctx.beginPath();
-  ctx.ellipse(coreX - r * 0.12, coreY - r * 0.08, r * 0.5, r * 0.34, -0.12, 0, TAU);
+  ctx.ellipse(coreX - r * 0.14, coreY - r * 0.12, r * 0.34, r * 0.2, -0.2, 0, TAU);
   ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  for (let i = 0; i < 3; i++) {
+    const a = e.anim * 0.35 + i * TAU / 3;
+    ctx.beginPath();
+    ctx.arc(coreX + Math.cos(a) * r * 0.28, coreY + Math.sin(a) * r * 0.18, Math.max(1.5, r * 0.035), 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawSlimeVariantDetails(ctx, e, lift, layer) {
@@ -583,6 +607,7 @@ function drawSlimeFace(ctx, e, lift) {
   const blink = e.faceBlink <= 0.08;
   const faceX = r * 0.08;
   const faceY = r * 0.02 + lift * 0.4;
+  const sad = e.slimeVariant === "weeping";
   if (e.faceBlink <= -0.12) e.faceBlink = 1.4 + Math.random() * 1.8;
 
   ctx.save();
@@ -590,25 +615,45 @@ function drawSlimeFace(ctx, e, lift) {
   ctx.scale(e.flip || 1, 1);
   ctx.fillStyle = e.slimeColors.face;
   if (blink) {
-    ctx.fillRect(-r * 0.32, -r * 0.1, eye * 1.8, 2);
-    ctx.fillRect(r * 0.14, -r * 0.1, eye * 1.8, 2);
+    ctx.fillRect(-r * 0.34, -r * 0.1, eye * 1.8, 2);
+    ctx.fillRect(r * 0.16, -r * 0.1, eye * 1.8, 2);
   } else {
+    if (sad) {
+      ctx.strokeStyle = e.slimeColors.face;
+      ctx.lineWidth = Math.max(1.2, r * 0.045);
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.38, -r * 0.24);
+      ctx.quadraticCurveTo(-r * 0.26, -r * 0.3, -r * 0.14, -r * 0.22);
+      ctx.moveTo(r * 0.16, -r * 0.22);
+      ctx.quadraticCurveTo(r * 0.28, -r * 0.3, r * 0.4, -r * 0.24);
+      ctx.stroke();
+    }
     ctx.beginPath();
-    ctx.ellipse(-r * 0.23, -r * 0.1, eye, eye * 1.2, 0, 0, TAU);
+    ctx.ellipse(-r * 0.23, -r * 0.08, eye * (sad ? 0.95 : 1), eye * (sad ? 1.42 : 1.22), sad ? -0.16 : 0, 0, TAU);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(r * 0.23, -r * 0.1, eye, eye * 1.2, 0, 0, TAU);
+    ctx.ellipse(r * 0.23, -r * 0.08, eye * (sad ? 0.95 : 1), eye * (sad ? 1.42 : 1.22), sad ? 0.16 : 0, 0, TAU);
     ctx.fill();
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(-r * 0.19, -r * 0.18, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
-    ctx.fillRect(r * 0.27, -r * 0.18, Math.max(1.5, eye * 0.4), Math.max(1.5, eye * 0.4));
+    ctx.beginPath();
+    ctx.arc(-r * 0.19, -r * 0.17, Math.max(1.5, eye * 0.34), 0, TAU);
+    ctx.arc(r * 0.27, -r * 0.17, Math.max(1.5, eye * 0.34), 0, TAU);
+    ctx.fill();
   }
+
+  ctx.fillStyle = hexToRgbaLocal(e.slimeColors.light, sad ? 0.38 : 0.32);
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.42, r * 0.09, r * 0.11, r * 0.055, -0.12, 0, TAU);
+  ctx.ellipse(r * 0.42, r * 0.09, r * 0.11, r * 0.055, 0.12, 0, TAU);
+  ctx.fill();
 
   ctx.strokeStyle = e.slimeColors.mouth;
   ctx.lineWidth = Math.max(1.4, r * 0.05);
   ctx.lineCap = "round";
   ctx.beginPath();
-  if (e.profile.mouth === "big") ctx.arc(0, r * 0.13, r * 0.22, Math.PI * 0.12, Math.PI * 0.88);
+  if (sad) ctx.arc(0, r * 0.28, r * 0.16, Math.PI * 1.16, Math.PI * 1.84);
+  else if (e.profile.mouth === "big") ctx.arc(0, r * 0.13, r * 0.22, Math.PI * 0.12, Math.PI * 0.88);
   else if (e.profile.mouth === "tiny") ctx.arc(0, r * 0.15, r * 0.11, Math.PI * 0.18, Math.PI * 0.82);
   else ctx.arc(0, r * 0.13, r * 0.16, Math.PI * 0.16, Math.PI * 0.84);
   ctx.stroke();
@@ -618,12 +663,28 @@ function drawSlimeFace(ctx, e, lift) {
 
 function drawSlimeGloss(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
-  ctx.fillStyle = "rgba(255,255,255,0.58)";
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.fillStyle = "rgba(255,255,255,0.66)";
   ctx.beginPath();
-  ctx.ellipse(-r * 0.38, -r * 0.47 - lift * 2, r * 0.2, r * 0.11, -0.5, 0, TAU);
+  ctx.ellipse(-r * 0.42, -r * 0.5 - lift * 2, r * 0.22, r * 0.1, -0.5, 0, TAU);
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.3)";
   ctx.beginPath();
-  ctx.ellipse(r * 0.18, -r * 0.62, r * 0.1, r * 0.06, -0.2, 0, TAU);
+  ctx.ellipse(r * 0.14, -r * 0.68, r * 0.1, r * 0.052, -0.2, 0, TAU);
   ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.08, r * 0.36, r * 0.26, r * 0.055, 0.08, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+function hexToRgbaLocal(hex, alpha) {
+  if (!hex || !hex.startsWith("#")) return `rgba(255,255,255,${alpha})`;
+  const value = hex.slice(1);
+  const full = value.length === 3 ? value.split("").map((c) => c + c).join("") : value;
+  const num = Number.parseInt(full, 16);
+  if (!Number.isFinite(num)) return `rgba(255,255,255,${alpha})`;
+  return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},${alpha})`;
 }

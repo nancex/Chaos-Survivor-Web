@@ -4,6 +4,9 @@ import { clamp, hexToRgba } from "./utils.js";
 
 const AMBIENT_LIMIT = 56;
 const AMBIENT_MAX_SPAWN = 2;
+const FX_PARTICLE_SCALE = 0.72;
+const FX_ALPHA_SCALE = 0.7;
+const FX_TRAIL_ALPHA_SCALE = 0.62;
 let ambientTimer = 0;
 
 export function particle(kind, x, y, options = {}) {
@@ -35,7 +38,8 @@ export function particle(kind, x, y, options = {}) {
 }
 
 export function burst(x, y, count, color, speed = 140) {
-  for (let i = 0; i < count; i++) {
+  const scaledCount = Math.max(1, Math.ceil(count * FX_PARTICLE_SCALE));
+  for (let i = 0; i < scaledCount; i++) {
     const a = Math.random() * TAU;
     const s = speed * (0.35 + Math.random() * 0.9);
     particle("spark", x, y, {
@@ -49,11 +53,11 @@ export function burst(x, y, count, color, speed = 140) {
 }
 
 export function pulse(x, y, radius, color, life = 0.26) {
-  particle("ring", x, y, { radius, color, life, size: 2 });
+  particle("ring", x, y, { radius: radius * 0.94, color, life: life * 0.82, size: 1.6, alpha: FX_ALPHA_SCALE });
 }
 
 export function trail(x, y, px, py, color, size = 5) {
-  particle("trail", x, y, { px, py, color, size, life: 0.18 });
+  particle("trail", x, y, { px, py, color, size: size * 0.82, life: 0.14, alpha: FX_TRAIL_ALPHA_SCALE });
 }
 
 export function spawnDamageText(amount, target, options = {}) {
@@ -307,9 +311,9 @@ function drawDamageText(ctx, p, alpha) {
   ctx.save();
   ctx.translate(Math.round(p.x), Math.round(p.y - lift));
   ctx.scale(punch, punch);
-  ctx.globalCompositeOperation = "lighter";
-  ctx.shadowColor = hexToRgba(p.critical ? "#ff174d" : "#ffd166", a);
-  ctx.shadowBlur = p.critical ? 18 : 10;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.shadowColor = hexToRgba(p.critical ? "#ff174d" : "#ffd166", a * 0.45);
+  ctx.shadowBlur = p.critical ? 8 : 4;
   ctx.font = `${s}px "Zpix", "Fusion Pixel 12px Monospaced SC", "Cubic 11", "Press Start 2P", "Courier New", monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -338,8 +342,8 @@ function drawHealPlus(ctx, p, alpha) {
   const s = Math.max(5, p.size);
   ctx.save();
   ctx.translate(Math.round(p.x), Math.round(p.y));
-  ctx.globalCompositeOperation = "lighter";
-  ctx.strokeStyle = hexToRgba(p.color, a * 0.9);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.strokeStyle = hexToRgba(p.color, a * 0.72);
   ctx.lineWidth = Math.max(2, s * 0.24);
   ctx.lineCap = "square";
   ctx.beginPath();
@@ -365,8 +369,8 @@ function drawMote(ctx, p, alpha) {
 function drawEmber(ctx, p, alpha) {
   const a = alpha * p.alpha;
   const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 4);
-  grad.addColorStop(0, hexToRgba("#ffffff", a * 0.55));
-  grad.addColorStop(0.32, hexToRgba(p.color, a * 0.5));
+  grad.addColorStop(0, hexToRgba("#ffffff", a * 0.26));
+  grad.addColorStop(0.32, hexToRgba(p.color, a * 0.34));
   grad.addColorStop(1, hexToRgba(p.color, 0));
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -419,8 +423,8 @@ function drawScan(ctx, p, alpha) {
   const y2 = p.y + sa * p.length * 0.55;
   const grad = ctx.createLinearGradient(x1, y1, x2, y2);
   grad.addColorStop(0, hexToRgba(p.color, 0));
-  grad.addColorStop(0.5, hexToRgba("#ffffff", a * 0.6));
-  grad.addColorStop(1, hexToRgba(p.color, a * 0.65));
+  grad.addColorStop(0.5, hexToRgba("#ffffff", a * 0.32));
+  grad.addColorStop(1, hexToRgba(p.color, a * 0.42));
   ctx.strokeStyle = grad;
   ctx.lineWidth = p.size;
   ctx.lineCap = "round";

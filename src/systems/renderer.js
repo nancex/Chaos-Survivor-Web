@@ -2124,7 +2124,7 @@ function drawSpecialEnemyProjectile(ctx, b) {
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.rotate((b.spin || 0) + (b.shape === "razorBoomerang" ? angle : 0));
-  if (enemyProjectileHasHalo(b)) glow(ctx, 0, 0, b.r * 2.2, 0.42, b.color);
+  if (enemyProjectileHasHalo(b)) glow(ctx, 0, 0, b.r * 1.7, 0.16, b.color);
   if (b.shape === "arcaneOrb") {
     ctx.strokeStyle = b.color;
     ctx.lineWidth = 1.8;
@@ -2184,17 +2184,17 @@ function drawEnemyBolt(ctx, b) {
   ctx.rotate(angle);
   const long = b.shape === "pylonBolt" || b.shape === "laserShard" || b.long;
   const pulse = 0.78 + Math.sin(state.time * 18 + (b.spin || 0)) * 0.22;
-  ctx.globalCompositeOperation = "lighter";
-  if (enemyProjectileHasHalo(b)) glow(ctx, -b.r * 1.4, 0, b.r * (long ? 3.6 : 2.2), long ? 0.72 : 0.34, b.color);
-  ctx.strokeStyle = hexToRgba(b.color, long ? 0.34 : 0.22);
-  ctx.lineWidth = long ? 12 : 7;
+  ctx.globalCompositeOperation = "source-over";
+  if (enemyProjectileHasHalo(b)) glow(ctx, -b.r * 1.4, 0, b.r * (long ? 2.4 : 1.7), long ? 0.18 : 0.1, b.color);
+  ctx.strokeStyle = hexToRgba(b.color, long ? 0.22 : 0.16);
+  ctx.lineWidth = long ? 9 : 5.5;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(-b.r * (long ? 4.2 : 2.5), 0);
   ctx.lineTo(b.r * (long ? 2.8 : 1.9), 0);
   ctx.stroke();
-  ctx.strokeStyle = long ? "#ffffff" : b.color;
-  ctx.lineWidth = long ? 4.2 : 2.7;
+  ctx.strokeStyle = long ? hexToRgba("#ffffff", 0.72) : b.color;
+  ctx.lineWidth = long ? 3.2 : 2.2;
   ctx.lineCap = "round";
   ctx.beginPath();
   ctx.moveTo(-b.r * (long ? 3.2 : 2), 0);
@@ -2229,22 +2229,22 @@ function drawFireballProjectile(ctx, b) {
   ctx.translate(b.x, b.y);
   ctx.rotate(angle);
   if (enemyProjectileHasHalo(b)) {
-    glow(ctx, 0, 0, b.r * 3.2, 0.62, "#ff4d1f");
-    glow(ctx, -b.r * 1.3, 0, b.r * 2.4, 0.36, "#ffd166");
+    glow(ctx, 0, 0, b.r * 2.1, 0.18, "#ff4d1f");
+    glow(ctx, -b.r * 1.3, 0, b.r * 1.7, 0.1, "#ffd166");
   }
-  ctx.fillStyle = "rgba(255,77,31,0.26)";
+  ctx.fillStyle = "rgba(255,77,31,0.16)";
   for (let i = 0; i < 3; i++) {
     ctx.beginPath();
     ctx.ellipse(-b.r * (1.3 + i * 0.52), Math.sin(state.time * 10 + i) * b.r * 0.18, b.r * (1.8 - i * 0.24), b.r * (0.72 - i * 0.08), 0, 0, TAU);
     ctx.fill();
   }
-  ctx.fillStyle = "rgba(255,122,26,0.5)";
+  ctx.fillStyle = "rgba(255,122,26,0.34)";
   ctx.beginPath();
   ctx.ellipse(-b.r * 1.1, 0, b.r * 1.8, b.r * 0.78, 0, 0, TAU);
   ctx.fill();
   ctx.save();
   ctx.rotate((b.spin || 0) + state.time * 8);
-  ctx.strokeStyle = "rgba(255,242,168,0.72)";
+  ctx.strokeStyle = "rgba(255,242,168,0.42)";
   ctx.lineWidth = 1.4;
   for (let i = 0; i < 4; i++) {
     ctx.rotate(TAU / 4);
@@ -2275,10 +2275,10 @@ function drawStormProjectile(ctx, b) {
   ctx.save();
   ctx.translate(b.x, b.y);
   ctx.rotate(b.shape === "stormBlade" ? angle : (b.spin || 0) + state.time * 8);
-  ctx.globalCompositeOperation = "lighter";
-  if (enemyProjectileHasHalo(b)) glow(ctx, 0, 0, b.r * 3.1, 0.62, b.color);
+  ctx.globalCompositeOperation = "source-over";
+  if (enemyProjectileHasHalo(b)) glow(ctx, 0, 0, b.r * 2.0, 0.18, b.color);
   if (b.shape === "stormBlade") {
-    ctx.fillStyle = hexToRgba(b.color, 0.22);
+    ctx.fillStyle = hexToRgba(b.color, 0.14);
     ctx.beginPath();
     ctx.ellipse(-b.r * 1.25, 0, b.r * 3.1, b.r * 1.12, 0, 0, TAU);
     ctx.fill();
@@ -2290,7 +2290,7 @@ function drawStormProjectile(ctx, b) {
     ctx.lineTo(-b.r * 0.8, b.r * 0.95);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = hexToRgba("#ffffff", 0.68);
     ctx.lineWidth = 1.8;
     ctx.stroke();
     ctx.strokeStyle = hexToRgba("#d9fbff", 0.62);
@@ -2300,7 +2300,7 @@ function drawStormProjectile(ctx, b) {
     ctx.lineTo(-b.r * 0.65, 0);
     ctx.stroke();
   } else {
-    ctx.strokeStyle = hexToRgba(b.color, 0.7);
+    ctx.strokeStyle = hexToRgba(b.color, 0.46);
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, b.r * 1.85, state.time * 2, state.time * 2 + Math.PI * 1.25);
@@ -2308,7 +2308,7 @@ function drawStormProjectile(ctx, b) {
     ctx.beginPath();
     ctx.arc(0, 0, b.r * 1.28, -state.time * 2.6, -state.time * 2.6 + Math.PI * 1.1);
     ctx.stroke();
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = hexToRgba("#ffffff", 0.7);
     ctx.lineWidth = 1.6;
     for (let i = 0; i < 4; i++) {
       ctx.rotate(TAU / 4);
@@ -2453,7 +2453,7 @@ function drawGearTrapHazard(ctx, h, alpha) {
   ctx.save();
   ctx.translate(h.x, h.y);
   drawMiniGear(ctx, 0, 0, h.r * 0.8, 14, h.color, (h.spin || 0) + state.time * 7);
-  ctx.strokeStyle = hexToRgba(h.color, alpha * 0.52);
+  ctx.strokeStyle = hexToRgba(h.color, alpha * 0.38);
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 6]);
   ctx.beginPath();
@@ -2471,18 +2471,18 @@ function drawToxicResidueHazard(ctx, h, alpha) {
   ctx.beginPath();
   ctx.arc(0, 0, h.r, 0, TAU);
   ctx.fill();
-  ctx.fillStyle = hexToRgba(h.color, 0.13 * alpha);
+  ctx.fillStyle = hexToRgba(h.color, 0.08 * alpha);
   ctx.beginPath();
   ctx.ellipse(0, 0, h.r * 0.94, h.r * 0.72, Math.sin(state.time + h.y) * 0.2, 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = hexToRgba(h.color, 0.42 * alpha);
+  ctx.strokeStyle = hexToRgba(h.color, 0.3 * alpha);
   ctx.lineWidth = 2;
   ctx.setLineDash([10, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, h.r * pulse, 0, TAU);
   ctx.stroke();
   ctx.setLineDash([]);
-  ctx.strokeStyle = hexToRgba("#d7ffe4", 0.24 * alpha);
+  ctx.strokeStyle = hexToRgba("#d7ffe4", 0.16 * alpha);
   ctx.lineWidth = 1;
   for (let i = 0; i < 5; i++) {
     const a = i / 5 * TAU + state.time * 0.18;
@@ -2497,13 +2497,13 @@ function drawMagmaCrackHazard(ctx, h, alpha) {
   ctx.save();
   ctx.translate(h.x, h.y);
   ctx.rotate(h.angle || 0);
-  ctx.globalCompositeOperation = "lighter";
-  glow(ctx, 0, 0, h.r * 1.15, alpha * 0.58, h.color);
-  ctx.fillStyle = hexToRgba(h.color, alpha * 0.26);
+  ctx.globalCompositeOperation = "source-over";
+  glow(ctx, 0, 0, h.r * 0.85, alpha * 0.16, h.color);
+  ctx.fillStyle = hexToRgba(h.color, alpha * 0.18);
   ctx.beginPath();
   ctx.ellipse(0, 0, h.r * 1.62, h.r * 0.5, 0, 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = hexToRgba("#ff4d6d", alpha * 0.54);
+  ctx.strokeStyle = hexToRgba("#ff4d6d", alpha * 0.36);
   ctx.lineWidth = 8;
   ctx.lineCap = "round";
   ctx.beginPath();
@@ -2512,7 +2512,7 @@ function drawMagmaCrackHazard(ctx, h, alpha) {
   ctx.lineTo(h.r * 0.15, h.r * 0.2);
   ctx.lineTo(h.r * 1.28, 0);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba("#fff2a8", alpha * 0.86);
+  ctx.strokeStyle = hexToRgba("#fff2a8", alpha * 0.58);
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(-h.r * 1.2, 0);
@@ -2537,16 +2537,16 @@ function drawMagmaCrackHazard(ctx, h, alpha) {
 function drawTwinArcFieldHazard(ctx, h, alpha) {
   ctx.save();
   ctx.translate(h.x, h.y);
-  ctx.globalCompositeOperation = "lighter";
+  ctx.globalCompositeOperation = "source-over";
   const pulse = 0.82 + Math.sin(state.time * 9 + h.x * 0.03) * 0.18;
-  glow(ctx, 0, 0, h.r * 1.05, alpha * 0.46, h.color);
-  ctx.fillStyle = hexToRgba(h.color, alpha * 0.12);
+  glow(ctx, 0, 0, h.r * 0.82, alpha * 0.14, h.color);
+  ctx.fillStyle = hexToRgba(h.color, alpha * 0.07);
   ctx.beginPath();
   ctx.arc(0, 0, h.r * pulse, 0, TAU);
   ctx.fill();
   for (let ring = 0; ring < 3; ring++) {
     const r = h.r * (0.42 + ring * 0.24);
-    ctx.strokeStyle = ring === 1 ? hexToRgba("#ffffff", alpha * 0.42) : hexToRgba(h.color, alpha * 0.72);
+    ctx.strokeStyle = ring === 1 ? hexToRgba("#ffffff", alpha * 0.24) : hexToRgba(h.color, alpha * 0.46);
     ctx.lineWidth = ring === 0 ? 3 : 1.6;
     ctx.setLineDash(ring === 2 ? [8, 7] : []);
     ctx.beginPath();
@@ -2742,15 +2742,20 @@ function drawEliteOutline(ctx, e) {
   if (!style) return;
   ctx.save();
   ctx.translate(e.x, e.y);
-  ctx.globalCompositeOperation = "lighter";
+  ctx.globalCompositeOperation = "source-over";
   const r = e.r + 8 + Math.sin(state.time * 4.2 + e.x * 0.01) * 1.5;
-  glow(ctx, 0, 0, r * 1.28, e.eliteVariant === "giant" ? 0.24 : 0.18, style.color);
+  glow(ctx, 0, 0, r * 0.88, e.eliteVariant === "giant" ? 0.08 : 0.055, style.color);
+  ctx.strokeStyle = "rgba(3,8,18,0.62)";
+  ctx.lineWidth = style.width + 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 1, 0, TAU);
+  ctx.stroke();
   ctx.strokeStyle = style.color;
   ctx.lineWidth = style.width;
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, TAU);
   ctx.stroke();
-  ctx.strokeStyle = hexToRgba("#ffffff", e.eliteVariant === "giant" ? 0.22 : 0.14);
+  ctx.strokeStyle = hexToRgba("#ffffff", e.eliteVariant === "giant" ? 0.12 : 0.08);
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.arc(0, 0, r + 5, 0, TAU);
@@ -3045,7 +3050,16 @@ function xOr(v) { return v; }
 function clampViewX(x) { const h = WORLD_SIZE / 2; return clamp(x, -h, h - visibleWorldWidth()); }
 function clampViewY(y) { const h = WORLD_SIZE / 2; return clamp(y, -h, h - visibleWorldHeight()); }
 
-function glow(ctx, x, y, r, alpha, color) { for (let i = 3; i >= 1; i--) { ctx.fillStyle = hexToRgba(color, alpha / (i * 2.2)); ctx.beginPath(); ctx.arc(x, y, r * (1 + i * 0.32), 0, TAU); ctx.fill(); } }
+function glow(ctx, x, y, r, alpha, color) {
+  const scaledAlpha = alpha * 0.48;
+  const scaledRadius = r * 0.82;
+  for (let i = 2; i >= 1; i--) {
+    ctx.fillStyle = hexToRgba(color, scaledAlpha / (i * 2.6));
+    ctx.beginPath();
+    ctx.arc(x, y, scaledRadius * (1 + i * 0.24), 0, TAU);
+    ctx.fill();
+  }
+}
 function polygon(ctx, x, y, r, sides, angle, color, fill) { ctx.beginPath(); for (let i = 0; i < sides; i++) { const a = angle + (i / sides) * TAU; const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); if (fill) { ctx.fillStyle = color; ctx.fill(); } else { ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke(); } }
 function drawArrow(ctx, angle, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(Math.cos(angle) * (r + 12), Math.sin(angle) * (r + 12)); ctx.lineTo(Math.cos(angle) * r + Math.cos(angle + Math.PI / 2) * 5, Math.sin(angle) * r + Math.sin(angle + Math.PI / 2) * 5); ctx.lineTo(Math.cos(angle) * r - Math.cos(angle + Math.PI / 2) * 5, Math.sin(angle) * r - Math.sin(angle + Math.PI / 2) * 5); ctx.fill(); }
 function drawDashedCircle(ctx, x, y, r, color) { ctx.strokeStyle = color; ctx.lineWidth = 1; for (let i = 0; i < 18; i += 2) { const a1 = (i / 18) * TAU, a2 = a1 + TAU / 18 * 0.55; ctx.beginPath(); ctx.moveTo(x + Math.cos(a1) * r, y + Math.sin(a1) * r); ctx.lineTo(x + Math.cos(a2) * r, y + Math.sin(a2) * r); ctx.stroke(); } }

@@ -1,7 +1,7 @@
 import { CELL_SIZE, ENEMY_LIMIT, GEM_LIMIT, TAU, WORLD_SIZE } from "../constants.js";
 import { state, world, input } from "../state.js";
 import { clamp, distSq, circleHit } from "../utils.js";
-import { burst, dust } from "../effects.js";
+import { burst, dust, pulse } from "../effects.js";
 import { playSfx } from "../audio.js";
 import { isBossWave, randomEnemyForWave, spawnEnemyById, spawnWaveBoss } from "./enemyRegistry.js";
 import { updateBlackhole } from "../blackhole.js";
@@ -134,6 +134,7 @@ export function updateEnemies(dt) {
     if (assisted) e.speed *= e.prismAssistSpeedMult || 1.22;
     e.update(dt);
     if (assisted) e.speed = baseSpeed;
+    updateEliteSkill(e, dt);
     applyDifficultyCooldownScale(e, beforeCooldowns);
   }
   updateEnemyProjectiles(dt);
@@ -444,6 +445,56 @@ function updateHazards(dt) {
     }
     if (h.life <= 0) world.hazards.splice(i, 1);
   }
+}
+
+function updateEliteSkill(e, dt) {
+  if (!e?.elite || e.dead || e.boss) return;
+  e.eliteSkillCooldown ??= 3 + Math.random() * 1.2;
+  e.eliteSkillInterval ??= e.eliteVariant === "giant" ? 5.2 : 4.4;
+  e.eliteSkillProjectileCount ??= e.eliteVariant === "giant" ? 16 : 10;
+  e.eliteSkillPulse = Math.max(0, (e.eliteSkillPulse || 0) - dt);
+  if ((e.eliteSkillWindup || 0) > 0) {
+    e.eliteSkillWindup = Math.max(0, e.eliteSkillWindup - dt);
+    if (e.eliteSkillPulse <= 0) {
+      e.eliteSkillPulse = 0.16;
+      pulse(e.x, e.y, e.r * (2.2 + (e.eliteSkillWindup || 0)), "#ffd166", 0.18);
+    }
+    if (e.eliteSkillWindup <= 0) releaseElitePulse(e);
+    return;
+  }
+  e.eliteSkillCooldown -= dt;
+  if (e.eliteSkillCooldown > 0) return;
+  e.eliteSkillWindup = e.eliteVariant === "giant" ? 0.82 : 0.62;
+  e.eliteSkillPulse = 0;
+  pulse(e.x, e.y, e.r * 3.1, "#ffd166", 0.34);
+}
+
+function releaseElitePulse(e) {
+  const count = e.eliteSkillProjectileCount || 10;
+  const playerAngle = Math.atan2(state.player.y - e.y, state.player.x - e.x);
+  const offset = playerAngle + Math.random() * 0.16;
+  const speed = e.eliteVariant === "giant" ? 245 : 285;
+  const radius = e.eliteVariant === "giant" ? 7 : 5.5;
+  const damage = Math.max(1, e.damage * (e.eliteVariant === "giant" ? 0.38 : 0.32));
+  for (let i = 0; i < count; i++) {
+    const a = offset + (i / count) * TAU;
+    world.enemyProjectiles.push({
+      x: e.x + Math.cos(a) * e.r * 0.72,
+      y: e.y + Math.sin(a) * e.r * 0.72,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      r: radius,
+      color: "#ffd166",
+      damage,
+      life: 4.2,
+      shape: "elitePulse",
+    });
+  }
+  burst(e.x, e.y, e.eliteVariant === "giant" ? 24 : 16, "#ffd166", 210);
+  pulse(e.x, e.y, e.r * 3.6, "#ffd166", 0.42);
+  world.weaponFx.push({ kind: "shockRing", x: e.x, y: e.y, radius: e.r * 3.2, life: 0.34, maxLife: 0.34, color: "#ffd166" });
+  state.shake = Math.max(state.shake, e.eliteVariant === "giant" ? 7 : 4);
+  e.eliteSkillCooldown = e.eliteSkillInterval;
 }
 
 function pointLineDistance(px, py, x, y, angle, length) {

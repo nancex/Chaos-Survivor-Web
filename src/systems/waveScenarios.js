@@ -43,10 +43,13 @@ function markElite(enemy, variant) {
   enemy.name = variant === "giant" ? `巨型${enemy.name || ""}` : `精英${enemy.name || ""}`;
   const scale = variant === "giant" ? 1.75 : 1.35;
   enemy.r *= scale;
-  enemy.hp *= variant === "giant" ? 3.2 : 2.2;
+  enemy.hp *= 20;
   enemy.maxHp = enemy.hp;
   enemy.damage *= variant === "giant" ? 1.55 : 1.35;
   enemy.speed *= variant === "giant" ? 0.72 : 1.08;
   enemy.xp *= variant === "giant" ? 3 : 2;
   enemy.knockbackResistance = Math.max(enemy.knockbackResistance || 0, variant === "giant" ? 0.72 : 0.58);
+  enemy.eliteSkillCooldown = variant === "giant" ? 2.6 : 2.2;
+  enemy.eliteSkillInterval = variant === "giant" ? 5.2 : 4.4;
+  enemy.eliteSkillProjectileCount = variant === "giant" ? 16 : 10;
 }

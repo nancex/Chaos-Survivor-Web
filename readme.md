@@ -1,19 +1,16 @@
 # Survivor 项目说明
 
-## 1. 项目简介
-
-这是一个原生 HTML/CSS/JavaScript（ES Modules）的 2D 像素风生存游戏，无需构建工具。
+`Survivor` 是一个原生 HTML/CSS/JavaScript（ES Modules）的 2D 像素风弹幕生存游戏。项目无需构建工具，浏览器直接加载 `src` 下的模块。
 
 - 页面入口：`index.html`
 - 样式入口：`styles.css`
 - 游戏入口：`src/core/game.js`
 - 主循环：`src/core/main.js`
+- 当前版本：读取 `src/config/game-config.json`，目前为 `beta 0.11`
 
-## 2. 本地运行
+## 本地运行
 
-### 2.1 推荐方式：无缓存本地启动
-
-在项目根目录执行：
+推荐使用无缓存启动脚本：
 
 ```powershell
 .\start.cmd
@@ -25,504 +22,282 @@
 http://127.0.0.1:5000/
 ```
 
-`start.cmd` 会通过 `scripts/no_cache_server.py` 启动本地静态服务，并为所有资源返回：
+`start.cmd` 会调用 `scripts/start.ps1`，自动检测 Python，寻找可用端口，并通过 `scripts/no_cache_server.py` 为 HTML、JS、CSS、JSON、图片和音乐资源返回无缓存响应：
 
 ```http
 Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 ```
 
-这样每次刷新页面都会重新从本地服务器读取最新的 HTML、JS、CSS、JSON 和图片资源，不需要打开浏览器控制台禁用缓存。
-
-如果需要手动启动同一个无缓存服务，也可以执行：
+也可以手动启动：
 
 ```powershell
 python .\scripts\no_cache_server.py 5000 --bind 127.0.0.1
 ```
 
-不再推荐直接使用 `python -m http.server` 作为日常开发启动方式，因为它会返回 `Last-Modified` / `304 Not Modified`，容易让非技术用户误以为代码没有更新。
+不建议日常开发直接使用 `python -m http.server`，因为它可能返回 `304 Not Modified`，导致浏览器继续使用旧资源。
 
-### 2.2 一键启动脚本
+## 主要玩法与系统
 
-项目已新增启动入口：
+- 20 波生存流程：战斗、升级、波次商店、Boss 波和结算。
+- 作战配置：开局前选择难度和初始武器，武器预览会实时播放。
+- 难度进度：完成当前难度后解锁下一难度，配置来自 `src/config/difficulty-config.json`。
+- 武器槽：最多 6 个武器槽，支持不同品质的同类武器独立结算。
+- 品质体系：`common`、`uncommon`、`rare`、`epic`、`legendary`。
+- 商店：支持武器、道具、锁定、刷新、购买、出售、售罄、唯一道具和同品质合成。
+- 背包：展示玩家属性、武器槽、道具、出售和合成入口。
+- 图鉴：记录已解锁的敌人、武器和道具，并提供详情和 Canvas 预览。
+- 彩蛋与特殊波次：部分快捷键、Boss 标记和 `ember` 难度波次会触发特殊效果。
+- 移动端：提供触控摇杆和响应式 HUD/Overlay。
 
-- `start.cmd`（双击即可）
-- `scripts/start.ps1`
+## 当前内容概览
 
-脚本能力：
+### 武器
 
-- 自动检测 Python（优先 `python`，其次 `py -3`）
-- 默认端口 `5000`
-- 若端口被占用，自动向后寻找可用端口
-- 默认自动打开浏览器
-- 默认禁用浏览器缓存，确保刷新时读取最新资源
+武器默认数据在 `src/config/editableGameData.js`，外部可编辑配置在 `src/config/weapon-config.json`。
 
-用法示例：
+当前武器 id：
 
-```powershell
-# 方式1：直接双击 start.cmd
-
-# 方式2：PowerShell 启动
-.\scripts\start.ps1
-
-# 指定端口
-.\scripts\start.ps1 -Port 5500
-
-# 不自动打开浏览器
-.\scripts\start.ps1 -NoBrowser
+```text
+arc, ice, missile, boomerang, drone,
+prism_railgun, void_singularity, tesla_mine_chain,
+starfall_scepter, phase_needler, echo_tuning_fork, rift_loom
 ```
 
-### 2.3 敌人配置编辑器
+核心逻辑：
 
-项目提供了与游戏主进程独立的可视化配置页面：
+- `src/systems/weapons.js`：武器更新、投射物、命中特效、品质差异。
+- `src/economy/inventory.js`：武器槽、品质、合成、装备重算。
+- `src/ui/weaponPreview.js`：开局配置和图鉴中的武器预览。
+
+### 道具
+
+道具默认数据在 `src/config/editableGameData.js`，外部可编辑配置在 `src/config/item-config.json`。
+
+当前道具 id：
+
+```text
+heart_container, healing_potion, shackles, dodge_cloak, bait,
+magnet, speed_boots, rapid_cord, fang, split_shot,
+lucky_clover, gloves, knife, healing_aura, tardigrade,
+heavy_armor, turret, thief_mark, star_cloak, landmine, airburst
+```
+
+核心逻辑：
+
+- `src/systems/items.js`：购买效果、周期效果、受击/命中效果、波次开始效果、道具实体。
+- `src/economy/shop.js`：道具商品生成、品质、价格、唯一道具限制。
+- `src/ui/inventoryUi.js`：背包道具展示和出售。
+
+### 敌人与 Boss
+
+敌人配置在 `src/config/enemy-config.json`，注册表在 `src/systems/enemyRegistry.js`，类文件在 `src/enemies/`。
+
+当前敌人配置共 39 个 id，包括基础敌人、史莱姆变体、功能型敌人和 Boss：
+
+```text
+zombie, lancer, wisp, slime_large, slime_medium, slime_small,
+blackhole_mage, mech_worm, doctor, embermine, exploder, tank,
+pyromancer, laser_eye, razorbat, wizard, pentastar, gearfiend,
+prism_medic, phase_mirage, magnet_raider, magma_beetle,
+siege_pylon, brood_seeder, line_raider, shield_caster,
+gunner, artillery, storm_tyrant, polar_crystal_wraith,
+storm_rail_devourer, twin_abyssal_eyes,
+slime_diamond, slime_gold, slime_glow, slime_weeping,
+slime_devil, slime_angel, thief
+```
+
+配置支持：
+
+- 普通波次：`waves`、`waveRanges`、`spawnWaves`、`excludeWaves`
+- Boss 波次：`bossWave`、`bossWaves`、`bossWaveRanges`
+- 难度过滤：`difficulties`、`excludeDifficulties`、`minDifficulty`、`maxDifficulty`
+- 难度独立波次：`difficultyWaves`
+- 出现权重：`spawnWeight`、`difficultyWeights`、`difficultyWaveWeights`
+
+### `ember` 波次场景
+
+`ember` 难度使用手工波次场景：
+
+- 配置：`src/config/ember-wave-scenarios.js`
+- 系统：`src/systems/waveScenarios.js`
+
+场景可以指定每波敌人池、刷怪倍率、Boss、精英单位、奖励波和特殊效果，例如黑暗视野、冰面移动、齿轮怪模式等。
+
+## 目录结构
+
+- `index.html`：Canvas、HUD、开始菜单、作战配置、商店、背包、图鉴、暂停和结算 DOM。
+- `styles.css`：全局像素霓虹 UI、Overlay、HUD、移动端适配。
+- `assets/`：音乐、截图、图标等静态资源。
+- `deploy/`：Nginx 部署配置。
+- `scripts/`：启动脚本和无缓存静态服务。
+- `tools/`：独立工具页面。
+- `tests/`：测试或验证脚本。
+- `src/core/`：游戏启动与主循环。
+- `src/config/`：敌人、难度、武器、道具、版本和波次场景配置。
+- `src/systems/`：输入、实体、武器、道具、渲染、地图、光照、敌人注册、图鉴、彩蛋、波次场景。
+- `src/enemies/`：敌人类。
+- `src/economy/`：商店、背包、品质、出售、合成。
+- `src/ui/`：HUD、商店、背包、图鉴、武器预览。
+- `src/state.js`：全局运行状态和 `resetRun()`。
+- `src/effects.js`：粒子、轨迹、脉冲、伤害文字和屏幕反馈。
+- `src/audio.js`：音效和音乐播放。
+
+## 敌人配置编辑器
+
+项目提供独立的可视化敌人配置编辑器：
 
 ```text
 http://127.0.0.1:5000/tools/enemy-config-editor.html
 ```
 
-也可以直接双击：
+也可以双击：
 
 ```text
 enemy-config-editor.cmd
 ```
 
-如果手动访问 URL，建议先用 `start.cmd` 启动本地无缓存服务；双击 `enemy-config-editor.cmd` 会自动启动服务并打开该页面。
-
 编辑器能力：
 
-- 自动读取 `src/config/enemy-config.json`
-- 可视化编辑敌人基础信息、战斗数值、波次勾选规则、难度限制
-- 波次和难度都通过勾选/下拉选择，导出时自动转换成游戏读取的 JSON 字段
-- 支持“默认波次”和“每个难度独立波次”，用于同一敌人在不同难度中使用不同出现波次
-- 支持默认权重、每个难度权重、每个难度每个波次权重，用于控制不同敌人的出现频率
-- 左侧敌人列表支持搜索、筛选、分页和序号跳转
+- 读取 `src/config/enemy-config.json`
+- 编辑敌人基础信息、战斗数值、波次规则、难度限制和权重
+- 支持默认波次、难度独立波次、Boss 波次和排除波次
+- 支持搜索、筛选、分页、序号跳转
 - 支持新增、复制、删除、恢复单个敌人
 - 支持导入 JSON、复制 JSON、下载 JSON
-- 在支持 File System Access API 的浏览器中，可使用“保存到文件”
+- 在支持 File System Access API 的浏览器中可直接保存到文件
 
-浏览器通常不能静默改写本地项目文件。若“保存到文件”不可用，请下载或复制生成的 JSON，再覆盖 `src/config/enemy-config.json`。
+浏览器通常不能静默改写本地项目文件。如果“保存到文件”不可用，请下载或复制生成的 JSON，再覆盖 `src/config/enemy-config.json`。
 
-![敌人配置编辑器](assets/screenshots/enemy-config-editor-v4.png)
+## 配置文件说明
 
----
+### `src/config/difficulty-config.json`
 
-## 3. 部署方式
+顶层键是难度 id。顺序会影响难度卡片展示和解锁顺序。
 
-项目已内置部署文件：
+常用字段：
 
-- Nginx（宿主机）：`deploy/nginx/survivor.conf`
-- Docker：`Dockerfile`、`docker-compose.yml`、`nginx/default.conf`
+- `name`：难度显示名
+- `desc`：难度描述
+- `enemyLimit`：同屏敌人上限
+- `spawnRate`：刷怪预算倍率
+- `enemyHp` / `enemyDamage` / `enemySpeed` / `enemyAttackSpeed`：普通敌人倍率
+- `bossHp` / `bossDamage`：Boss 倍率
+- `coinGain` / `xpGain`：收益倍率
 
-### 3.1 Nginx 部署（Linux）
+### `src/config/enemy-config.json`
 
-1. 上传项目到服务器目录（例如 `/var/www/survivor`）。
-2. 复制配置文件：
+顶层键是敌人 id，必须和 `src/enemies/<id>.js` 以及 `src/systems/enemyRegistry.js` 注册 id 对齐。
 
-```bash
-sudo cp /var/www/survivor/deploy/nginx/survivor.conf /etc/nginx/conf.d/survivor.conf
-```
+常用字段：
 
-3. 按实际环境修改 `server_name`、`root`。
-4. 检查并重载：
+- `name`、`category`、`trait`、`desc`、`tip`
+- `hp`、`speed`、`damage`、`xp`、`radius`、`color`
+- `behavior`
+- `boss`
+- `spawnWeight`
+- `difficultyWeights`
+- `difficultyWaveWeights`
+- `waves`、`waveRanges`、`spawnWaves`、`excludeWaves`
+- `bossWave`、`bossWaves`、`bossWaveRanges`
+- `difficultyWaves`
+- `difficulties`、`excludeDifficulties`、`minDifficulty`、`maxDifficulty`
 
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-```
+### `src/config/weapon-config.json`
 
-5. 访问：`http://your-domain.com:5000/`
+用于覆盖武器和品质数据：
 
-### 3.2 Docker 部署（Linux / Windows）
+- `qualityInfo`：品质名称、颜色、倍率。
+- `info`：武器 icon、名称、描述、标签。
+- `baseStats`：武器基础数值。
 
-在项目根目录执行：
+启动时会和 `src/config/editableGameData.js` 的默认值合并。
+
+### `src/config/item-config.json`
+
+用于覆盖道具数据：
+
+- `rarityWeights`：商店道具品质权重。
+- `definitions`：道具定义列表。
+
+道具定义常用字段：
+
+- `id`
+- `icon`
+- `name`
+- `basePrice`
+- `desc`
+- `singleQuality`
+- `fixedQuality`
+- `unique`
+
+### `src/config/game-config.json`
+
+保存版本号等轻量配置。当前页面菜单版本文本会读取这里。
+
+## 新增内容接入清单
+
+### 新增敌人
+
+1. 在 `src/enemies/` 新增 `<id>.js` 类文件。
+2. 在 `src/systems/enemyRegistry.js` 导入并注册该 id。
+3. 在 `src/config/enemy-config.json` 增加同 id 配置。
+4. 配置波次、难度、权重和描述。
+5. 如果是 Boss，设置 `boss: true` 和 Boss 波次规则。
+6. 检查图鉴预览和死亡/命中特效。
+
+### 新增武器
+
+1. 在 `src/config/editableGameData.js` 添加默认基础数据和展示信息。
+2. 如需外部调参，在 `src/config/weapon-config.json` 补充覆盖。
+3. 在 `src/systems/weapons.js` 接入更新、投射物和命中特效。
+4. 在 `src/ui/weaponPreview.js` 添加预览。
+5. 检查商店、背包、合成、出售、开局武器列表和图鉴展示。
+
+### 新增道具
+
+1. 在 `src/config/editableGameData.js` 添加默认定义。
+2. 如需外部调参，在 `src/config/item-config.json` 补充覆盖。
+3. 在 `src/systems/items.js` 接入购买效果、波次效果、周期效果或事件效果。
+4. 检查商店权重、唯一道具限制、背包展示、出售价格和图鉴展示。
+
+## 部署
+
+项目内置部署文件：
+
+- Nginx：`deploy/nginx/survivor.conf`
+- Docker：`Dockerfile`、`docker-compose.yml`
+- 详细说明：`DEPLOY.md`
+
+Docker 启动：
 
 ```bash
 docker compose up -d --build
 ```
 
-查看状态：
-
-```bash
-docker compose ps
-docker compose logs -f
-```
-
-访问：`http://<服务器IP>:5000/`
-
-### 3.3 Windows 电脑部署
-
-#### 方案 A：Nginx for Windows
-
-1. 下载并解压 Nginx Windows 版本（例如解压到 `C:\nginx`）。
-2. 将项目放到例如 `C:\www\survivor`。
-3. 打开 `C:\nginx\conf\nginx.conf`，在 `http {}` 内添加或修改：
-
-```nginx
-server {
-    listen 5000;
-    server_name localhost;
-
-    root C:/www/survivor;
-    index index.html;
-    if_modified_since off;
-    etag off;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-        expires off;
-        add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-        add_header Pragma "no-cache" always;
-        add_header Expires "0" always;
-    }
-
-    location ~* \.(js|mjs|css|png|jpg|jpeg|gif|ico|svg|webp|mp3|wav|ogg|json)$ {
-        expires off;
-        add_header Cache-Control "no-store, no-cache, must-revalidate, max-age=0" always;
-        add_header Pragma "no-cache" always;
-        add_header Expires "0" always;
-        try_files $uri =404;
-    }
-}
-```
-
-4. 启动 Nginx：
-
-```powershell
-cd C:\nginx
-.\nginx.exe
-```
-
-5. 重载/停止：
-
-```powershell
-.\nginx.exe -s reload
-.\nginx.exe -s quit
-```
-
-6. 本机访问：
+访问：
 
 ```text
 http://127.0.0.1:5000/
 ```
 
-如果需要局域网访问，请在 Windows 防火墙放行 5000 端口。
+## 验证
 
-#### 方案 B：Docker Desktop（Windows）
-
-1. 安装 Docker Desktop 并确保已启动。
-2. 在项目根目录执行：
-
-```powershell
-docker compose up -d --build
-```
-
-3. 访问：`http://127.0.0.1:5000/`
-
-### 3.4 缓存策略说明
-
-本项目没有构建工具，也没有给 JS/CSS 文件名自动生成 hash。为了避免部署后用户继续读取旧代码，内置 Nginx 配置默认对所有静态资源禁用强缓存：
-
-```http
-Cache-Control: no-store, no-cache, must-revalidate, max-age=0
-```
-
-同时配置了 `if_modified_since off` 和 `etag off`，避免浏览器用条件请求命中 `304 Not Modified`。
-
-如果后续引入构建流程，并让文件名带版本 hash（例如 `game.abcd1234.js`），才建议把图片、音乐、带 hash 的 JS/CSS 改回长缓存。
-
----
-
-## 4. `difficulty-config.json` 配置说明
-
-文件路径：`src/config/difficulty-config.json`
-
-### 4.1 结构规则
-
-- 顶层是对象，键名就是难度 id（例如 `neon`、`overclock`）。
-- 难度顺序由 JSON 中的出现顺序决定，影响：
-  - 难度卡片展示顺序
-  - 通关解锁下一难度顺序
-  - `enemy-config.json` 中 `minDifficulty` / `maxDifficulty` 的比较顺序
-
-### 4.2 单个难度字段
-
-每个难度对象建议包含以下字段：
-
-- `name`：难度显示名（UI 展示）
-- `desc`：难度描述（UI 展示）
-- `enemyLimit`：同屏敌人数上限
-- `spawnRate`：刷怪速率倍率（影响刷怪预算增长）
-- `enemyHp`：普通敌人生命倍率
-- `enemyDamage`：普通敌人伤害倍率
-- `enemySpeed`：敌人移速倍率
-- `enemyAttackSpeed`：敌人攻击频率倍率（用于敌人攻击冷却）
-- `bossHp`：Boss 生命倍率
-- `bossDamage`：Boss 伤害倍率
-- `coinGain`：金币收益倍率
-- `xpGain`：经验收益倍率
-
-### 4.3 字段生效位置
-
-- 敌人生成上限：`src/systems/enemyRegistry.js`
-- 刷怪速率：`src/systems/entities.js`
-- 敌人/Boss 属性倍率：`src/enemies/BaseEnemy.js`
-- 金币与经验掉落倍率：`src/systems/entities.js`
-- 难度解锁与通关记录：`src/difficulty.js`
-
-### 4.4 配置示例
-
-```json
-{
-  "neon": {
-    "name": "废弃实验室 · 难度2",
-    "desc": "标准体验，按照当前平衡运行。",
-    "enemyLimit": 420,
-    "spawnRate": 1,
-    "enemyHp": 1,
-    "enemyDamage": 1,
-    "enemySpeed": 1,
-    "enemyAttackSpeed": 1,
-    "bossHp": 1,
-    "bossDamage": 1,
-    "coinGain": 1,
-    "xpGain": 1
-  }
-}
-```
-
-### 4.5 调参建议
-
-- 优先小步调整：建议每次改动 3%~12%。
-- `spawnRate` 和 `enemyLimit` 同时拉高时，压力会非线性上升。
-- `bossHp`、`bossDamage` 建议独立于小怪倍率调节，避免 Boss 波次难度跳变过大。
-
----
-
-## 5. `enemy-config.json` 配置说明
-
-文件路径：`src/config/enemy-config.json`
-
-### 5.1 结构规则
-
-- 顶层是对象，键名就是敌人 id（例如 `zombie`、`storm_tyrant`）。
-- 键名必须和以下位置一致：
-  - 敌人类文件名（`src/enemies/<id>.js`）
-  - 注册表映射（`src/systems/enemyRegistry.js` 的 `classes`）
-
-### 5.2 单个敌人的基础字段
-
-- `name`：显示名
-- `category`：分类（例如 `小怪`、`Boss`）
-- `trait`：特性文案（用于 Boss 标题等）
-- `desc`：描述文案（图鉴展示）
-- `tip`：攻略提示文案（配置层记录）
-- `hp`：基础生命
-- `speed`：基础速度
-- `damage`：基础伤害
-- `xp`：击杀经验
-- `radius`：碰撞半径/体型半径
-- `color`：主题色（渲染/特效色）
-- `behavior`：行为类型（驱动 AI 逻辑）
-- `boss`：是否 Boss（`true`/`false`）
-- `spawnWeight`：默认刷怪权重，默认值为 `1`
-- `difficultyWeights`：不同难度的基础权重
-- `difficultyWaveWeights`：不同难度、不同波次的精细权重
-
-说明：最终战斗数值会叠加波次成长和难度倍率，不是只用基础值。
-
-### 5.3 波次出现规则
-
-系统支持以下字段，写任意一个即可生效，可组合：
-
-- `waves`
-- `waveRanges`
-- `spawnWaves`
-- `excludeWaves`
-- `bossWave`
-- `bossWaves`
-- `bossWaveRanges`
-- `difficultyWaves`
-
-支持的规则写法：
-
-- 单个波次：`5`
-- 闭区间：`[3, 8]`（表示 3 到 8 波）
-- 多段组合：`[[1, 3], [7, 9], 12]`
-
-匹配逻辑：
-
-1. 小怪优先看 `waves` / `waveRanges` / `spawnWaves`
-2. Boss 优先看 `bossWave` / `bossWaves` / `bossWaveRanges`，同时兼容 `waves` 等通用字段
-3. 只要命中任一“包含规则”就可出现
-4. 若命中 `excludeWaves`，则强制不出现
-
-### 5.4 不同难度的独立波次
-
-如果同一个敌人在不同难度中出现波次不同，可以使用 `difficultyWaves`。
-
-`difficultyWaves` 的键名是难度 id，值是该难度自己的波次规则。该字段只覆盖指定难度；没有配置的难度继续使用外层默认波次规则。
-
-示例：
-
-```json
-{
-  "zombie": {
-    "name": "僵尸",
-    "category": "小怪",
-    "waves": [1, 20],
-    "difficultyWaves": {
-      "ember": { "waves": [1, 12] },
-      "neon": { "waves": [1, 20] },
-      "overclock": { "spawnWaves": [1, 2, 3, 8, 9, 10] },
-      "apocalypse": { "waves": [1, 20], "excludeWaves": [5, 10, 15] }
-    }
-  }
-}
-```
-
-Boss 也支持该字段：
-
-```json
-{
-  "storm_tyrant": {
-    "boss": true,
-    "bossWave": 5,
-    "difficultyWaves": {
-      "ember": { "bossWave": 6 },
-      "overclock": { "bossWaves": [5, 9] }
-    }
-  }
-}
-```
-
-### 5.5 难度过滤规则
-
-可选字段：
-
-- 包含：`difficulties` / `difficultyIds` / `difficulty`
-- 排除：`excludeDifficulties` / `disabledDifficulties`
-- 区间：`minDifficulty`、`maxDifficulty`
-
-示例：
-
-- 仅在高难出现：`"minDifficulty": "overclock"`
-- 最高只到某难度：`"maxDifficulty": "apocalypse"`
-- 指定白名单：`"difficulties": ["neon", "overclock"]`
-- 指定黑名单：`"excludeDifficulties": ["ember"]`
-
-### 5.6 出现权重规则
-
-普通小怪会按权重随机刷出。权重越高，出现频率越高；权重为 `0` 表示当前条件下不会被随机刷出。
-
-优先级从高到低：
-
-1. `difficultyWaveWeights[当前难度][当前波次]`
-2. `difficultyWeights[当前难度]`
-3. `spawnWeight`
-4. 默认 `1`
-
-示例：
-
-```json
-{
-  "zombie": {
-    "spawnWeight": 1,
-    "difficultyWeights": {
-      "ember": 2,
-      "neon": 1,
-      "overclock": 0.7
-    },
-    "difficultyWaveWeights": {
-      "overclock": {
-        "1": 3,
-        "2": 2,
-        "10": 0
-      },
-      "apocalypse": {
-        "1": 0.5,
-        "15": 4
-      }
-    }
-  }
-}
-```
-
-### 5.7 小怪配置示例
-
-```json
-{
-  "razorbat": {
-    "name": "刃翼蝠",
-    "category": "小怪",
-    "trait": "回旋刃翼",
-    "waves": [11, 20],
-    "hp": 99,
-    "speed": 150,
-    "damage": 13,
-    "xp": 8,
-    "radius": 12,
-    "color": "#c7d2ff",
-    "behavior": "razorbat",
-    "desc": "会高速绕场飞行，并投掷会折返的翼刃回旋镖。",
-    "tip": "留意弧线返回的翼刃，不要只躲第一段飞行轨迹。"
-  }
-}
-```
-
-### 5.8 Boss 配置示例
-
-```json
-{
-  "storm_tyrant": {
-    "name": "风暴暴君",
-    "category": "Boss",
-    "trait": "多态弹幕",
-    "bossWave": 5,
-    "hp": 20000,
-    "speed": 64,
-    "damage": 34,
-    "xp": 180,
-    "radius": 62,
-    "color": "#42e8ff",
-    "behavior": "boss_storm",
-    "boss": true,
-    "desc": "会在散射、环阵和冲锋之间切换，还会召唤帮手压场。",
-    "tip": "预留绕场空间，优先关注它当前切换到的攻击模式。"
-  }
-}
-```
-
-### 5.9 新增敌人的最小接入清单
-
-1. 在 `src/enemies/` 新增 `<id>.js` 类文件。
-2. 在 `src/systems/enemyRegistry.js` 的 `classes` 注册该 id。
-3. 在 `src/config/enemy-config.json` 增加同 id 配置。
-4. 至少配置一种波次规则（否则可能不会在普通刷怪中出现）。
-5. 若为 Boss，设置 `boss: true` 和 Boss 波次规则。
-
----
-
-## 6. 游戏截图
-
-待补充
-
----
-
-## 7. 配置修改后验证
-
-### 7.1 JSON 合法性检查
-
-```powershell
-node -e "JSON.parse(require('fs').readFileSync('src/config/enemy-config.json','utf8')); JSON.parse(require('fs').readFileSync('src/config/difficulty-config.json','utf8')); console.log('json ok')"
-```
-
-### 7.2 JavaScript 语法检查
+### JavaScript 语法检查
 
 ```powershell
 Get-ChildItem -Path src -Recurse -Filter *.js | ForEach-Object { node --check $_.FullName }
 ```
 
-### 7.3 Diff 空白错误检查
+### JSON 合法性检查
+
+```powershell
+node -e "for (const f of ['src/config/enemy-config.json','src/config/difficulty-config.json','src/config/weapon-config.json','src/config/item-config.json','src/config/game-config.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('json ok')"
+```
+
+### Diff 空白错误检查
 
 ```powershell
 git diff --check
 ```
+
+默认文档和配置修改只需要静态验证。浏览器验证仅在用户明确要求或 UI/交互改动风险较高时执行。

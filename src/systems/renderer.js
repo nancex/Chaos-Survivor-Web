@@ -2421,12 +2421,6 @@ function drawHazards(ctx) {
     glow(ctx, 0, 0, h.r * 0.86, alpha * 0.34, h.color);
     ctx.fillStyle = hexToRgba(h.color, alpha * 0.16);
     ctx.beginPath(); ctx.arc(0, 0, h.r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = hexToRgba("#ffffff", alpha * 0.32);
-    ctx.lineWidth = 1.3;
-    ctx.beginPath(); ctx.arc(0, 0, h.r * (0.72 + Math.sin(state.time * 8 + h.x) * 0.05), 0, TAU); ctx.stroke();
-    ctx.strokeStyle = hexToRgba(h.color, alpha * 0.78);
-    ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.arc(0, 0, h.r, 0, TAU); ctx.stroke();
     ctx.restore();
   }
 }
@@ -2435,18 +2429,12 @@ function drawGearTrapHazard(ctx, h, alpha) {
   ctx.save();
   ctx.translate(h.x, h.y);
   drawMiniGear(ctx, 0, 0, h.r * 0.8, 14, h.color, (h.spin || 0) + state.time * 7);
-  ctx.strokeStyle = hexToRgba(h.color, alpha * 0.38);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0, 0, h.r, 0, TAU);
-  ctx.stroke();
   ctx.restore();
 }
 
 function drawToxicResidueHazard(ctx, h, alpha) {
   ctx.save();
   ctx.translate(h.x, h.y);
-  const pulse = 0.5 + Math.sin(state.time * 2.2 + h.x * 0.01) * 0.08;
   ctx.fillStyle = hexToRgba("#06130b", 0.52 * alpha);
   ctx.beginPath();
   ctx.arc(0, 0, h.r, 0, TAU);
@@ -2455,11 +2443,6 @@ function drawToxicResidueHazard(ctx, h, alpha) {
   ctx.beginPath();
   ctx.ellipse(0, 0, h.r * 0.94, h.r * 0.72, Math.sin(state.time + h.y) * 0.2, 0, TAU);
   ctx.fill();
-  ctx.strokeStyle = hexToRgba(h.color, 0.3 * alpha);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0, 0, h.r * pulse, 0, TAU);
-  ctx.stroke();
   ctx.strokeStyle = hexToRgba("#d7ffe4", 0.16 * alpha);
   ctx.lineWidth = 1;
   for (let i = 0; i < 5; i++) {
@@ -2583,11 +2566,6 @@ function drawIceHazard(ctx, h, alpha) {
     ctx.beginPath();
     ctx.arc(0, 0, h.r, 0, TAU);
     ctx.fill();
-    ctx.strokeStyle = hexToRgba("#d9fbff", 0.48 + Math.sin(state.time * 18) * 0.12);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, h.r * (0.7 + (1 - warn) * 0.28), 0, TAU);
-    ctx.stroke();
     ctx.strokeStyle = hexToRgba(h.color, 0.7);
     for (let i = 0; i < 6; i++) {
       const a = i / 6 * TAU;

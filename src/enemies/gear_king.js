@@ -150,22 +150,25 @@ export class GearKing extends BaseEnemy {
   updateGiantGearRain(dt, dx, dy, d) {
     this.drift(dx, dy, d, d < 520 ? -0.22 : 0.05, dt);
     if (this.attackTimer <= 0) {
-      this.attackTimer = this.phase2 ? 0.2 : 0.28;
+      this.attackTimer = this.phase2 ? 1.35 : 1.65;
       this.attackCount++;
-      const lanes = this.phase2 ? 3 : 2;
-      for (let i = 0; i < lanes; i++) {
-        const base = Math.atan2(state.player.y - this.y, state.player.x - this.x);
-        const a = base + (i - (lanes - 1) / 2) * 0.72 + (Math.random() - 0.5) * 0.22;
-        const speed = this.phase2 ? 620 : 540;
+      const laneCount = this.phase2 ? 4 : 3;
+      const laneGap = WORLD_SIZE / (laneCount + 1);
+      const half = WORLD_SIZE / 2;
+      const speed = this.phase2 ? 560 : 500;
+      const offset = (this.attackCount % 2 ? 0.5 : 0) * laneGap;
+      for (let i = 0; i < laneCount; i++) {
+        const laneX = -half + laneGap * (i + 1) + offset;
+        const x = clamp(laneX, -half + 90, half - 90);
         world.enemyProjectiles.push({
-          x: this.x + Math.cos(a) * (this.r * 0.72),
-          y: this.y + Math.sin(a) * (this.r * 0.72),
-          vx: Math.cos(a) * speed,
-          vy: Math.sin(a) * speed,
+          x,
+          y: -half - this.r,
+          vx: 0,
+          vy: speed,
           r: this.phase2 ? 34 : 30,
           color: this.phase2 ? "#ff4d6d" : "#ffd166",
           damage: this.damage * 0.58,
-          life: 3.2,
+          life: WORLD_SIZE / speed + 0.6,
           shape: "fastGear",
           spin: Math.random() * TAU,
           bossProjectile: true,
@@ -176,7 +179,7 @@ export class GearKing extends BaseEnemy {
           trapLife: 2.8,
         });
       }
-      if (this.attackCount >= (this.phase2 ? 14 : 10)) this.recover(0.82);
+      if (this.attackCount >= (this.phase2 ? 4 : 3)) this.recover(0.82);
     }
   }
 

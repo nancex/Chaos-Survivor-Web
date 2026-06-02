@@ -136,16 +136,13 @@ function drawWarningLine(ctx, e) {
   ctx.save();
   ctx.strokeStyle = `rgba(255,255,255,${0.25 + (1 - k) * 0.32})`;
   ctx.lineWidth = 18 + Math.sin(state.time * 18) * 2;
-  ctx.setLineDash([26, 18]);
   ctx.beginPath();
   ctx.moveTo(e.lineStart.x, e.lineStart.y);
   ctx.lineTo(e.lineEnd.x, e.lineEnd.y);
   ctx.stroke();
   ctx.strokeStyle = "rgba(66,232,255,0.9)";
   ctx.lineWidth = 3;
-  ctx.setLineDash([10, 12]);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 

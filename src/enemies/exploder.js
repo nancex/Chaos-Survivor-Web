@@ -113,11 +113,9 @@ export class Exploder extends BaseEnemy {
     if (this.armed) {
       ctx.strokeStyle = "rgba(255,77,109,0.48)";
       ctx.lineWidth = 2;
-      ctx.setLineDash([8, 7]);
       ctx.beginPath();
       ctx.arc(0, 0, EXPLODE_RADIUS, 0, TAU);
       ctx.stroke();
-      ctx.setLineDash([]);
     }
     ctx.restore();
   }

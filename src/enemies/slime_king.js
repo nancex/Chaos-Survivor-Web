@@ -24,6 +24,11 @@ export class SlimeKing extends BaseEnemy {
     this.phase2 = false;
     this.crownSpin = Math.random() * TAU;
     this.knockbackResistance = 0.94;
+    this.splitRole = config.splitRole || null;
+    this.roleTimer = 5.5 + Math.random() * 1.4;
+    this.spawnPushTimer = config.spawnPushTimer || 0;
+    this.spawnPushVx = config.spawnPushVx || 0;
+    this.spawnPushVy = config.spawnPushVy || 0;
   }
 
   update(dt) {
@@ -43,6 +48,7 @@ export class SlimeKing extends BaseEnemy {
     this.flip = dx < 0 ? -1 : 1;
     if (!wasPhase2 && this.phase2) this.phaseShift();
 
+    if (this.splitChild) this.updateSplitCoordination(dt, dx, dy, d);
     this.updateMode(dt, dx, dy, d);
     this.x = clamp(this.x, -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r);
     this.y = clamp(this.y, -WORLD_SIZE / 2 + this.r, WORLD_SIZE / 2 - this.r);
@@ -70,7 +76,12 @@ export class SlimeKing extends BaseEnemy {
   }
 
   chooseMode() {
-    this.mode = MODES[this.modeIndex % MODES.length];
+    if (this.splitChild && this.splitRole) {
+      const roleModes = this.splitRole === "charger" ? ["crown_bounce", "royal_split", "gel_ring"] : ["slime_rain", "gel_ring", "royal_split"];
+      this.mode = roleModes[this.modeIndex % roleModes.length];
+    } else {
+      this.mode = MODES[this.modeIndex % MODES.length];
+    }
     this.modeIndex++;
     this.attackCount = 0;
     this.attackTimer = 0.08;
@@ -147,6 +158,37 @@ export class SlimeKing extends BaseEnemy {
     this.y += (dy / d * power + dx / d * strafe) * this.speed * dt;
   }
 
+  updateSplitCoordination(dt, dx, dy, d) {
+    this.roleTimer -= dt;
+    if (this.roleTimer <= 0) {
+      this.splitRole = this.splitRole === "charger" ? "caster" : "charger";
+      this.roleTimer = 5.8;
+      this.recover(0.35);
+    }
+    if (this.spawnPushTimer > 0) {
+      this.spawnPushTimer = Math.max(0, this.spawnPushTimer - dt);
+      this.x += this.spawnPushVx * dt;
+      this.y += this.spawnPushVy * dt;
+      this.spawnPushVx *= Math.pow(0.82, dt * 60);
+      this.spawnPushVy *= Math.pow(0.82, dt * 60);
+    }
+    const sibling = world.enemies.find((enemy) => enemy instanceof SlimeKing && enemy !== this && enemy.splitChild && !enemy.dead);
+    if (!sibling) return;
+    const sx = this.x - sibling.x;
+    const sy = this.y - sibling.y;
+    const sd = Math.max(1, Math.hypot(sx, sy));
+    const minGap = this.r + sibling.r + 120;
+    if (sd < minGap) {
+      const push = (minGap - sd) * 0.5;
+      this.x += sx / sd * push * dt * 4.5;
+      this.y += sy / sd * push * dt * 4.5;
+    }
+    if (this.splitRole === "caster" && d < 360) {
+      this.x -= dx / d * this.speed * dt * 0.42;
+      this.y -= dy / d * this.speed * dt * 0.42;
+    }
+  }
+
   gelSplash(count, damage, offset = 0) {
     for (let i = 0; i < count; i++) {
       const a = offset + this.orbit + i / count * TAU;
@@ -213,7 +255,15 @@ export class SlimeKing extends BaseEnemy {
     const heirs = [];
     for (let i = 0; i < 2; i++) {
       const side = i ? 1 : -1;
-      const heir = new SlimeKing(this, this.x + side * this.r * 0.9, this.y);
+      const heirAngle = this.orbit + side * 0.78;
+      const heirDistance = this.r * 2.2;
+      const heir = new SlimeKing({
+        ...this,
+        splitRole: i ? "caster" : "charger",
+        spawnPushTimer: 0.48,
+        spawnPushVx: Math.cos(heirAngle) * 360,
+        spawnPushVy: Math.sin(heirAngle) * 360,
+      }, this.x + Math.cos(heirAngle) * heirDistance, this.y + Math.sin(heirAngle) * heirDistance);
       heir.name = i ? "史莱姆王·右冠" : "史莱姆王·左冠";
       heir.splitChild = true;
       heir.rewardScale = 0.5;
@@ -243,19 +293,21 @@ export class SlimeKing extends BaseEnemy {
   draw(ctx) {
     ctx.save();
     ctx.translate(Math.round(this.x), Math.round(this.y + Math.sin(this.anim * 1.4) * 5));
+    ctx.scale(this.flip || 1, 1);
     drawSlimeKing(ctx, this);
     ctx.restore();
   }
 }
 
 function drawSlimeKing(ctx, e) {
-  const flash = e.flash > 0;
-  const body = flash ? "#ffffff" : e.phase2 ? "#ffd166" : e.color || "#77ff8a";
-  const dark = flash ? "#eaffef" : e.phase2 ? "#a65a22" : "#2f8b4b";
-  const light = flash ? "#ffffff" : e.phase2 ? "#fff1b7" : "#caffb8";
-  const core = flash ? "#ffffff" : e.phase2 ? "#fff2a8" : "#9dffac";
+  const hurt = e.flash > 0;
+  const body = e.phase2 ? "#ffd166" : e.color || "#77ff8a";
+  const dark = hurt ? "#a33a4a" : e.phase2 ? "#a65a22" : "#2f8b4b";
+  const light = e.phase2 ? "#fff1b7" : "#caffb8";
+  const core = e.phase2 ? "#fff2a8" : "#9dffac";
   const wobble = Math.sin(e.anim * 2.1) * e.r * 0.06;
   const squash = 1 + Math.sin(e.anim * 2.1) * 0.06;
+  if (hurt) ctx.translate(Math.sin(e.anim * 11) * e.r * 0.03, 0);
   ctx.scale(squash, 1 / squash);
   ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.beginPath();
@@ -280,7 +332,7 @@ function drawSlimeKing(ctx, e) {
   ctx.stroke();
 
   ctx.globalCompositeOperation = "screen";
-  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.fillStyle = hurt ? "rgba(255,77,109,0.16)" : "rgba(255,255,255,0.22)";
   ctx.beginPath();
   ctx.ellipse(-e.r * 0.24, -e.r * 0.2, e.r * 0.72, e.r * 0.52, -0.28, 0, TAU);
   ctx.fill();
@@ -346,7 +398,7 @@ function drawCrown(ctx, e) {
   ctx.save();
   ctx.translate(0, -e.r * 0.88 + Math.sin(e.crownSpin * 1.2) * 2);
   ctx.rotate(Math.sin(e.crownSpin) * 0.06);
-  ctx.fillStyle = e.flash > 0 ? "#ffffff" : "#ffd166";
+  ctx.fillStyle = "#ffd166";
   ctx.strokeStyle = "#fff2a8";
   ctx.lineWidth = Math.max(2, e.r * 0.035);
   ctx.beginPath();

@@ -178,11 +178,9 @@ export class SiegePylon extends BaseEnemy {
     ctx.restore();
     ctx.strokeStyle = `rgba(66,232,255,${0.16 + Math.sin(state.time * 4) * 0.04})`;
     ctx.lineWidth = 1.2;
-    ctx.setLineDash([8, 8]);
     ctx.beginPath();
     ctx.arc(0, 0, SHIELD_RANGE, 0, TAU);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.restore();
   }
 }

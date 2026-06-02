@@ -283,12 +283,10 @@ function drawCharge(ctx, e) {
   ctx.rotate(e.strikeAngle);
   ctx.strokeStyle = `rgba(255,101,216,${0.34 + Math.sin(e.anim * 10) * 0.12})`;
   ctx.lineWidth = 3;
-  ctx.setLineDash([12, 8]);
   ctx.beginPath();
   ctx.moveTo(e.r, 0);
   ctx.lineTo(240, 0);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 

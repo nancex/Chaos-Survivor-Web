@@ -344,6 +344,7 @@ function updateEnemyProjectiles(dt) {
     b.x += b.vx * dt * speedScale;
     b.y += b.vy * dt * speedScale;
     b.life -= dt;
+    if (b.landTrapAtY != null && b.y >= b.landTrapAtY) b.life = 0;
     if (circleHit(b.x, b.y, b.r, p.x, p.y, p.r) && p.invuln <= 0) {
       const result = applyPlayerDamage(b.damage, b);
       p.invuln = 0.5;
@@ -364,12 +365,30 @@ function updateEnemyProjectiles(dt) {
       }
       burst(p.x, p.y, 8, b.color, 100);
       playSfx("hurt");
+      if (b.landTrapOnHit) placeGearProjectileTrap(b);
       world.enemyProjectiles.splice(i, 1);
     } else if (b.life <= 0) {
       if (b.splitOnExpire) splitEnemyProjectile(b);
+      if (b.landTrapOnExpire) placeGearProjectileTrap(b);
       world.enemyProjectiles.splice(i, 1);
     }
   }
+}
+
+function placeGearProjectileTrap(b) {
+  const half = WORLD_SIZE / 2 - 80;
+  world.hazards.push({
+    kind: "gear_trap",
+    x: clamp(b.x, -half, half),
+    y: clamp(b.y, -half, half),
+    r: b.trapRadius || Math.max(34, b.r * 1.4),
+    color: b.color || "#f59e0b",
+    damage: b.trapDamage || b.damage * 0.85,
+    life: b.trapLife || 2.8,
+    maxLife: b.trapLife || 2.8,
+    spin: b.spin || Math.random() * TAU,
+  });
+  pulse(b.x, b.y, Math.max(36, b.r * 1.4), b.color || "#f59e0b", 0.12);
 }
 
 function splitEnemyProjectile(b) {
@@ -565,17 +584,25 @@ function updateEliteDashTrap(e, dt) {
   e.y += (e.eliteDashVy || 0) * dt;
   e.eliteDashTrapTimer -= dt;
   if (e.eliteDashTrapTimer <= 0) {
-    e.eliteDashTrapTimer = 0.08;
-    world.hazards.push({
-      kind: "gear_trap",
-      x: e.x,
-      y: e.y,
-      r: 36,
+    e.eliteDashTrapTimer = 0.16;
+    const base = Math.atan2(e.eliteDashVy || 0, e.eliteDashVx || 1) + Math.PI;
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const a = base + side * (0.48 + Math.random() * 0.22);
+    world.enemyProjectiles.push({
+      x: e.x + Math.cos(a) * e.r * 0.4,
+      y: e.y + Math.sin(a) * e.r * 0.4,
+      vx: Math.cos(a) * 260,
+      vy: Math.sin(a) * 260,
+      r: 13,
       color: e.color,
-      damage: e.damage * 0.5,
-      life: 2.6,
-      maxLife: 2.6,
+      damage: e.damage * 0.22,
+      life: 0.46,
+      shape: "fastGear",
       spin: Math.random() * TAU,
+      landTrapOnExpire: true,
+      trapRadius: 38,
+      trapDamage: e.damage * 0.5,
+      trapLife: 2.6,
     });
   }
   return true;

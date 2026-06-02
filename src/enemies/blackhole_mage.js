@@ -200,10 +200,8 @@ function drawTether(ctx, e) {
   const dy = h.y - e.y;
   ctx.strokeStyle = "rgba(216,200,255,0.42)";
   ctx.lineWidth = 1.4;
-  ctx.setLineDash([5, 8]);
   ctx.beginPath();
   ctx.moveTo(15, -8);
   ctx.lineTo(dx, dy);
   ctx.stroke();
-  ctx.setLineDash([]);
 }

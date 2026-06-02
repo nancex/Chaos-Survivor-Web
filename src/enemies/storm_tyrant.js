@@ -338,12 +338,10 @@ function drawTelegraph(ctx, e) {
     ctx.stroke();
     ctx.strokeStyle = `rgba(159,244,255,${alpha})`;
     ctx.lineWidth = 5;
-    ctx.setLineDash([18, 12]);
     ctx.beginPath();
     ctx.moveTo(25, 0);
     ctx.lineTo(360, 0);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.7})`;
     ctx.lineWidth = 1.5;
     for (let i = 0; i < 6; i++) {
@@ -359,12 +357,10 @@ function drawTelegraph(ctx, e) {
     for (let i = 0; i < 3; i++) {
       ctx.strokeStyle = i === 1 ? `rgba(255,255,255,${alpha * 0.42})` : `rgba(66,232,255,${alpha * (0.9 - i * 0.18)})`;
       ctx.lineWidth = i === 0 ? 5 : 1.6;
-      ctx.setLineDash(i === 2 ? [12, 8] : []);
       ctx.beginPath();
       ctx.arc(0, 0, r + i * 18, e.ringSpin * (i ? -0.7 : 0.9), e.ringSpin * (i ? -0.7 : 0.9) + Math.PI * 1.62);
       ctx.stroke();
     }
-    ctx.setLineDash([]);
   } else {
     ctx.rotate(e.lockAngle);
     ctx.fillStyle = `rgba(66,232,255,${alpha * 0.14})`;

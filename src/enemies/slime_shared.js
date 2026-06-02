@@ -110,7 +110,7 @@ export class SlimeEnemy extends BaseEnemy {
     ctx.save();
     ctx.translate(Math.round(this.x), Math.round(this.y - lift * this.profile.jumpHeight + bounce));
     drawSlimeShadow(ctx, this, lift);
-    ctx.scale(scaleX, scaleY);
+    ctx.scale((this.flip || 1) * scaleX, scaleY);
     drawSlimeBody(ctx, this, lift);
     drawSlimeCore(ctx, this, lift);
     drawSlimeVariantDetails(ctx, this, lift, "body");
@@ -227,24 +227,30 @@ function drawSlimeShadow(ctx, e, lift) {
 
 function drawSlimeBody(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
-  const flash = e.flash > 0;
+  const hurt = e.flash > 0;
   const wobble = Math.sin(e.anim * 2.1) * r * 0.07;
   const crown = Math.sin(e.anim * 1.6 + lift) * r * 0.035;
-  const color = flash ? "#ffffff" : e.slimeColors.body;
-  const dark = flash ? "#eaffef" : e.slimeColors.dark;
-  const light = flash ? "#ffffff" : e.slimeColors.light;
+  const color = e.slimeColors.body;
+  const dark = hurt ? "#a33a4a" : e.slimeColors.dark;
+  const light = e.slimeColors.light;
 
   ctx.save();
+  if (hurt) {
+    ctx.translate(Math.sin(e.anim * 9) * r * 0.025, 0);
+    ctx.scale(1.04, 0.97);
+  }
+  if (e.elite) {
+    ctx.strokeStyle = "rgba(3,8,18,0.62)";
+    ctx.lineWidth = Math.max(5, r * 0.16);
+    slimeBodyPath(ctx, r, wobble, crown, lift);
+    ctx.stroke();
+    ctx.strokeStyle = hexToRgbaLocal(e.slimeColors.body, e.eliteVariant === "giant" ? 0.62 : 0.48);
+    ctx.lineWidth = Math.max(3, r * 0.09);
+    slimeBodyPath(ctx, r, wobble, crown, lift);
+    ctx.stroke();
+  }
   ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(-r * 1.03, r * 0.18);
-  ctx.bezierCurveTo(-r * 1.08 + wobble, -r * 0.42, -r * 0.7, -r * 0.82, -r * 0.28, -r * 0.92 - crown);
-  ctx.bezierCurveTo(-r * 0.1, -r * 1.1 - lift * 2, r * 0.2, -r * 1.08 + lift * 2, r * 0.4, -r * 0.9 + crown);
-  ctx.bezierCurveTo(r * 0.82 + wobble * 0.35, -r * 0.74, r * 1.1 + wobble, -r * 0.28, r * 1.04, r * 0.18);
-  ctx.bezierCurveTo(r * 0.98, r * 0.58, r * 0.58, r * 0.88, r * 0.18, r * 0.86);
-  ctx.bezierCurveTo(r * 0.04, r * 0.98, -r * 0.22, r * 0.98, -r * 0.38, r * 0.86);
-  ctx.bezierCurveTo(-r * 0.78, r * 0.84, -r * 1.0, r * 0.58, -r * 1.03, r * 0.18);
-  ctx.closePath();
+  slimeBodyPath(ctx, r, wobble, crown, lift);
   ctx.fill();
 
   ctx.globalCompositeOperation = "screen";
@@ -272,18 +278,30 @@ function drawSlimeBody(ctx, e, lift) {
   ctx.restore();
 }
 
+function slimeBodyPath(ctx, r, wobble, crown, lift) {
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.03, r * 0.18);
+  ctx.bezierCurveTo(-r * 1.08 + wobble, -r * 0.42, -r * 0.7, -r * 0.82, -r * 0.28, -r * 0.92 - crown);
+  ctx.bezierCurveTo(-r * 0.1, -r * 1.1 - lift * 2, r * 0.2, -r * 1.08 + lift * 2, r * 0.4, -r * 0.9 + crown);
+  ctx.bezierCurveTo(r * 0.82 + wobble * 0.35, -r * 0.74, r * 1.1 + wobble, -r * 0.28, r * 1.04, r * 0.18);
+  ctx.bezierCurveTo(r * 0.98, r * 0.58, r * 0.58, r * 0.88, r * 0.18, r * 0.86);
+  ctx.bezierCurveTo(r * 0.04, r * 0.98, -r * 0.22, r * 0.98, -r * 0.38, r * 0.86);
+  ctx.bezierCurveTo(-r * 0.78, r * 0.84, -r * 1.0, r * 0.58, -r * 1.03, r * 0.18);
+  ctx.closePath();
+}
+
 function drawSlimeCore(ctx, e, lift) {
   const r = e.r * e.profile.bodyScale;
-  const flash = e.flash > 0;
+  const hurt = e.flash > 0;
   const coreX = r * 0.08;
   const coreY = r * 0.02 + lift * 0.4;
   ctx.save();
-  ctx.globalAlpha = 0.9;
-  ctx.fillStyle = flash ? "rgba(255,255,255,0.82)" : e.slimeColors.core;
+  ctx.globalAlpha = hurt ? 0.72 : 0.9;
+  ctx.fillStyle = e.slimeColors.core;
   ctx.beginPath();
   ctx.ellipse(coreX, coreY, r * 0.58, r * 0.42, 0.08, 0, TAU);
   ctx.fill();
-  ctx.fillStyle = flash ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.24)";
+  ctx.fillStyle = "rgba(255,255,255,0.24)";
   ctx.beginPath();
   ctx.ellipse(coreX - r * 0.14, coreY - r * 0.12, r * 0.34, r * 0.2, -0.2, 0, TAU);
   ctx.fill();
@@ -298,7 +316,6 @@ function drawSlimeCore(ctx, e, lift) {
 }
 
 function drawSlimeVariantDetails(ctx, e, lift, layer) {
-  if (e.flash > 0) return;
   if (e.slimeVariant === "diamond") return drawDiamondSlimeDetails(ctx, e, lift, layer);
   if (e.slimeVariant === "gold") return drawGoldSlimeDetails(ctx, e, lift, layer);
   if (e.slimeVariant === "glow") return drawGlowSlimeDetails(ctx, e, lift, layer);
@@ -612,7 +629,6 @@ function drawSlimeFace(ctx, e, lift) {
 
   ctx.save();
   ctx.translate(faceX, faceY);
-  ctx.scale(e.flip || 1, 1);
   ctx.fillStyle = e.slimeColors.face;
   if (blink) {
     ctx.fillRect(-r * 0.34, -r * 0.1, eye * 1.8, 2);

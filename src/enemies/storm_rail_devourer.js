@@ -892,12 +892,10 @@ export class StormRailDevourer extends BaseEnemy {
     ctx.globalCompositeOperation = "lighter";
     ctx.strokeStyle = colorWithAlpha(this.phaseColor(), 0.38);
     ctx.lineWidth = 2.5;
-    ctx.setLineDash([18, 12]);
     ctx.beginPath();
     ctx.moveTo(this.r, 0);
     ctx.lineTo(920, 0);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.restore();
   }
 
@@ -930,9 +928,7 @@ export class StormRailDevourer extends BaseEnemy {
     ctx.stroke();
     ctx.strokeStyle = colorWithAlpha("#ffffff", 0.24);
     ctx.lineWidth = 1.2;
-    ctx.setLineDash([14, 12]);
     ctx.stroke();
-    ctx.setLineDash([]);
     if (this.mode === "coil" || this.mode === "laser_net") {
       ctx.strokeStyle = colorWithAlpha(color, 0.18);
       ctx.lineWidth = 24;

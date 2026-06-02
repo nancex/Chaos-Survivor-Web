@@ -99,11 +99,9 @@ export class PhaseMirage extends BaseEnemy {
     if (this.phaseState === "windup") {
       ctx.strokeStyle = "rgba(217,70,239,0.65)";
       ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.arc(0, 0, this.r + 12 + Math.sin(this.anim * 8) * 3, 0, TAU);
       ctx.stroke();
-      ctx.setLineDash([]);
     }
     ctx.restore();
   }

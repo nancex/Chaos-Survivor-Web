@@ -737,11 +737,9 @@ function drawSingularityProjectile(ctx, b) {
 
   ctx.strokeStyle = hexToRgba(b.color, 0.18);
   ctx.lineWidth = 1.2;
-  ctx.setLineDash([10, 9]);
   ctx.beginPath();
   ctx.arc(0, 0, b.pullRadius * (0.82 + Math.sin(state.time * 2 + b.seed) * 0.03), 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
 
   for (let i = 0; i < 12; i++) {
     const a = b.spin * (i % 2 ? -0.55 : 0.72) + i * TAU / 12;
@@ -947,11 +945,9 @@ function drawAllyTurret(ctx, turret) {
   ctx.fillRect(22, -3, 8, 6);
   ctx.rotate(-turret.targetAngle || 0);
   ctx.strokeStyle = hexToRgba("#42e8ff", 0.28 + Math.sin(t * 6) * 0.08);
-  ctx.setLineDash([8, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, 28, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -1025,11 +1021,9 @@ function drawTeslaNode(ctx, node) {
 
   ctx.strokeStyle = hexToRgba(color, armed ? 0.26 : 0.14);
   ctx.lineWidth = 1;
-  ctx.setLineDash([7, 9]);
   ctx.beginPath();
   ctx.arc(0, 0, node.triggerRadius * (0.98 + Math.sin(t * 2) * 0.015), 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
 
   ctx.save();
   ctx.rotate(t * 1.2);
@@ -1199,11 +1193,9 @@ function drawFrostZoneFx(ctx, fx, k) {
   ctx.fill();
   ctx.strokeStyle = hexToRgba("#dffcff", k * 0.55);
   ctx.lineWidth = 1.4;
-  ctx.setLineDash([8, 8]);
   ctx.beginPath();
   ctx.arc(fx.x, fx.y, r, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   for (let i = 0; i < 8; i++) {
     const a = i * TAU / 8 + state.time * 0.7;
     const x = fx.x + Math.cos(a) * r * 0.55;
@@ -1338,11 +1330,9 @@ function drawVoidPulseFx(ctx, fx, k) {
   ctx.stroke();
   ctx.strokeStyle = hexToRgba(fx.color, k * 0.86);
   ctx.lineWidth = 2.8;
-  ctx.setLineDash([12, 9]);
   ctx.beginPath();
   ctx.arc(0, 0, r, (fx.seed || 0) + state.time * 2.2, (fx.seed || 0) + state.time * 2.2 + Math.PI * 1.7);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = hexToRgba(fx.rank >= 4 ? "#ffd166" : "#ff65d8", k * 0.48);
   ctx.lineWidth = 1.3;
   for (let i = 0; i < 9; i++) {
@@ -1438,11 +1428,9 @@ function drawTeslaNodePulseFx(ctx, fx, k) {
   ctx.stroke();
   ctx.strokeStyle = hexToRgba(fx.rank >= 4 ? "#ffd166" : fx.color, k * 0.84);
   ctx.lineWidth = 2.6;
-  ctx.setLineDash([10, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 1.72);
   ctx.stroke();
-  ctx.setLineDash([]);
   for (let i = 0; i < 8; i++) {
     const a = i * TAU / 8;
     ctx.beginPath();
@@ -1599,11 +1587,9 @@ function drawStarfallWarningFx(ctx, fx, k) {
   glow(ctx, 0, 0, r * 0.38, (0.12 + charge * 0.18) * k, fx.color);
   ctx.strokeStyle = hexToRgba(fx.major ? "#ffd166" : fx.color, 0.64 * k);
   ctx.lineWidth = fx.major ? 2.4 : 1.7;
-  ctx.setLineDash([9, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = hexToRgba("#ffffff", 0.46 * k);
   ctx.lineWidth = 1.2;
   for (let i = 0; i < 10; i++) {
@@ -1737,11 +1723,9 @@ function drawPhaseNeedleMarkFx(ctx, fx, k) {
   glow(ctx, 0, 0, r * 1.15, (0.14 + charge * 0.18) * k, fx.color);
   ctx.strokeStyle = hexToRgba("#42e8ff", 0.52 * k);
   ctx.lineWidth = 1.2;
-  ctx.setLineDash([5, 6]);
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = hexToRgba(fx.color, 0.84 * k);
   ctx.lineWidth = fx.major ? 2.3 : 1.6;
   for (let i = 0; i < 4; i++) {
@@ -1948,11 +1932,9 @@ function drawRiftLoomFx(ctx, fx, k) {
   }
   ctx.strokeStyle = hexToRgba("#ffffff", k * 0.18);
   ctx.lineWidth = 1;
-  ctx.setLineDash([6, 8]);
   ctx.beginPath();
   ctx.arc(fx.x, fx.y, radius * (0.88 + Math.sin(state.time * 4 + (fx.seed || 0)) * 0.025), 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.lineCap = "butt";
   ctx.restore();
 }
@@ -2455,11 +2437,9 @@ function drawGearTrapHazard(ctx, h, alpha) {
   drawMiniGear(ctx, 0, 0, h.r * 0.8, 14, h.color, (h.spin || 0) + state.time * 7);
   ctx.strokeStyle = hexToRgba(h.color, alpha * 0.38);
   ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]);
   ctx.beginPath();
   ctx.arc(0, 0, h.r, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -2477,11 +2457,9 @@ function drawToxicResidueHazard(ctx, h, alpha) {
   ctx.fill();
   ctx.strokeStyle = hexToRgba(h.color, 0.3 * alpha);
   ctx.lineWidth = 2;
-  ctx.setLineDash([10, 8]);
   ctx.beginPath();
   ctx.arc(0, 0, h.r * pulse, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = hexToRgba("#d7ffe4", 0.16 * alpha);
   ctx.lineWidth = 1;
   for (let i = 0; i < 5; i++) {
@@ -2548,12 +2526,10 @@ function drawTwinArcFieldHazard(ctx, h, alpha) {
     const r = h.r * (0.42 + ring * 0.24);
     ctx.strokeStyle = ring === 1 ? hexToRgba("#ffffff", alpha * 0.24) : hexToRgba(h.color, alpha * 0.46);
     ctx.lineWidth = ring === 0 ? 3 : 1.6;
-    ctx.setLineDash(ring === 2 ? [8, 7] : []);
     ctx.beginPath();
     ctx.arc(0, 0, r, state.time * (ring + 1) * 0.8, state.time * (ring + 1) * 0.8 + Math.PI * 1.55);
     ctx.stroke();
   }
-  ctx.setLineDash([]);
   ctx.strokeStyle = hexToRgba("#d9fbff", alpha * 0.72);
   ctx.lineWidth = 1.2;
   for (let i = 0; i < 7; i++) {
@@ -2609,11 +2585,9 @@ function drawIceHazard(ctx, h, alpha) {
     ctx.fill();
     ctx.strokeStyle = hexToRgba("#d9fbff", 0.48 + Math.sin(state.time * 18) * 0.12);
     ctx.lineWidth = 2;
-    ctx.setLineDash([8, 7]);
     ctx.beginPath();
     ctx.arc(0, 0, h.r * (0.7 + (1 - warn) * 0.28), 0, TAU);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.strokeStyle = hexToRgba(h.color, 0.7);
     for (let i = 0; i < 6; i++) {
       const a = i / 6 * TAU;
@@ -2689,11 +2663,9 @@ function drawArtilleryHazard(ctx, h, alpha) {
     ctx.fill();
     ctx.strokeStyle = hexToRgba("#ffffff", 0.38 + Math.sin(state.time * 18) * 0.12);
     ctx.lineWidth = 2;
-    ctx.setLineDash([10, 8]);
     ctx.beginPath();
     ctx.arc(0, 0, h.r * (0.86 + (1 - warn) * 0.18), 0, TAU);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.strokeStyle = hexToRgba(h.color, 0.74);
     for (let i = 0; i < 4; i++) {
       const a = i * TAU / 4 + state.time * 0.4;
@@ -2740,6 +2712,7 @@ function drawEnemyShield(ctx, e) {
 function drawEliteOutline(ctx, e) {
   const style = eliteOutlineStyle(e);
   if (!style) return;
+  if (e.type?.startsWith("slime_")) return;
   ctx.save();
   ctx.translate(e.x, e.y);
   ctx.globalCompositeOperation = "source-over";
@@ -2879,12 +2852,10 @@ function drawStormLaserNetHazard(ctx, h, alpha) {
   ctx.strokeStyle = hexToRgba(armed ? h.color : "#ffffff", armed ? alpha * Math.min(1, 0.58 + power * 0.34) : 0.24 + (1 - warn) * 0.36);
   ctx.lineWidth = armed ? (h.width || 22) * power : 5;
   ctx.lineCap = "round";
-  if (!armed) ctx.setLineDash([28, 16]);
   ctx.beginPath();
   ctx.moveTo(-(h.length || 1200) / 2, 0);
   ctx.lineTo((h.length || 1200) / 2, 0);
   ctx.stroke();
-  ctx.setLineDash([]);
   if (armed) {
     ctx.strokeStyle = hexToRgba("#ff4dff", alpha * surge * 0.58);
     ctx.lineWidth = (h.width || 22) * 1.7;

@@ -232,10 +232,12 @@ function drawEnemyShape(ctx, e) {
     drawFallbackSlimeShape(ctx, e);
   } else if (e.behavior === "pylon" || e.behavior === "shield") {
     ctx.rotate(Math.sin(e.anim) * 0.1);
-    ctx.fillStyle = e.flash > 0 ? "#fff" : e.color;
+    const hurt = e.flash > 0;
+    if (hurt) ctx.scale(1.04, 0.98);
+    ctx.fillStyle = e.color;
     ctx.fillRect(-e.r * 0.75, -e.r * 1.2, e.r * 1.5, e.r * 2.2);
-    ctx.strokeStyle = e.elite ? "#ffd166" : "rgba(255,255,255,0.55)";
-    ctx.lineWidth = e.elite ? 3 : 1.5;
+    ctx.strokeStyle = hurt ? "#ff4d6d" : e.elite ? "#ffd166" : "rgba(255,255,255,0.55)";
+    ctx.lineWidth = hurt ? 3 : e.elite ? 3 : 1.5;
     ctx.strokeRect(-e.r * 0.75, -e.r * 1.2, e.r * 1.5, e.r * 2.2);
   } else {
     drawZombieShape(ctx, e);
@@ -246,10 +248,10 @@ function drawFallbackSlimeShape(ctx, e) {
   const lift = Math.max(0, Math.sin(e.anim * 2.2)) * 4;
   const squash = 1 + Math.sin(e.anim * 3.2) * 0.07;
   const r = e.r * (e.type === "slime_large" ? 1.18 : e.type === "slime_medium" ? 1.06 : 1);
-  const flash = e.flash > 0;
-  const body = flash ? "#ffffff" : e.color;
-  const core = flash ? "#ffffff" : "#9dffac";
-  const dark = flash ? "#eaffef" : "#2f8b4b";
+  const hurt = e.flash > 0;
+  const body = e.color;
+  const core = hurt ? "rgba(255,77,109,0.42)" : "#9dffac";
+  const dark = hurt ? "#a33a4a" : "#2f8b4b";
 
   ctx.translate(0, -lift);
   ctx.scale(squash, 1 / squash);
@@ -299,14 +301,15 @@ function drawZombieShape(ctx, e) {
   const step = Math.cos(e.anim * 2.15);
   const bob = Math.abs(step) * -1.5 * z;
   const sway = Math.sin(e.anim * 1.05) * 2.1 * z;
-  const flash = e.flash > 0;
-  const skin = flash ? "#ffffff" : zombieSkin(e);
-  const dark = flash ? "#dfefff" : "#315436";
+  const hurt = e.flash > 0;
+  const skin = zombieSkin(e);
+  const dark = hurt ? "#5b2330" : "#315436";
   const outfit = zombieOutfit(e);
-  const cloth = flash ? "#ffffff" : outfit.cloth;
-  const wound = flash ? "#ffffff" : "#b91c1c";
+  const cloth = outfit.cloth;
+  const wound = hurt ? "#ff4d6d" : "#b91c1c";
 
   ctx.scale(e.flip || 1, 1);
+  if (hurt) ctx.scale(1.03, 0.98);
   ctx.translate(sway, bob);
   ctx.fillStyle = "rgba(0,0,0,0.30)";
   ctx.beginPath();
@@ -333,9 +336,9 @@ function drawZombieShape(ctx, e) {
   ctx.fillRect(-10 * z, -3 * z, 21 * z, 5 * z);
   ctx.fillStyle = wound;
   ctx.fillRect(1 * z, -11 * z, 8 * z, 10 * z);
-  ctx.fillStyle = flash ? "#ffffff" : "#26344a";
+  ctx.fillStyle = hurt ? "#3a1f2a" : "#26344a";
   ctx.fillRect(-9 * z, -13 * z, 8 * z, 5 * z);
-  if (!flash && e.clothingVariant === "scientist") {
+  if (e.clothingVariant === "scientist") {
     ctx.fillStyle = "#e8f7ff";
     ctx.fillRect(-11 * z, -14 * z, 6 * z, 26 * z);
     ctx.fillRect(6 * z, -15 * z, 6 * z, 25 * z);
@@ -347,32 +350,32 @@ function drawZombieShape(ctx, e) {
     ctx.moveTo(-1 * z, -13 * z);
     ctx.lineTo(-1 * z, 10 * z);
     ctx.stroke();
-  } else if (!flash && e.clothingVariant === "medic") {
+  } else if (e.clothingVariant === "medic") {
     ctx.fillStyle = "#f8fafc";
     ctx.fillRect(-9 * z, -13 * z, 18 * z, 7 * z);
     ctx.fillStyle = "#ef4444";
     ctx.fillRect(-2 * z, -12 * z, 4 * z, 5 * z);
     ctx.fillRect(-5 * z, -10 * z, 10 * z, 2 * z);
-  } else if (!flash && e.clothingVariant === "engineer") {
+  } else if (e.clothingVariant === "engineer") {
     ctx.fillStyle = "#facc15";
     ctx.fillRect(-10 * z, -15 * z, 20 * z, 4 * z);
     ctx.fillStyle = "#64748b";
     ctx.fillRect(-8 * z, -4 * z, 5 * z, 8 * z);
     ctx.fillRect(5 * z, -3 * z, 4 * z, 7 * z);
-  } else if (!flash && e.clothingVariant === "prisoner") {
+  } else if (e.clothingVariant === "prisoner") {
     ctx.fillStyle = "#111827";
     for (let y = -12; y <= 7; y += 7) ctx.fillRect(-10 * z, y * z, 22 * z, 3 * z);
-  } else if (!flash && e.clothingVariant === "courier") {
+  } else if (e.clothingVariant === "courier") {
     ctx.fillStyle = "#7c2d12";
     ctx.fillRect(-13 * z, -7 * z, 7 * z, 15 * z);
     ctx.fillStyle = "#fde68a";
     ctx.fillRect(3 * z, -13 * z, 6 * z, 5 * z);
-  } else if (!flash && outfit.accent) {
+  } else if (outfit.accent) {
     ctx.fillStyle = outfit.accent;
     ctx.fillRect(-8 * z, -12 * z, 15 * z, 3 * z);
     ctx.fillRect(6 * z, 2 * z, 4 * z, 8 * z);
   }
-  ctx.strokeStyle = flash ? "#ffffff" : "rgba(7,16,13,0.72)";
+  ctx.strokeStyle = hurt ? "#ff4d6d" : "rgba(7,16,13,0.72)";
   ctx.lineWidth = 1.4 * z;
   ctx.stroke();
   ctx.restore();
@@ -406,7 +409,7 @@ function drawZombieShape(ctx, e) {
   ctx.fillRect(-1 * z, -17 * z, 8 * z, 2.5 * z);
   ctx.fillRect(7 * z, -20 * z, 3 * z, 4 * z);
 
-  ctx.strokeStyle = flash ? "#ffffff" : "rgba(8,18,14,0.65)";
+  ctx.strokeStyle = hurt ? "#ff4d6d" : "rgba(8,18,14,0.65)";
   ctx.lineWidth = 1.5 * z;
   ctx.stroke();
   ctx.restore();
@@ -475,11 +478,13 @@ function zombieCloth(e) {
 
 function drawBossShape(ctx, e) {
   const pulseScale = 1 + Math.sin(e.anim) * 0.04;
+  const hurt = e.flash > 0;
   ctx.scale(pulseScale, pulseScale);
+  if (hurt) ctx.scale(1.03, 0.98);
   ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.fillRect(-e.r * 0.9, e.r * 0.55, e.r * 1.8, e.r * 0.28);
   ctx.rotate(e.phase * 0.25);
-  ctx.fillStyle = e.flash > 0 ? "#fff" : e.color;
+  ctx.fillStyle = hurt ? "#5b2330" : e.color;
   ctx.beginPath();
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU;

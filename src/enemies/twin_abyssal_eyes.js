@@ -582,14 +582,12 @@ function drawLaserTelegraph(ctx, e) {
       ctx.stroke();
     }
   } else {
-    ctx.setLineDash([16, 12]);
     ctx.strokeStyle = "rgba(159,244,255,0.54)";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(e.r + 12, 0);
     ctx.lineTo(960, 0);
     ctx.stroke();
-    ctx.setLineDash([]);
   }
   ctx.restore();
 }
@@ -608,12 +606,10 @@ function drawDashTelegraph(ctx, e) {
   ctx.stroke();
   ctx.strokeStyle = `rgba(255,209,102,${alpha * 0.72})`;
   ctx.lineWidth = 5;
-  ctx.setLineDash([18, 12]);
   ctx.beginPath();
   ctx.moveTo(e.r, 0);
   ctx.lineTo(520, 0);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.55})`;
   ctx.lineWidth = 1.4;
   for (let i = 0; i < 5; i++) {
@@ -639,12 +635,10 @@ function drawLink(ctx, a, b, resonance) {
   ctx.stroke();
   ctx.strokeStyle = resonance ? "rgba(255,255,255,0.6)" : "rgba(100,180,255,0.28)";
   ctx.lineWidth = resonance ? 4 : 2;
-  ctx.setLineDash(resonance ? [10, 7] : [6, 10]);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 

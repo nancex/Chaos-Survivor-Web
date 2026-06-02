@@ -371,11 +371,9 @@ function drawFrostHalo(ctx, e) {
   ctx.scale(1, 0.42);
   ctx.strokeStyle = e.phaseLevel >= 3 ? "rgba(180,140,255,0.62)" : "rgba(217,251,255,0.54)";
   ctx.lineWidth = 2;
-  ctx.setLineDash([10, 8]);
   ctx.beginPath();
   ctx.arc(0, -e.r * 0.62, e.r * 1.18, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
 
@@ -394,12 +392,10 @@ function drawDashTelegraph(ctx, e) {
   ctx.stroke();
   ctx.strokeStyle = `rgba(217,251,255,${alpha + 0.18})`;
   ctx.lineWidth = 5;
-  ctx.setLineDash([18, 12]);
   ctx.beginPath();
   ctx.moveTo(e.r * 0.8, 0);
   ctx.lineTo(560, 0);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.strokeStyle = `rgba(180,140,255,${alpha * 0.7})`;
   ctx.lineWidth = 1.5;
   for (let i = 0; i < 7; i++) {

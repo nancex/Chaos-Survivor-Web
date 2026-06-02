@@ -134,12 +134,10 @@ function drawLungeTelegraph(ctx, e) {
   ctx.rotate(a);
   ctx.strokeStyle = `rgba(255,207,138,${pulseAlpha})`;
   ctx.lineWidth = 3;
-  ctx.setLineDash([14, 9]);
   ctx.beginPath();
   ctx.moveTo(18, 0);
   ctx.lineTo(length, 0);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.fillStyle = `rgba(255,244,210,${pulseAlpha})`;
   ctx.beginPath();
   ctx.moveTo(length + 14, 0);

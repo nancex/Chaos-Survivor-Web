@@ -27,6 +27,21 @@
     { "id": "thief_mark", "icon": "¢", "name": "窃贼印记", "basePrice": 24, "singleQuality": true, "fixedQuality": "epic", "unique": true, "desc": "只能购买 1 个。敌人金币掉落 +20%，被攻击时损失当前金币 6%。" },
     { "id": "star_cloak", "icon": "✦", "name": "星星斗篷", "basePrice": 36, "singleQuality": true, "fixedQuality": "rare", "unique": true, "desc": "只能购买 1 个。被攻击时召唤 8 颗星雨反击敌人。" },
     { "id": "landmine", "icon": "◈", "name": "地雷", "basePrice": 32, "singleQuality": true, "fixedQuality": "rare", "desc": "每波随机生成 3 个地雷，可叠加。" },
-    { "id": "airburst", "icon": "✹", "name": "空爆弹", "basePrice": 40, "unique": true, "desc": "不可叠加。每隔 30/25/20/15/10 秒清空玩家附近敌方投射物。" }
+    { "id": "airburst", "icon": "✹", "name": "空爆弹", "basePrice": 40, "unique": true, "desc": "不可叠加。每隔 30/25/20/15/10 秒清空玩家附近敌方投射物。" },
+    { "id": "free_coupon", "icon": "券", "name": "免单券", "basePrice": 46, "singleQuality": true, "fixedQuality": "epic", "desc": "每回合进入商店后，第一次购买或刷新免费。可叠加免费次数。" },
+    { "id": "debt_chip", "icon": "贷", "name": "赊账芯片", "basePrice": 34, "singleQuality": true, "fixedQuality": "rare", "desc": "金币不足时可赊账购买一次商品，之后金币优先偿还债务，债务未清不能刷新。" },
+    { "id": "black_market_invite", "icon": "函", "name": "黑市邀请函", "basePrice": 72, "singleQuality": true, "fixedQuality": "legendary", "unique": true, "desc": "每隔 3 波商店额外出现一个高品质黑市槽位，价格更高且不能锁定。" },
+    { "id": "copy_film", "icon": "膜", "name": "商品复制膜", "basePrice": 48, "singleQuality": true, "fixedQuality": "epic", "desc": "购买非唯一道具后，可在商店生成一个低价复制品。可叠加复制次数。" },
+    { "id": "escape_smoke_bomb", "icon": "烟", "name": "逃生烟雾弹", "basePrice": 50, "singleQuality": true, "fixedQuality": "epic", "desc": "受到致命伤害时消耗一个，释放烟雾、短暂无敌并闪现到附近安全位置。" },
+    { "id": "overcharge_battery", "icon": "电", "name": "过载电池", "basePrice": 36, "singleQuality": true, "fixedQuality": "rare", "desc": "每波开始获得一次武器过载命中，命中时额外触发范围电爆。可叠加次数。" },
+    { "id": "target_marker", "icon": "标", "name": "靶向标记器", "basePrice": 48, "singleQuality": true, "fixedQuality": "epic", "desc": "每波标记高威胁敌人，击杀后触发金币爆裂并暴露附近敌人。" },
+    { "id": "decoy_dummy", "icon": "偶", "name": "虚假人偶", "basePrice": 34, "singleQuality": true, "fixedQuality": "rare", "desc": "每波开始生成诱饵人偶，吸引敌人并在击破时释放击退脉冲。可叠加数量。" },
+    { "id": "rift_beacon", "icon": "隙", "name": "裂隙路标", "basePrice": 76, "singleQuality": true, "fixedQuality": "legendary", "unique": true, "desc": "每波生成两个短时传送路标，玩家踩上后传送到另一个路标。" },
+    { "id": "rewind_hourglass", "icon": "砂", "name": "折返沙漏", "basePrice": 88, "singleQuality": true, "fixedQuality": "legendary", "unique": true, "desc": "首次死亡时回退到数秒前的状态，并释放清场冲击波。" },
+    { "id": "frost_canister", "icon": "罐", "name": "冰封罐", "basePrice": 34, "singleQuality": true, "fixedQuality": "rare", "desc": "每波生成冰封罐，敌人靠近后爆裂并冻结附近敌人。可叠加数量。" },
+    { "id": "counter_coil", "icon": "线", "name": "反制线圈", "basePrice": 52, "singleQuality": true, "fixedQuality": "epic", "desc": "周期性拦截即将命中玩家的敌方投射物，并转化为反击电弧。" },
+    { "id": "wound_seal", "icon": "封", "name": "伤口封条", "basePrice": 36, "singleQuality": true, "fixedQuality": "rare", "desc": "受伤后在原地留下治疗封印，站回封印可回收部分刚损失的生命。" },
+    { "id": "bounty_contract", "icon": "赏", "name": "赏金契约", "basePrice": 36, "singleQuality": true, "fixedQuality": "rare", "desc": "每波指定一种敌人为赏金目标，击杀达标后掉落金币包。可叠加合同数量。" },
+    { "id": "emergency_gate", "icon": "闸", "name": "应急闸门", "basePrice": 82, "singleQuality": true, "fixedQuality": "legendary", "unique": true, "desc": "敌人过多时在玩家身后落下临时能量闸门，阻挡并击退敌群。" }
   ]
 }

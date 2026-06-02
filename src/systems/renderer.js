@@ -2097,6 +2097,12 @@ function drawItemObjects(ctx) {
     if (obj.kind === "turret") drawAllyTurret(ctx, obj);
     else if (obj.kind === "landmine") drawAllyMine(ctx, obj);
     else if (obj.kind === "fallingStar") drawFallingStar(ctx, obj);
+    else if (obj.kind === "decoy_dummy") drawMechanicObject(ctx, obj, "dummy");
+    else if (obj.kind === "rift_beacon") drawMechanicObject(ctx, obj, "rift");
+    else if (obj.kind === "frost_canister") drawMechanicObject(ctx, obj, "frost");
+    else if (obj.kind === "wound_seal") drawMechanicObject(ctx, obj, "seal");
+    else if (obj.kind === "emergency_gate") drawMechanicObject(ctx, obj, "gate");
+    else if (obj.kind === "smoke_cloud") drawMechanicObject(ctx, obj, "smoke");
     else if (obj.kind === "tesla_node") drawTeslaNode(ctx, obj);
     else if (obj.kind === "storm_portal") drawStormPortal(ctx, obj);
     else if (obj.kind === "easter_signature" || obj.kind === "easter_terminal") drawEasterEggObject(ctx, obj);
@@ -2684,6 +2690,85 @@ function drawEnemyShield(ctx, e) {
   }
   ctx.closePath();
   ctx.stroke();
+  ctx.restore();
+}
+
+function drawMechanicObject(ctx, obj, variant) {
+  const alpha = obj.life && obj.maxLife ? Math.max(0.18, Math.min(1, obj.life / obj.maxLife)) : 1;
+  const t = state.time + (obj.t || 0);
+  ctx.save();
+  ctx.translate(obj.x, obj.y);
+  ctx.globalCompositeOperation = "lighter";
+  const color = obj.color || "#42e8ff";
+  if (variant === "gate") {
+    ctx.rotate(obj.angle || 0);
+    glow(ctx, 0, 0, obj.r * 1.2, 0.18 * alpha, color);
+    ctx.strokeStyle = hexToRgba(color, 0.78 * alpha);
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.moveTo(-obj.r, 0);
+    ctx.lineTo(obj.r, 0);
+    ctx.stroke();
+    ctx.strokeStyle = hexToRgba("#ffffff", 0.5 * alpha);
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12, 8]);
+    ctx.beginPath();
+    ctx.moveTo(-obj.r, -14);
+    ctx.lineTo(obj.r, -14);
+    ctx.moveTo(-obj.r, 14);
+    ctx.lineTo(obj.r, 14);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (variant === "smoke") {
+    ctx.globalCompositeOperation = "source-over";
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * TAU + t * 0.4;
+      ctx.fillStyle = hexToRgba("#cbd5e1", 0.12 * alpha);
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 24, Math.sin(a * 1.7) * 18, obj.r * (0.45 + i * 0.035), 0, TAU);
+      ctx.fill();
+    }
+  } else {
+    const pulseK = 0.9 + Math.sin(t * 5) * 0.08;
+    glow(ctx, 0, 0, (obj.r || 30) * 2.2, 0.18 * alpha, color);
+    ctx.strokeStyle = hexToRgba(color, 0.72 * alpha);
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, (obj.r || 30) * pulseK, 0, TAU);
+    ctx.stroke();
+    ctx.fillStyle = hexToRgba(color, 0.28 * alpha);
+    if (variant === "dummy") {
+      ctx.fillRect(-10, -24, 20, 32);
+      ctx.fillStyle = "#f8fbff";
+      ctx.fillRect(-6, -17, 4, 4);
+      ctx.fillRect(3, -17, 4, 4);
+    } else if (variant === "rift") {
+      ctx.rotate(t * 2.2);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, obj.r * 0.45, obj.r, 0, 0, TAU);
+      ctx.stroke();
+    } else if (variant === "frost") {
+      ctx.fillRect(-10, -18, 20, 32);
+      ctx.strokeStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(-8, -5);
+      ctx.lineTo(8, 5);
+      ctx.moveTo(8, -5);
+      ctx.lineTo(-8, 5);
+      ctx.stroke();
+    } else if (variant === "seal") {
+      ctx.beginPath();
+      ctx.arc(0, 0, obj.r * 0.45, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(0, -16);
+      ctx.lineTo(0, 16);
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(16, 0);
+      ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 

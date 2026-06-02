@@ -39,7 +39,7 @@ export function enemyProjectileHasHalo(projectile) {
 export function eliteOutlineStyle(enemy) {
   if (!enemy?.elite) return null;
   return {
-    color: enemy.eliteVariant === "giant" ? "#ffb86b" : "#ffe08a",
+    color: enemy.color || (enemy.eliteVariant === "giant" ? "#ffb86b" : "#ffe08a"),
     width: enemy.eliteVariant === "giant" ? 2.6 : 1.8,
   };
 }
@@ -2742,17 +2742,18 @@ function drawEliteOutline(ctx, e) {
   if (!style) return;
   ctx.save();
   ctx.translate(e.x, e.y);
+  ctx.globalCompositeOperation = "lighter";
+  const r = e.r + 8 + Math.sin(state.time * 4.2 + e.x * 0.01) * 1.5;
+  glow(ctx, 0, 0, r * 1.28, e.eliteVariant === "giant" ? 0.24 : 0.18, style.color);
   ctx.strokeStyle = style.color;
   ctx.lineWidth = style.width;
-  ctx.setLineDash(e.eliteVariant === "giant" ? [12, 8] : [7, 6]);
   ctx.beginPath();
-  ctx.arc(0, 0, e.r + 8 + Math.sin(state.time * 5) * 2, 0, TAU);
+  ctx.arc(0, 0, r, 0, TAU);
   ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.strokeStyle = hexToRgba("#ffffff", e.eliteVariant === "giant" ? 0.26 : 0.18);
+  ctx.strokeStyle = hexToRgba("#ffffff", e.eliteVariant === "giant" ? 0.22 : 0.14);
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(0, 0, e.r + 14, 0, TAU);
+  ctx.arc(0, 0, r + 5, 0, TAU);
   ctx.stroke();
   ctx.restore();
 }

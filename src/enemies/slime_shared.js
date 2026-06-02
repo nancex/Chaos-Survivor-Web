@@ -113,7 +113,9 @@ export class SlimeEnemy extends BaseEnemy {
     ctx.scale(scaleX, scaleY);
     drawSlimeBody(ctx, this, lift);
     drawSlimeCore(ctx, this, lift);
+    drawSlimeVariantDetails(ctx, this, lift, "body");
     drawSlimeFace(ctx, this, lift);
+    drawSlimeVariantDetails(ctx, this, lift, "front");
     drawSlimeGloss(ctx, this, lift);
     ctx.restore();
   }
@@ -268,6 +270,310 @@ function drawSlimeCore(ctx, e, lift) {
   ctx.fillStyle = flash ? "rgba(255,255,255,0.26)" : "rgba(255,255,255,0.2)";
   ctx.beginPath();
   ctx.ellipse(coreX - r * 0.12, coreY - r * 0.08, r * 0.5, r * 0.34, -0.12, 0, TAU);
+  ctx.fill();
+}
+
+function drawSlimeVariantDetails(ctx, e, lift, layer) {
+  if (e.flash > 0) return;
+  if (e.slimeVariant === "diamond") return drawDiamondSlimeDetails(ctx, e, lift, layer);
+  if (e.slimeVariant === "gold") return drawGoldSlimeDetails(ctx, e, lift, layer);
+  if (e.slimeVariant === "glow") return drawGlowSlimeDetails(ctx, e, lift, layer);
+  if (e.slimeVariant === "weeping") return drawWeepingSlimeDetails(ctx, e, lift, layer);
+  if (e.slimeVariant === "devil") return drawDevilSlimeDetails(ctx, e, lift, layer);
+  if (e.slimeVariant === "angel") return drawAngelSlimeDetails(ctx, e, lift, layer);
+}
+
+function drawDiamondSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  if (layer === "body") {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.strokeStyle = "rgba(255,255,255,0.54)";
+    ctx.lineWidth = Math.max(1, r * 0.045);
+    for (let i = 0; i < 5; i++) {
+      const x = (-0.45 + i * 0.22) * r;
+      ctx.beginPath();
+      ctx.moveTo(x, -r * 0.58);
+      ctx.lineTo(x + r * 0.18, r * 0.38);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(43,127,163,0.62)";
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.6, -r * 0.22);
+    ctx.lineTo(-r * 0.08, -r * 0.58);
+    ctx.lineTo(r * 0.48, -r * 0.2);
+    ctx.lineTo(r * 0.12, r * 0.42);
+    ctx.closePath();
+    ctx.stroke();
+    diamondFacet(ctx, r * 0.1, r * 0.02 + lift * 0.4, r * 0.34, "rgba(255,255,255,0.26)", "rgba(43,127,163,0.55)");
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  drawCrystalShard(ctx, -r * 0.42, -r * 0.96, r * 0.28, -0.28);
+  drawCrystalShard(ctx, -r * 0.05, -r * 1.12, r * 0.34, 0.03);
+  drawCrystalShard(ctx, r * 0.34, -r * 0.94, r * 0.24, 0.26);
+  ctx.restore();
+}
+
+function drawGoldSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  const shimmer = 0.55 + Math.sin(e.anim * 1.7) * 0.2;
+  if (layer === "body") {
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,246,199,${0.38 + shimmer * 0.22})`;
+    ctx.lineWidth = Math.max(1.2, r * 0.05);
+    ctx.beginPath();
+    ctx.arc(-r * 0.12, -r * 0.08, r * 0.56, Math.PI * 1.08, Math.PI * 1.72);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(166,106,18,0.24)";
+    for (let i = 0; i < 4; i++) {
+      const x = (-0.46 + i * 0.31) * r;
+      ctx.save();
+      ctx.translate(x, r * (0.12 + (i % 2) * 0.18));
+      ctx.rotate((i - 1.5) * 0.16);
+      ctx.fillRect(-r * 0.12, -r * 0.045, r * 0.24, r * 0.09);
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 5; i++) {
+    const a = e.anim * 0.4 + i * 1.7;
+    const x = Math.cos(a) * r * (0.44 + (i % 2) * 0.16);
+    const y = Math.sin(a * 0.8) * r * 0.34 - r * 0.08;
+    coinGlint(ctx, x, y, r * (0.055 + (i % 2) * 0.02), shimmer);
+  }
+  ctx.strokeStyle = "rgba(255,241,183,0.72)";
+  ctx.lineWidth = Math.max(1, r * 0.035);
+  ctx.beginPath();
+  ctx.arc(0, r * 0.54, r * 0.72, Math.PI * 1.06, Math.PI * 1.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGlowSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  const pulse = 0.65 + Math.sin(e.anim * 1.4) * 0.25;
+  if (layer === "body") {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = `rgba(239,255,255,${0.34 + pulse * 0.34})`;
+    ctx.lineWidth = Math.max(1.2, r * 0.05);
+    for (let i = 0; i < 3; i++) {
+      const y = (-0.28 + i * 0.26) * r;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.48, y);
+      ctx.quadraticCurveTo(0, y - r * 0.18, r * 0.5, y + r * 0.08);
+      ctx.stroke();
+    }
+    ctx.fillStyle = `rgba(217,251,255,${0.2 + pulse * 0.28})`;
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * TAU + e.anim * 0.18;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * 0.48, Math.sin(a) * r * 0.34, Math.max(1.5, r * 0.045), 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = `rgba(125,249,255,${0.42 + pulse * 0.22})`;
+  ctx.lineWidth = Math.max(1, r * 0.04);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r * (0.72 + i * 0.16 + pulse * 0.04), 0.15 + i, 1.85 + i);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawWeepingSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  if (layer === "body") {
+    ctx.save();
+    ctx.fillStyle = "rgba(225,232,255,0.28)";
+    for (let i = 0; i < 4; i++) {
+      const x = (-0.44 + i * 0.28) * r;
+      const h = r * (0.32 + (i % 2) * 0.16);
+      ctx.beginPath();
+      ctx.ellipse(x, r * 0.26 + h * 0.18, r * 0.07, h, 0.08, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(61,95,164,0.52)";
+    ctx.lineWidth = Math.max(1, r * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.68, r * 0.32);
+    ctx.bezierCurveTo(-r * 0.34, r * 0.56, r * 0.28, r * 0.62, r * 0.68, r * 0.34);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  ctx.fillStyle = "rgba(225,232,255,0.72)";
+  tearDrop(ctx, -r * 0.3, -r * 0.08, r * 0.12);
+  tearDrop(ctx, r * 0.28, -r * 0.03, r * 0.09);
+  ctx.strokeStyle = e.slimeColors.face;
+  ctx.lineWidth = Math.max(1.2, r * 0.045);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.38, -r * 0.18);
+  ctx.lineTo(-r * 0.2, -r * 0.08);
+  ctx.moveTo(r * 0.18, -r * 0.08);
+  ctx.lineTo(r * 0.38, -r * 0.18);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDevilSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  if (layer === "body") {
+    ctx.save();
+    ctx.fillStyle = "rgba(63,15,28,0.42)";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.78, r * 0.04);
+      ctx.lineTo(side * r * 1.08, r * 0.18);
+      ctx.lineTo(side * r * 0.78, r * 0.32);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(255,209,218,0.48)";
+    ctx.lineWidth = Math.max(1, r * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.62, r * 0.34);
+    ctx.quadraticCurveTo(0, r * 0.58, r * 0.58, r * 0.3);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  for (const side of [-1, 1]) {
+    ctx.save();
+    ctx.scale(side, 1);
+    ctx.fillStyle = "#8f1d38";
+    ctx.strokeStyle = "#ffd1da";
+    ctx.lineWidth = Math.max(1, r * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(r * 0.18, -r * 0.88);
+    ctx.quadraticCurveTo(r * 0.34, -r * 1.34, r * 0.62, -r * 0.92);
+    ctx.quadraticCurveTo(r * 0.46, -r * 0.82, r * 0.28, -r * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.strokeStyle = "#3f0f1c";
+  ctx.lineWidth = Math.max(1.4, r * 0.055);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.38, -r * 0.26);
+  ctx.lineTo(-r * 0.2, -r * 0.18);
+  ctx.moveTo(r * 0.2, -r * 0.18);
+  ctx.lineTo(r * 0.4, -r * 0.28);
+  ctx.stroke();
+  ctx.fillStyle = "#fff0f3";
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.05, r * 0.2);
+  ctx.lineTo(r * 0.02, r * 0.36);
+  ctx.lineTo(r * 0.09, r * 0.2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawAngelSlimeDetails(ctx, e, lift, layer) {
+  const r = e.r * e.profile.bodyScale;
+  const haloPulse = 0.9 + Math.sin(e.anim * 1.1) * 0.08;
+  if (layer === "body") {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = "rgba(217,251,255,0.32)";
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.scale(side, 1);
+      ctx.beginPath();
+      ctx.ellipse(r * 0.76, -r * 0.05, r * 0.28, r * 0.52, -0.45, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.58)";
+      ctx.lineWidth = Math.max(1, r * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(r * 0.58, -r * 0.1);
+      ctx.lineTo(r * 0.96, -r * 0.3);
+      ctx.moveTo(r * 0.6, r * 0.08);
+      ctx.lineTo(r * 0.98, r * 0.1);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = "rgba(255,242,168,0.9)";
+  ctx.lineWidth = Math.max(2, r * 0.07);
+  ctx.beginPath();
+  ctx.ellipse(0, -r * 1.1, r * 0.42 * haloPulse, r * 0.13 * haloPulse, 0, 0, TAU);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,242,168,0.24)";
+  ctx.beginPath();
+  ctx.ellipse(r * 0.08, r * 0.02 + lift * 0.4, r * 0.48, r * 0.34, 0, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCrystalShard(ctx, x, y, size, tilt) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+  ctx.fillStyle = "rgba(159,244,255,0.78)";
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = Math.max(1, size * 0.08);
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(size * 0.48, -size * 0.08);
+  ctx.lineTo(size * 0.22, size * 0.72);
+  ctx.lineTo(-size * 0.34, size * 0.48);
+  ctx.lineTo(-size * 0.5, -size * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function diamondFacet(ctx, x, y, r, fill, stroke) {
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = Math.max(1, r * 0.08);
+  ctx.beginPath();
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x + r * 0.78, y - r * 0.18);
+  ctx.lineTo(x + r * 0.42, y + r * 0.82);
+  ctx.lineTo(x - r * 0.5, y + r * 0.72);
+  ctx.lineTo(x - r * 0.82, y - r * 0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+function coinGlint(ctx, x, y, r, alpha) {
+  ctx.fillStyle = `rgba(255,242,168,${0.48 + alpha * 0.32})`;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(166,106,18,0.58)";
+  ctx.lineWidth = Math.max(1, r * 0.35);
+  ctx.beginPath();
+  ctx.arc(x, y, r * 1.25, 0, TAU);
+  ctx.stroke();
+}
+
+function tearDrop(ctx, x, y, r) {
+  ctx.beginPath();
+  ctx.moveTo(x, y - r * 1.25);
+  ctx.bezierCurveTo(x + r, y - r * 0.15, x + r * 0.55, y + r, x, y + r);
+  ctx.bezierCurveTo(x - r * 0.55, y + r, x - r, y - r * 0.15, x, y - r * 1.25);
   ctx.fill();
 }
 

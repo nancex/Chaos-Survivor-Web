@@ -24,6 +24,7 @@ export function createAiRuntime(overrides = {}) {
     tickAccumulator: 0,
     actionCooldown: 0,
     restartTimer: 0,
+    restartRequested: false,
     pendingConfigReload: false,
     runRecorded: false,
     shopRefreshesUsed: 0,

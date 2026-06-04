@@ -153,6 +153,7 @@ export function createAiState(previous = {}) {
       tickAccumulator: 0,
       actionCooldown: 0,
       restartTimer: 0,
+      restartRequested: false,
       runRecorded: false,
       shopRefreshesUsed: 0,
       upgradeRefreshesUsed: 0,

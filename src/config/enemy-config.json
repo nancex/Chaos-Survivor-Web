@@ -176,7 +176,7 @@
       20
     ],
     "hp": 24,
-    "speed": 100,
+    "speed": 80,
     "damage": 4,
     "xp": 3,
     "radius": 10,
@@ -205,7 +205,7 @@
     "category": "小怪",
     "trait": "区域控制",
     "waves": [
-      6,
+      19,
       20
     ],
     "hp": 62,
@@ -781,7 +781,7 @@
       }
     },
     "hp": 58,
-    "speed": 96,
+    "speed": 80,
     "damage": 10,
     "xp": 8,
     "radius": 14,
@@ -825,7 +825,7 @@
       }
     },
     "hp": 72,
-    "speed": 118,
+    "speed": 82,
     "damage": 18,
     "xp": 11,
     "radius": 14,

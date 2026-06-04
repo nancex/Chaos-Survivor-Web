@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "autoStart": true,
   "autoRestart": true,
   "reloadBeforeEachRun": true,
@@ -9,7 +9,7 @@
   "tickHz": 20,
   "actionCooldown": 0.28,
   "restartDelay": 0.8,
-  "profile": "balanced",
+  "profile": "aggressive",
   "movement": {
     "lookAhead": 0.85,
     "maxNeighbors": 28,
@@ -18,8 +18,8 @@
     "boundaryPadding": 180,
     "stuckSeconds": 1.2,
     "riskTolerance": 1,
-    "greed": 1,
-    "bossAggression": 1
+    "greed": 1.5,
+    "bossAggression": 1.5
   },
   "orca": {
     "lowRiskCandidates": 16,
@@ -30,10 +30,10 @@
   },
   "economy": {
     "minRefreshReserve": 10,
-    "maxRefreshesPerShop": 2,
+    "maxRefreshesPerShop": 5,
     "lockAffordableHighValue": true,
-    "refreshAggression": 1,
-    "reserveGoldMultiplier": 1
+    "refreshAggression": 1.5,
+    "reserveGoldMultiplier": 1.3
   },
   "upgrade": {
     "survivalMultiplier": 1,
@@ -55,15 +55,15 @@
     }
   },
   "weaponTraining": {
-    "explorationRate": 0.08,
+    "explorationRate": 0.30,
     "fallbackWeapons": ["ice", "missile", "arc"]
   },
   "situation": {
     "enabled": true,
-    "earlyWave": 3,
-    "lateWave": 8,
+    "earlyWave": 7,
+    "lateWave": 14,
     "criticalHpRatio": 0.35,
-    "lowGold": 25,
+    "lowGold": 30,
     "projectilePressureHigh": 0.45,
     "surroundedEnemyCount": 8
   },

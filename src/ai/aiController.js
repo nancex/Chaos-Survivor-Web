@@ -129,6 +129,7 @@ async function chooseAndStartRun(runtime) {
     });
     if (!loadout.difficulty || !loadout.weapon) return;
     runtime.runRecorded = false;
+    runtime.restartRequested = false;
     runtime.shopRefreshesUsed = 0;
     runtime.upgradeRefreshesUsed = 0;
     runtime.actionCooldown = config.actionCooldown;
@@ -264,7 +265,14 @@ function handleEnded(runtime, dt) {
   }
   runtime.restartTimer = Math.max(0, (runtime.restartTimer ?? config.restartDelay) - dt);
   if (runtime.restartTimer <= 0) {
+    if (runtime.restartRequested) return;
+    runtime.restartRequested = true;
+    runtime.actionCooldown = config.actionCooldown;
     aiLog(config, "restart", { runs: training.totalRuns, delay: config.restartDelay }, "summary");
+    if (typeof actions.restart === "function") {
+      actions.restart();
+      return;
+    }
     void chooseAndStartRun(runtime);
   }
 }

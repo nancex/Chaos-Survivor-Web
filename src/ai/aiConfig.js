@@ -18,11 +18,19 @@ export const AI_CONFIG = {
     boundaryPadding: 180,
     stuckSeconds: 1.2,
   },
+  orca: {
+    lowRiskCandidates: 16,
+    midRiskCandidates: 24,
+    highRiskCandidates: 40,
+    reuseSafeVelocitySeconds: 0.35,
+    maxSolveMs: 3,
+  },
   economy: {
     minRefreshReserve: 10,
     maxRefreshesPerShop: 2,
     lockAffordableHighValue: true,
   },
+  debugDraw: false,
 };
 
 export function readAiEnabled(search = globalThis.location?.search || "", storage = globalThis.localStorage) {

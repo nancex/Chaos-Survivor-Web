@@ -45,6 +45,19 @@ export function queryRadius(index, x, y, radius, out = []) {
   return out;
 }
 
+export function queryKNearest(index, x, y, radius, k, out = []) {
+  queryRadius(index, x, y, radius, out);
+  out.sort((a, b) => {
+    const adx = (a.x || 0) - x;
+    const ady = (a.y || 0) - y;
+    const bdx = (b.x || 0) - x;
+    const bdy = (b.y || 0) - y;
+    return adx * adx + ady * ady - (bdx * bdx + bdy * bdy);
+  });
+  if (out.length > k) out.length = k;
+  return out;
+}
+
 function cellKey(index, x, y) {
   const cellSize = index.cellSize || 128;
   return `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;

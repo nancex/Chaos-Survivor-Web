@@ -1,11 +1,12 @@
 import { input, state, world } from "../state.js";
 import { difficultyCards } from "../difficulty.js";
 import { AI_CONFIG, AI_STORAGE_ENABLED_KEY, readAiEnabled } from "./aiConfig.js";
-import { createAiRuntime, loadAiTraining, saveAiTraining, recordRunResult, recordShopAction, recordUpgrade } from "./aiState.js";
+import { createAiRuntime, inferRunFailure, loadAiTraining, pushAiEvent, saveAiTraining, recordRunResult, recordShopAction, recordUpgrade } from "./aiState.js";
 import { planMovement } from "./movementPlanner.js";
 import { chooseOpeningLoadout, chooseUpgrade, shouldRefreshUpgradeChoices } from "./progressionStrategy.js";
 import { decideShopActions } from "./shopStrategy.js";
 import { aiLog, markPerf, maybeLogPerf, nowMs } from "./telemetry.js";
+import { exportTrainingSummary } from "./trainingExport.js";
 import { canFuseWeapons, findFuseCandidate, fuseWeaponSlots } from "../economy/inventory.js";
 import { purchaseOffer, refreshCost, refreshShopOffers, shopOffers, toggleOfferLock } from "../economy/shop.js";
 import { closeShop, renderShop } from "../ui/shopUi.js";
@@ -21,6 +22,7 @@ export function initAi(options = {}) {
   state.ai ||= {};
   state.ai.runtime = createAiRuntime(state.ai.runtime || {});
   state.ai.training = training;
+  state.ai.config = config;
   setAiEnabled(readAiEnabled(), false);
   exposeDebugApi();
 }
@@ -47,9 +49,12 @@ export function updateAi(dt) {
   runtime.tickAccumulator = 0;
   const started = nowMs();
   const plan = planMovement({ state, world, runtime, config });
-  markPerf(runtime, "movementPlanMs", started);
+  const elapsed = markPerf(runtime, "movementPlanMs", started);
+  adjustBudget(runtime, elapsed);
+  runtime.debugThreats = plan.threats || [];
   if (plan.target?.kind !== runtime.lastLoggedTarget) {
     runtime.lastLoggedTarget = plan.target?.kind;
+    pushAiEvent(runtime, { type: "target", targetKind: plan.target?.kind, time: state.time });
     aiLog(config, "target", { kind: plan.target?.kind, risk: plan.risk }, "debug");
   }
   applyVelocity(plan.velocity);
@@ -119,11 +124,13 @@ function handleLeveling(runtime) {
     runtime.upgradeRefreshesUsed = (runtime.upgradeRefreshesUsed || 0) + 1;
     runtime.actionCooldown = config.actionCooldown;
     aiLog(config, "upgrade_refresh", { cost: panel.refreshCost, reason: "weak_choices" });
+    pushAiEvent(runtime, { type: "upgrade_refresh", cost: panel.refreshCost, time: state.time });
     panel.refresh();
     return;
   }
   runtime.actionCooldown = config.actionCooldown;
   recordUpgrade(training, decision.item.id);
+  pushAiEvent(runtime, { type: "upgrade", id: decision.item.id, score: decision.score, time: state.time });
   saveAiTraining(training, undefined, config.storageKey);
   aiLog(config, "upgrade_pick", { id: decision.item.id, score: decision.score, reason: decision.reason });
   panel.pick(decision.item.id);
@@ -149,6 +156,7 @@ function handleShop(runtime) {
         recordShopAction(training, `buy:${action.uid}`);
         saveAiTraining(training, undefined, config.storageKey);
         renderShop?.();
+        pushAiEvent(runtime, { type: "shop_buy", uid: action.uid, score: action.score, time: state.time });
         aiLog(config, "shop_buy", { uid: action.uid, score: action.score, reason: action.reason });
         return;
       }
@@ -156,6 +164,7 @@ function handleShop(runtime) {
       if (toggleOfferLock(action.uid)) {
         runtime.actionCooldown = config.actionCooldown;
         renderShop?.();
+        pushAiEvent(runtime, { type: "shop_lock", uid: action.uid, score: action.score, time: state.time });
         aiLog(config, "shop_lock", { uid: action.uid, score: action.score, reason: action.reason });
         return;
       }
@@ -164,6 +173,7 @@ function handleShop(runtime) {
         runtime.shopRefreshesUsed = (runtime.shopRefreshesUsed || 0) + 1;
         runtime.actionCooldown = config.actionCooldown;
         renderShop?.();
+        pushAiEvent(runtime, { type: "shop_refresh", cost: action.cost, time: state.time });
         aiLog(config, "shop_refresh", { cost: action.cost, reason: action.reason });
         return;
       }
@@ -171,6 +181,7 @@ function handleShop(runtime) {
       runtime.actionCooldown = config.actionCooldown;
       runtime.shopRefreshesUsed = 0;
       aiLog(config, "shop_continue", { gold: state.gold, wave: state.wave });
+      pushAiEvent(runtime, { type: "shop_continue", gold: state.gold, wave: state.wave, time: state.time });
       closeShop();
       actions.continueToNextWave?.();
       return;
@@ -190,6 +201,7 @@ function handleEnded(runtime, dt) {
       weaponId: state.initialWeaponId,
       difficultyId: state.difficultyId,
       stuckEvents: runtime.stuckEvents,
+      deathReason: inferRunFailure(runtime, state, world),
     });
     state.ai.training = training;
     saveAiTraining(training, undefined, config.storageKey);
@@ -237,7 +249,11 @@ function updateDamageMemory(runtime, dt) {
   const p = state.player;
   if (!p) return;
   if (runtime.lastHp == null) runtime.lastHp = p.hp;
-  if (p.hp < runtime.lastHp) runtime.recentDamage = (runtime.recentDamage || 0) + (runtime.lastHp - p.hp);
+  if (p.hp < runtime.lastHp) {
+    const amount = runtime.lastHp - p.hp;
+    runtime.recentDamage = (runtime.recentDamage || 0) + amount;
+    pushAiEvent(runtime, { type: "damage", sourceKind: inferDamageSourceKind(), amount, time: state.time });
+  }
   runtime.recentDamage = Math.max(0, (runtime.recentDamage || 0) - dt * 4);
   runtime.lastHp = p.hp;
 }
@@ -253,6 +269,7 @@ function mainWeaponRange() {
 function ensureRuntime() {
   state.ai ||= {};
   state.ai.runtime ||= createAiRuntime();
+  state.ai.config = config;
   return state.ai.runtime;
 }
 
@@ -260,9 +277,11 @@ function exposeDebugApi() {
   globalThis.survivorAi = {
     enable: () => setAiEnabled(true),
     disable: () => setAiEnabled(false),
-    status: () => ({ enabled: ensureRuntime().enabled, mode: state.mode, target: ensureRuntime().currentTarget, training }),
+    status: () => ({ enabled: ensureRuntime().enabled, mode: state.mode, target: ensureRuntime().currentTarget, budgetLevel: ensureRuntime().budgetLevel || 0, training }),
+    exportTraining: () => exportTrainingSummary(training),
     configure: (patch) => {
       config = mergeConfig(config, patch || {});
+      state.ai.config = config;
       return globalThis.survivorAi.status();
     },
   };
@@ -274,7 +293,32 @@ function mergeConfig(base, patch) {
     ...patch,
     movement: { ...(base.movement || {}), ...(patch.movement || {}) },
     economy: { ...(base.economy || {}), ...(patch.economy || {}) },
+    orca: { ...(base.orca || {}), ...(patch.orca || {}) },
   };
+}
+
+function adjustBudget(runtime, elapsed) {
+  runtime.budgetLevel ||= 0;
+  if (elapsed > 7) runtime.budgetLevel = Math.min(3, runtime.budgetLevel + 1);
+  else if (elapsed < 2.2) runtime.budgetLevel = Math.max(0, runtime.budgetLevel - 1);
+}
+
+function inferDamageSourceKind() {
+  const p = state.player;
+  if (!p) return "pressure";
+  for (const h of world.hazards || []) {
+    const r = (h.triggerRadius || h.r || 0) + p.r;
+    if ((h.x - p.x) ** 2 + (h.y - p.y) ** 2 <= r * r) return "hazard";
+  }
+  for (const b of world.enemyProjectiles || []) {
+    const r = (b.r || 0) + p.r + 18;
+    if ((b.x - p.x) ** 2 + (b.y - p.y) ** 2 <= r * r) return "projectile";
+  }
+  for (const e of world.enemies || []) {
+    const r = (e.r || 0) + p.r + 10;
+    if ((e.x - p.x) ** 2 + (e.y - p.y) ** 2 <= r * r) return e.boss ? "boss" : "enemy";
+  }
+  return "pressure";
 }
 
 function clamp(value, min, max) {

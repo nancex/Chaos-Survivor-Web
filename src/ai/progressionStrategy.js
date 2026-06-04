@@ -36,29 +36,37 @@ export function scoreUpgrade({ item, player, state, context = {}, training }) {
   const hpRatio = player.maxHp ? player.hp / player.maxHp : 1;
   const wave = state.wave || 1;
   const adjustments = training?.adjustments || {};
+  const upgradeBias = adjustments.upgradeBias || {};
   let score = UPGRADE_BASE[id] ?? 20;
   const reasons = [];
 
   if (id === "vital_core") {
     score += (1 - hpRatio) * 110 + (context.recentDamage || 0) * 1.3 + (adjustments.survivalBias || 0) * 60;
+    score += (upgradeBias.survival || 0) * 45;
     reasons.push("hp");
   } else if (id === "regen_cell") {
     score += wave * 1.8 + (1 - hpRatio) * 28 - (player.regen || 0) * 8;
+    score += (upgradeBias.survival || 0) * 28;
     reasons.push("sustain");
   } else if (id === "phase_stride") {
     score += (context.projectilePressure || 0) * 75 + (context.surrounded ? 35 : 0) + (adjustments.mobilityBias || 0) * 70;
+    score += (upgradeBias.mobility || 0) * 50;
     reasons.push("mobility");
   } else if (id === "magnet_field") {
     score += Math.max(0, 6 - wave) * 4 + (state.gold < 30 ? 18 : 0) + (adjustments.greed || 0) * 60;
+    score += (upgradeBias.economy || 0) * 42;
     reasons.push("growth");
   } else if (id === "damage_matrix") {
     score += (context.lowDamage ? 32 : 0) + wave * 1.3;
+    score += (upgradeBias.damage || 0) * 52;
     reasons.push("damage");
   } else if (id === "overclock") {
     score += 18 - (player.attackSpeedBonus || 0) * 40;
+    score += (upgradeBias.damage || 0) * 36;
     reasons.push("attack_speed");
   } else if (id === "scope_lens") {
     score += (context.bossActive ? 25 : 0) + (context.shortRange ? 20 : 0);
+    score += (upgradeBias.damage || 0) * 28;
     reasons.push("range");
   } else if (id === "crit_kernel") {
     score += Math.max(0, wave - 4) * 2.4 - (player.critChance || 0) * 35;

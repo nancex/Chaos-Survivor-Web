@@ -32,30 +32,31 @@ const ITEM_VALUES = {
 
 export function decideShopActions({ offers, player, inventory, state, refreshCost, refreshesUsed = 0, config = {} }) {
   const actions = [];
+  const profile = buildInventoryProfile(player, inventory, state);
   const scored = (offers || [])
     .filter((offer) => !isSoldOut(offer))
-    .map((offer) => scoreOffer({ offer, player, inventory, state }))
+    .map((offer) => scoreOffer({ offer, player, inventory, state, profile }))
     .sort((a, b) => b.score - a.score);
 
   for (const entry of scored) {
-    if (entry.score >= 50 && state.gold >= entry.offer.price + reserveGold(state)) {
+    if (entry.score >= 50 && state.gold >= entry.offer.price + dynamicReserveGold(state, profile)) {
       actions.push({ type: "buy", uid: entry.offer.uid, fuseWeaponUid: entry.fuseWeaponUid, score: entry.score, reason: entry.reason });
       state = { ...state, gold: state.gold - entry.offer.price };
-    } else if (entry.score >= 72 && state.gold < entry.offer.price && !entry.offer.locked && config.lockAffordableHighValue !== false) {
+    } else if (shouldLockOffer(entry.offer, entry.score, state.gold + expectedNextWaveGold(state)) && !entry.offer.locked && config.lockAffordableHighValue !== false) {
       actions.push({ type: "lock", uid: entry.offer.uid, score: entry.score, reason: "high_value_not_enough_gold" });
     }
   }
 
   const bestScore = scored
-    .filter((entry) => state.gold >= (entry.offer.price || 0) + reserveGold(state))
+    .filter((entry) => state.gold >= (entry.offer.price || 0) + dynamicReserveGold(state, profile))
     .reduce((best, entry) => Math.max(best, entry.score), 0);
-  const canRefresh = state.gold >= refreshCost + reserveGold(state) && refreshesUsed < (config.maxRefreshesPerShop ?? 2);
+  const canRefresh = state.gold >= refreshCost + dynamicReserveGold(state, profile) && refreshesUsed < (config.maxRefreshesPerShop ?? 2);
   if (bestScore < 58 && canRefresh) actions.push({ type: "refresh", cost: refreshCost, reason: "low_offer_value" });
   actions.push({ type: "continue" });
   return actions;
 }
 
-export function scoreOffer({ offer, player, inventory, state }) {
+export function scoreOffer({ offer, player, inventory, state, profile = buildInventoryProfile(player, inventory, state) }) {
   const category = offerCategory(offer);
   const rank = QUALITY_RANK[offer.rarity] ?? 0;
   let score = 0;
@@ -63,8 +64,8 @@ export function scoreOffer({ offer, player, inventory, state }) {
   let fuseWeaponUid = null;
 
   if (category === "weapon") {
-    const matching = (inventory?.weaponSlots || []).find((slot) => slot.id === offer.weaponId && slot.quality === offer.rarity);
-    const hasSpace = (inventory?.weaponSlots || []).length < 6;
+    const matching = profile.fuseMap.get(`${offer.weaponId}:${offer.rarity}`);
+    const hasSpace = profile.hasOpenWeaponSlot;
     if (matching) {
       score = 92 + rank * 8;
       fuseWeaponUid = matching.uid;
@@ -78,7 +79,7 @@ export function scoreOffer({ offer, player, inventory, state }) {
     }
   } else {
     const id = offer.itemId || offer.id;
-    score = (ITEM_VALUES[id] ?? 35) + rank * 8;
+    score = estimateOfferGain(offer, profile).score + rank * 8;
     reason = id;
     const hpRatio = player.maxHp ? player.hp / player.maxHp : 1;
     if (["heart_container", "healing_potion", "healing_aura", "tardigrade", "heavy_armor"].includes(id)) score += (1 - hpRatio) * 45;
@@ -96,8 +97,51 @@ export function scoreOffer({ offer, player, inventory, state }) {
   return { offer, score, reason, fuseWeaponUid };
 }
 
-function reserveGold(state) {
-  return Math.min(24, 6 + (state.wave || 1));
+export function buildInventoryProfile(player, inventory, state) {
+  const slots = inventory?.weaponSlots || [];
+  const fuseMap = new Map();
+  for (const slot of slots) {
+    fuseMap.set(`${slot.id}:${slot.quality}`, slot);
+  }
+  const hpRatio = player.maxHp ? player.hp / player.maxHp : 1;
+  const hasOpenWeaponSlot = slots.length < 6;
+  return {
+    hpRatio,
+    hasOpenWeaponSlot,
+    fuseMap,
+    weaponCount: slots.length,
+    needsSurvival: hpRatio < 0.45 || (state.wave || 1) >= 8 && (player.defense || 0) < 4,
+    needsDamage: (player.damageScale || 1) < 1.08 && (state.wave || 1) >= 6 || slots.length < 2,
+    needsEconomy: (state.gold || 0) < 28 && (state.wave || 1) <= 8,
+    needsMobility: (player.speed || 0) < 230,
+  };
+}
+
+export function estimateOfferGain(offer, profile) {
+  if (offer.weaponId) {
+    const fuse = profile.fuseMap.get(`${offer.weaponId}:${offer.rarity}`);
+    return { score: fuse ? 96 : profile.hasOpenWeaponSlot ? 52 : -120, reason: fuse ? "fuse_gain" : "weapon_gain" };
+  }
+  const id = offer.itemId || offer.id;
+  let score = ITEM_VALUES[id] ?? 35;
+  if (profile.needsSurvival && ["heart_container", "healing_potion", "healing_aura", "tardigrade", "heavy_armor"].includes(id)) score += 30;
+  if (profile.needsDamage && ["rapid_cord", "knife", "gloves", "fang", "split_shot"].includes(id)) score += 24;
+  if (profile.needsEconomy && ["magnet", "lucky_clover", "thief_mark"].includes(id)) score += 20;
+  if (profile.needsMobility && ["speed_boots", "magnet"].includes(id)) score += 14;
+  return { score, reason: id };
+}
+
+export function dynamicReserveGold(state, profile = {}) {
+  return Math.min(34, 5 + (state.wave || 1) + (profile.needsSurvival ? 8 : 0));
+}
+
+export function shouldLockOffer(offer, score, expectedGold) {
+  if ((offer.price || 0) <= expectedGold) return false;
+  return score >= 72;
+}
+
+function expectedNextWaveGold(state) {
+  return 12 + (state.wave || 1) * 2;
 }
 
 function isSoldOut(offer) {

@@ -6,7 +6,9 @@ export function solveAvoidanceVelocity({ player, desired, threats, options = {} 
   const neighbors = selectNeighbors(player, threats || [], options.maxNeighbors || 28);
   if (!neighbors.length) return desiredVelocity;
 
-  const candidates = candidateVelocities(desiredVelocity, maxSpeed, options.candidateDirections || 32);
+  const baseRisk = riskAtPoint(player, neighbors, options);
+  const count = adaptiveCandidateCount(neighbors, baseRisk, options.orca || options, options.budgetLevel || 0);
+  const candidates = candidateVelocities(desiredVelocity, maxSpeed, count, options);
   let best = desiredVelocity;
   let bestCost = Infinity;
   for (const velocity of candidates) {
@@ -18,14 +20,27 @@ export function solveAvoidanceVelocity({ player, desired, threats, options = {} 
     const risk = riskAtPoint(future, neighbors, options);
     const constraint = velocityConstraintCost(player, velocity, neighbors, options);
     const desire = Math.hypot(velocity.x - desiredVelocity.x, velocity.y - desiredVelocity.y) * 0.035;
+    const last = options.lastVelocity || null;
+    const lastBias = last ? Math.hypot(velocity.x - last.x, velocity.y - last.y) * 0.009 : 0;
+    const breakoutBias = breakoutCost(velocity, options.breakoutAngle);
     const stopPenalty = Math.hypot(velocity.x, velocity.y) < maxSpeed * 0.15 ? 4 : 0;
-    const cost = risk + constraint + desire + stopPenalty;
+    const cost = risk + constraint + desire + lastBias + breakoutBias + stopPenalty;
     if (cost < bestCost) {
       best = velocity;
       bestCost = cost;
     }
   }
   return best;
+}
+
+export function adaptiveCandidateCount(threats, risk, orca = {}, budgetLevel = 0) {
+  let count = orca.lowRiskCandidates || 16;
+  if ((threats?.length || 0) > 10 || risk > 55) count = orca.highRiskCandidates || 40;
+  else if ((threats?.length || 0) > 4 || risk > 22) count = orca.midRiskCandidates || 24;
+  if (budgetLevel >= 3) return Math.max(8, Math.floor(count * 0.35));
+  if (budgetLevel >= 2) return Math.max(10, Math.floor(count * 0.5));
+  if (budgetLevel >= 1) return Math.max(12, Math.floor(count * 0.75));
+  return count;
 }
 
 export function buildVelocityConstraints(player, threats, options = {}) {
@@ -78,11 +93,13 @@ function selectNeighbors(player, threats, maxNeighbors) {
     .map((entry) => entry.threat);
 }
 
-function candidateVelocities(desired, maxSpeed, directions) {
+function candidateVelocities(desired, maxSpeed, directions, options = {}) {
   const candidates = [desired, { x: 0, y: 0 }];
   const baseAngle = Math.atan2(desired.y, desired.x);
   const hasDesired = Math.hypot(desired.x, desired.y) > 1;
   const speeds = [maxSpeed, maxSpeed * 0.72, maxSpeed * 0.42];
+  if (options.lastVelocity && Math.hypot(options.lastVelocity.x || 0, options.lastVelocity.y || 0) > 10) candidates.push(limitVector(options.lastVelocity, maxSpeed));
+  if (Number.isFinite(options.breakoutAngle)) candidates.push({ x: Math.cos(options.breakoutAngle) * maxSpeed, y: Math.sin(options.breakoutAngle) * maxSpeed });
   for (const speed of speeds) {
     for (let i = 0; i < directions; i++) {
       const offset = (i / directions) * Math.PI * 2;
@@ -92,6 +109,16 @@ function candidateVelocities(desired, maxSpeed, directions) {
   }
   if (hasDesired) candidates.push({ x: -desired.x * 0.85, y: -desired.y * 0.85 });
   return candidates;
+}
+
+function breakoutCost(velocity, angle) {
+  if (!Number.isFinite(angle)) return 0;
+  const len = Math.hypot(velocity.x, velocity.y);
+  if (len < 1) return 8;
+  const vx = velocity.x / len;
+  const vy = velocity.y / len;
+  const dot = vx * Math.cos(angle) + vy * Math.sin(angle);
+  return (1 - dot) * 7;
 }
 
 function limitVector(v, max) {

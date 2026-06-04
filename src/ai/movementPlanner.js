@@ -1,6 +1,7 @@
 import { AI_CONFIG } from "./aiConfig.js";
+import { bossContext, bossMovementTarget } from "./bossStrategy.js";
 import { solveAvoidanceVelocity } from "./orcaAvoidance.js";
-import { collectThreats, isPointSafe, riskAtPoint, surroundScore } from "./riskModel.js";
+import { collectThreats, pathRisk, riskAtPoint, surroundScore } from "./riskModel.js";
 
 export function planMovement({ state, world, runtime = {}, config = AI_CONFIG }) {
   const p = state.player;
@@ -10,18 +11,29 @@ export function planMovement({ state, world, runtime = {}, config = AI_CONFIG })
   const context = movementContext({ state, world, threats, movement });
   const target = chooseTarget({ state, world, threats, context, runtime, movement });
   const desired = desiredVelocityForTarget(p, target);
-  const velocity = solveAvoidanceVelocity({ player: p, desired, threats, options: movement });
+  const velocity = solveAvoidanceVelocity({
+    player: p,
+    desired,
+    threats,
+    options: {
+      ...movement,
+      orca: config.orca,
+      lastVelocity: runtime.lastVelocity,
+      breakoutAngle: context.breakoutAngle,
+      budgetLevel: runtime.budgetLevel || 0,
+    },
+  });
   updateStuckState(runtime, p, velocity, context);
   runtime.currentTarget = target;
   runtime.lastVelocity = velocity;
-  return { velocity, target, risk: riskAtPoint(p, threats, movement), context };
+  return { velocity, target, threats, risk: riskAtPoint(p, threats, movement), context };
 }
 
 export function movementContext({ state, world, threats, movement }) {
   const p = state.player;
   const nearEnemies = (world.enemies || []).filter((e) => !e.dead && dist(p, e) < 280);
   const surround = surroundScore(p, nearEnemies, { radius: 260, sectors: 16 });
-  const projectilePressure = threats.filter((t) => t.kind === "projectile").length / Math.max(1, movement.maxNeighbors || 28);
+  const projectilePressure = threats.filter((t) => t.baseKind === "projectile" || t.kind?.startsWith("projectile")).length / Math.max(1, movement.maxNeighbors || 28);
   return {
     surrounded: surround.surrounded,
     breakoutAngle: (surround.bestSector / surround.sectors) * Math.PI * 2,
@@ -39,7 +51,7 @@ function chooseTarget({ state, world, threats, context, runtime, movement }) {
   if (context.lowHp || context.projectilePressure > 0.42) {
     return safestNearbyPoint(p, threats, movement);
   }
-  if (world.boss) return bossKiteTarget(state, world.boss);
+  if (world.boss) return bossMovementTarget(state, world, threats, bossContext(state, world), state.ai?.training);
   const collect = bestCollectTarget(p, world, threats, movement, state);
   if (collect) return collect;
   const nearest = nearestEnemy(p, world.enemies || []);
@@ -50,52 +62,21 @@ function chooseTarget({ state, world, threats, context, runtime, movement }) {
 function bestCollectTarget(p, world, threats, movement, state) {
   let best = null;
   let bestScore = -Infinity;
-  const drops = [
-    ...(world.gems || []).map((g) => ({ ...g, kind: "gem", value: g.value || 1 })),
-    ...(world.coins || []).map((c) => ({ ...c, kind: "coin", value: (c.value || 1) * (state.gold < 30 ? 2.2 : 1.3) })),
-  ];
-  for (const drop of drops) {
-    const d = dist(p, drop);
-    if (d > 760) continue;
-    const routeSafe = routeIsSafe(p, drop, threats, movement);
-    if (!routeSafe) continue;
-    const score = (drop.value || 1) * 120 / Math.max(80, d);
+  const clusters = clusterDrops(world.gems || [], world.coins || [], 180);
+  const limit = movement.budgetLevel >= 2 ? 18 : 42;
+  for (const cluster of clusters.slice(0, limit)) {
+    const d = dist(p, cluster);
+    if (d < (p.magnet || 90) * 0.85) continue;
+    if (d > (world.boss ? 520 : 820)) continue;
+    const scored = scoreDropCluster(cluster, state, threats, movement);
+    if (!scored.safe) continue;
+    const score = scored.score;
     if (score > bestScore) {
       bestScore = score;
-      best = { kind: "collect", x: drop.x, y: drop.y, dropKind: drop.kind, priority: score };
+      best = { kind: "collect", x: cluster.x, y: cluster.y, dropKind: cluster.coinValue > cluster.gemValue ? "coin" : "gem", priority: score };
     }
   }
   return best;
-}
-
-function routeIsSafe(p, target, threats, movement) {
-  for (let i = 1; i <= 4; i++) {
-    const t = i / 4;
-    const point = { x: p.x + (target.x - p.x) * t, y: p.y + (target.y - p.y) * t, r: p.r || 14 };
-    if (!isPointSafe(point, threats, { ...movement, safeRisk: 26 })) return false;
-  }
-  return true;
-}
-
-function bossKiteTarget(state, boss) {
-  const p = state.player;
-  const range = mainWeaponRange(state);
-  const desired = Math.max(360, Math.min(760, range * 0.72));
-  const dx = boss.x - p.x;
-  const dy = boss.y - p.y;
-  const d = Math.max(1, Math.hypot(dx, dy));
-  const nx = dx / d;
-  const ny = dy / d;
-  const side = state.time % 6 < 3 ? 1 : -1;
-  let toward = 0;
-  if (d > desired + 90) toward = 1;
-  else if (d < desired - 80) toward = -1;
-  return {
-    kind: "kite",
-    x: p.x + nx * toward * 240 + -ny * side * 180,
-    y: p.y + ny * toward * 240 + nx * side * 180,
-    priority: 80,
-  };
 }
 
 function safestNearbyPoint(p, threats, movement) {
@@ -111,6 +92,56 @@ function safestNearbyPoint(p, threats, movement) {
     }
   }
   return best;
+}
+
+export function clusterDrops(gems = [], coins = [], radius = 180) {
+  const drops = [
+    ...gems.map((g) => ({ x: g.x, y: g.y, value: g.value || 1, type: "gem" })),
+    ...coins.map((c) => ({ x: c.x, y: c.y, value: c.value || 1, type: "coin" })),
+  ];
+  const clusters = [];
+  const used = new Set();
+  for (let i = 0; i < drops.length; i++) {
+    if (used.has(i)) continue;
+    const members = [drops[i]];
+    used.add(i);
+    for (let j = i + 1; j < drops.length; j++) {
+      if (used.has(j)) continue;
+      if (Math.hypot(drops[j].x - drops[i].x, drops[j].y - drops[i].y) <= radius) {
+        members.push(drops[j]);
+        used.add(j);
+      }
+    }
+    const totalValue = members.reduce((sum, item) => sum + item.value, 0);
+    const gemValue = members.filter((item) => item.type === "gem").reduce((sum, item) => sum + item.value, 0);
+    const coinValue = members.filter((item) => item.type === "coin").reduce((sum, item) => sum + item.value, 0);
+    clusters.push({
+      x: members.reduce((sum, item) => sum + item.x * item.value, 0) / totalValue,
+      y: members.reduce((sum, item) => sum + item.y * item.value, 0) / totalValue,
+      count: members.length,
+      totalValue,
+      gemValue,
+      coinValue,
+    });
+  }
+  return clusters.sort((a, b) => b.totalValue - a.totalValue);
+}
+
+export function scoreDropCluster(cluster, state, threats, movement) {
+  const p = state.player;
+  const d = dist(p, cluster);
+  const xpNeed = Math.max(1, p.xpNeed || 100);
+  const xpRatio = Math.min(1, (p.xp || 0) / xpNeed);
+  const gemWeight = xpRatio > 0.75 ? 2.1 : 1.1;
+  const coinWeight = state.gold < 35 ? 2.2 : 1.2;
+  const bossPenalty = state.bossWaveActive ? 0.65 : 1;
+  const routeRisk = pathRisk({ x: p.x, y: p.y, r: p.r || 14 }, { x: cluster.x, y: cluster.y, r: p.r || 14 }, threats, { ...movement, samples: movement.samples || 8 });
+  const value = cluster.gemValue * gemWeight + cluster.coinValue * coinWeight + cluster.count * 1.5;
+  return {
+    score: value * 160 / Math.max(90, d) * bossPenalty - routeRisk * 0.55,
+    safe: routeRisk < (movement.collectRiskLimit || 32),
+    routeRisk,
+  };
 }
 
 function desiredVelocityForTarget(p, target) {
@@ -135,15 +166,6 @@ function updateStuckState(runtime, p, velocity, context) {
   }
   if (!context.surrounded && runtime.stuckTimer < 0.2) runtime.wasStuck = false;
   runtime.lastPosition = { x: p.x, y: p.y };
-}
-
-function mainWeaponRange(state) {
-  let best = 520;
-  for (const weapon of Object.values(state.weapons || {})) {
-    if ((weapon.level || 0) <= 0) continue;
-    best = Math.max(best, weapon.range || weapon.attackRange || weapon.acquireRange || 520);
-  }
-  return best + (state.player.attackRangeBonus || 0);
 }
 
 function nearestEnemy(p, enemies) {

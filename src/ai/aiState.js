@@ -31,6 +31,8 @@ export function createAiRuntime(overrides = {}) {
     stuckEvents: 0,
     recentDamage: 0,
     lastHp: null,
+    events: [],
+    lastDamageSourceKind: "",
     perf: {},
     ...overrides,
   };
@@ -51,6 +53,12 @@ export function createTrainingState() {
       mobilityBias: 0,
       greed: 0,
       bossAggression: 0,
+      upgradeBias: {
+        survival: 0,
+        mobility: 0,
+        damage: 0,
+        economy: 0,
+      },
     },
   };
 }
@@ -166,6 +174,32 @@ function inferDeathReason(result) {
   return "death_by_pressure";
 }
 
+export function pushAiEvent(runtime, event) {
+  if (!runtime) return;
+  runtime.events ||= [];
+  runtime.events.push({ at: Date.now(), ...event });
+  while (runtime.events.length > 80) runtime.events.shift();
+}
+
+export function inferRunFailure(runtime, state, world) {
+  if (state.victory) return "victory";
+  const events = runtime?.events || [];
+  const damage = events.filter((event) => event.type === "damage");
+  const byKind = damage.reduce((map, event) => {
+    const key = event.sourceKind || "pressure";
+    map[key] = (map[key] || 0) + (event.amount || 1);
+    return map;
+  }, {});
+  const dominant = Object.entries(byKind).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  if (dominant.includes("hazard")) return "death_by_hazard";
+  if (dominant.includes("projectile")) return "death_by_projectile";
+  if (dominant.includes("enemy") || dominant.includes("boss")) return "death_by_enemy_contact";
+  if ((runtime?.stuckEvents || 0) >= 2) return "corner_stuck";
+  if (world?.boss && world.boss.maxHp && world.boss.hp / world.boss.maxHp > 0.45 && (state.time || 0) > 90) return "low_boss_damage";
+  if ((state.gold || 0) < 18 && (state.time || 0) > 70) return "low_gold";
+  return inferDeathReason({ ...state, stuckEvents: runtime?.stuckEvents || 0 });
+}
+
 function applyAdjustment(adjustments, summary) {
   if (summary.victory) {
     adjustments.greed = clamp(adjustments.greed + 0.02, -0.35, 0.35);
@@ -176,6 +210,11 @@ function applyAdjustment(adjustments, summary) {
   if (summary.deathReason.includes("enemy") || summary.deathReason.includes("hazard")) adjustments.survivalBias = clamp(adjustments.survivalBias + 0.05, -0.2, 0.45);
   if (summary.deathReason === "low_gold") adjustments.greed = clamp(adjustments.greed + 0.04, -0.35, 0.35);
   if (summary.deathReason === "low_damage") adjustments.bossAggression = clamp(adjustments.bossAggression + 0.04, -0.25, 0.35);
+  adjustments.upgradeBias ||= { survival: 0, mobility: 0, damage: 0, economy: 0 };
+  if (summary.deathReason.includes("projectile")) adjustments.upgradeBias.mobility = clamp(adjustments.upgradeBias.mobility + 0.08, 0, 1);
+  if (summary.deathReason.includes("hazard") || summary.deathReason.includes("enemy")) adjustments.upgradeBias.survival = clamp(adjustments.upgradeBias.survival + 0.08, 0, 1);
+  if (summary.deathReason.includes("damage")) adjustments.upgradeBias.damage = clamp(adjustments.upgradeBias.damage + 0.08, 0, 1);
+  if (summary.deathReason === "low_gold") adjustments.upgradeBias.economy = clamp(adjustments.upgradeBias.economy + 0.08, 0, 1);
 }
 
 function normalizeTraining(value) {
@@ -187,7 +226,11 @@ function normalizeTraining(value) {
     difficultyStats: { ...(value?.difficultyStats || {}) },
     upgradeCounts: { ...(value?.upgradeCounts || {}) },
     shopCounts: { ...(value?.shopCounts || {}) },
-    adjustments: { ...createTrainingState().adjustments, ...(value?.adjustments || {}) },
+    adjustments: {
+      ...createTrainingState().adjustments,
+      ...(value?.adjustments || {}),
+      upgradeBias: { ...createTrainingState().adjustments.upgradeBias, ...(value?.adjustments?.upgradeBias || {}) },
+    },
   };
 }
 

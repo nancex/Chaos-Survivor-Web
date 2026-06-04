@@ -32,8 +32,10 @@ export function collectThreats(state, world, options = {}) {
 export function normalizeThreat(kind, source, weight = 1) {
   const vx = source.vx ?? source.eliteDashVx ?? source.dashVx ?? source.knockbackX ?? 0;
   const vy = source.vy ?? source.eliteDashVy ?? source.dashVy ?? source.knockbackY ?? 0;
+  const type = classifyThreat(source, kind);
   return {
-    kind,
+    kind: type,
+    baseKind: kind,
     source,
     x: source.x || 0,
     y: source.y || 0,
@@ -51,6 +53,32 @@ export function normalizeThreat(kind, source, weight = 1) {
   };
 }
 
+export function classifyThreat(source, kind) {
+  if (kind === "projectile") {
+    const speed = Math.hypot(source.vx || 0, source.vy || 0);
+    if (speed >= 560) return "projectile_fast";
+    if ((source.life || 0) > 2.4 || (source.r || 0) >= 12 || source.landTrapOnExpire) return "projectile_slow_field";
+    return "projectile";
+  }
+  if (kind === "hazard") {
+    if ((source.armTime || 0) > 0.35) return "hazard_windup";
+    return "hazard_armed";
+  }
+  if (kind === "enemy") {
+    const speed = Math.hypot(source.eliteDashVx || source.vx || 0, source.eliteDashVy || source.vy || 0);
+    if (speed > 260 || source.mode === "dash" || source.dashing || source.eliteDashTime > 0 || source.dashState) return "enemy_dash";
+    return "enemy_contact";
+  }
+  if (kind === "boss") return "boss_body";
+  return kind;
+}
+
+export function riskSamplesForThreat(threat, lookAhead = DEFAULT_LOOK_AHEAD) {
+  if (threat.kind === "projectile_fast" || threat.kind === "enemy_dash") return [0, 0.12, 0.24, 0.38].filter((t) => t <= lookAhead);
+  if (threat.kind === "projectile_slow_field" || threat.kind === "hazard_armed") return [0, 0.25, 0.55, 0.85].filter((t) => t <= lookAhead);
+  return SAMPLE_TIMES.filter((t) => t <= lookAhead);
+}
+
 export function predictThreatPosition(threat, t) {
   return {
     x: threat.x + (threat.vx || 0) * t,
@@ -62,11 +90,11 @@ export function riskAtPoint(point, threats, options = {}) {
   const lookAhead = options.lookAhead || DEFAULT_LOOK_AHEAD;
   let risk = boundaryRisk(point, options);
   for (const threat of threats || []) {
-    if (threat.kind === "hazard") {
+    if (threat.kind === "hazard_armed" || threat.kind === "hazard_windup") {
       risk += hazardRisk(point, threat);
       continue;
     }
-    const samples = SAMPLE_TIMES.filter((t) => t <= lookAhead && t <= (threat.life ?? lookAhead));
+    const samples = riskSamplesForThreat(threat, lookAhead).filter((t) => t <= (threat.life ?? lookAhead));
     for (const t of samples.length ? samples : [0]) {
       const pos = predictThreatPosition(threat, t);
       const dx = point.x - pos.x;
@@ -83,6 +111,36 @@ export function riskAtPoint(point, threats, options = {}) {
 
 export function isPointSafe(point, threats, options = {}) {
   return riskAtPoint(point, threats, options) <= (options.safeRisk ?? 24);
+}
+
+export function pathRisk(from, to, threats, options = {}) {
+  const samples = options.samples || 8;
+  let total = 0;
+  let maxRisk = 0;
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const point = {
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
+      r: from.r || to.r || 14,
+    };
+    const risk = riskAtPoint(point, threats, options);
+    total += risk;
+    maxRisk = Math.max(maxRisk, risk);
+  }
+  return maxRisk * 0.72 + total / (samples + 1) * 0.28;
+}
+
+export function createRiskCache(threats) {
+  return { threats, points: new Map() };
+}
+
+export function cachedRiskAtPoint(cache, point, options = {}) {
+  const key = `${Math.round(point.x / 8)},${Math.round(point.y / 8)},${Math.round(point.r || 14)}`;
+  if (cache.points.has(key)) return cache.points.get(key);
+  const risk = riskAtPoint(point, cache.threats, options);
+  cache.points.set(key, risk);
+  return risk;
 }
 
 export function boundaryRisk(point, options = {}) {
@@ -150,8 +208,11 @@ function lineRisk(point, threat) {
 }
 
 function threatPadding(threat) {
+  if (threat.kind === "projectile_fast") return 34;
+  if (threat.kind === "projectile_slow_field") return 42;
   if (threat.kind === "projectile") return 22;
-  if (threat.kind === "boss") return 70;
+  if (threat.kind === "enemy_dash") return 64;
+  if (threat.kind === "boss_body") return 90;
   return 38;
 }
 

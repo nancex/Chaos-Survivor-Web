@@ -167,6 +167,7 @@ export function createAiState(previous = {}) {
       enabled: Boolean(previous.runtime?.enabled ?? previous.enabled),
     },
     training: previous.training || null,
+    config: previous.config || null,
     levelPanel: null,
   };
 }

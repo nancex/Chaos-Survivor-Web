@@ -1,0 +1,232 @@
+import { AI_CONFIG } from "./aiConfig.js";
+
+export const AI_CONFIG_PATH = "../config/ai-config.json";
+
+export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust = true } = {}) {
+  if (typeof fetchImpl !== "function") return normalizeAiConfig();
+  try {
+    const url = new URL(AI_CONFIG_PATH, import.meta.url);
+    if (cacheBust) url.searchParams.set("t", String(Date.now()));
+    const response = await fetchImpl(url, { cache: "no-store" });
+    if (!response?.ok) throw new Error(`HTTP ${response?.status || 0}`);
+    return normalizeAiConfig(await response.json());
+  } catch (error) {
+    const config = normalizeAiConfig();
+    config.configLoadError = error?.message || "unknown";
+    return config;
+  }
+}
+
+export function normalizeAiConfig(value = {}) {
+  const source = isPlainObject(value) ? value : {};
+  const merged = deepMerge(AI_CONFIG, source);
+  const profileId = typeof merged.profile === "string" ? merged.profile : "balanced";
+  const profile = isPlainObject(merged.profiles?.[profileId]) ? merged.profiles[profileId] : merged.profiles?.balanced || {};
+  const config = deepMerge(merged, profile);
+  config.profile = profileId;
+  config.activeProfile = profile;
+  config.reloadBeforeEachRun = config.reloadBeforeEachRun !== false;
+  config.maxTrainingRuns = clampInt(config.maxTrainingRuns, 1, 9999, AI_CONFIG.maxTrainingRuns);
+  config.tickHz = clampInt(config.tickHz, 4, 60, AI_CONFIG.tickHz);
+  config.actionCooldown = clampNumber(config.actionCooldown, 0.05, 2, AI_CONFIG.actionCooldown);
+  config.restartDelay = clampNumber(config.restartDelay, 0.1, 10, AI_CONFIG.restartDelay);
+  config.movement = normalizeMovement(config.movement);
+  config.orca = normalizeOrca(config.orca);
+  config.economy = normalizeEconomy(config.economy);
+  config.upgrade = normalizeUpgrade(config.upgrade);
+  config.difficultyTraining = normalizeDifficultyTraining(config.difficultyTraining);
+  config.weaponTraining = normalizeWeaponTraining(config.weaponTraining);
+  config.situation = normalizeSituation(config.situation);
+  config.objectiveWeights = normalizeObjectiveWeights(config.objectiveWeights);
+  config.bossMemory = normalizeBossMemory(config.bossMemory);
+  config.trainingMatrix = normalizeTrainingMatrix(config.trainingMatrix);
+  config.performance = normalizePerformance(config.performance);
+  config.telemetry = normalizeTelemetry(config.telemetry);
+  return config;
+}
+
+export function mergeAiConfig(base, patch) {
+  return normalizeAiConfig(deepMerge(base || {}, patch || {}));
+}
+
+function normalizeMovement(value = {}) {
+  return {
+    ...AI_CONFIG.movement,
+    ...value,
+    lookAhead: clampNumber(value.lookAhead, 0.15, 3, AI_CONFIG.movement.lookAhead),
+    maxNeighbors: clampInt(value.maxNeighbors, 4, 96, AI_CONFIG.movement.maxNeighbors),
+    queryRadius: clampNumber(value.queryRadius, 160, 1800, AI_CONFIG.movement.queryRadius),
+    candidateDirections: clampInt(value.candidateDirections, 8, 96, AI_CONFIG.movement.candidateDirections),
+    boundaryPadding: clampNumber(value.boundaryPadding, 40, 500, AI_CONFIG.movement.boundaryPadding),
+    stuckSeconds: clampNumber(value.stuckSeconds, 0.25, 4, AI_CONFIG.movement.stuckSeconds),
+    riskTolerance: clampNumber(value.riskTolerance, 0.35, 2, AI_CONFIG.movement.riskTolerance),
+    greed: clampNumber(value.greed, 0.25, 2.2, AI_CONFIG.movement.greed),
+    bossAggression: clampNumber(value.bossAggression, 0.25, 2.2, AI_CONFIG.movement.bossAggression),
+  };
+}
+
+function normalizeOrca(value = {}) {
+  return {
+    ...AI_CONFIG.orca,
+    ...value,
+    lowRiskCandidates: clampInt(value.lowRiskCandidates, 4, 64, AI_CONFIG.orca.lowRiskCandidates),
+    midRiskCandidates: clampInt(value.midRiskCandidates, 6, 96, AI_CONFIG.orca.midRiskCandidates),
+    highRiskCandidates: clampInt(value.highRiskCandidates, 8, 128, AI_CONFIG.orca.highRiskCandidates),
+    reuseSafeVelocitySeconds: clampNumber(value.reuseSafeVelocitySeconds, 0, 1.5, AI_CONFIG.orca.reuseSafeVelocitySeconds),
+    maxSolveMs: clampNumber(value.maxSolveMs, 0.5, 12, AI_CONFIG.orca.maxSolveMs),
+  };
+}
+
+function normalizeEconomy(value = {}) {
+  return {
+    ...AI_CONFIG.economy,
+    ...value,
+    minRefreshReserve: clampInt(value.minRefreshReserve, 0, 200, AI_CONFIG.economy.minRefreshReserve),
+    maxRefreshesPerShop: clampInt(value.maxRefreshesPerShop, 0, 8, AI_CONFIG.economy.maxRefreshesPerShop),
+    refreshAggression: clampNumber(value.refreshAggression, 0.25, 2, 1),
+    reserveGoldMultiplier: clampNumber(value.reserveGoldMultiplier, 0.25, 2, 1),
+  };
+}
+
+function normalizeUpgrade(value = {}) {
+  return {
+    ...AI_CONFIG.upgrade,
+    ...value,
+    survivalMultiplier: clampNumber(value.survivalMultiplier, 0.4, 2.5, AI_CONFIG.upgrade.survivalMultiplier),
+    mobilityMultiplier: clampNumber(value.mobilityMultiplier, 0.4, 2.5, AI_CONFIG.upgrade.mobilityMultiplier),
+    damageMultiplier: clampNumber(value.damageMultiplier, 0.4, 2.5, AI_CONFIG.upgrade.damageMultiplier),
+    economyMultiplier: clampNumber(value.economyMultiplier, 0.4, 2.5, AI_CONFIG.upgrade.economyMultiplier),
+  };
+}
+
+function normalizeDifficultyTraining(value = {}) {
+  const defaults = AI_CONFIG.difficultyTraining;
+  const demotion = { ...defaults.demotion, ...(value.demotion || {}) };
+  const promotion = { ...defaults.promotion, ...(value.promotion || {}) };
+  return {
+    ...defaults,
+    ...value,
+    enabled: value.enabled !== false,
+    demotion: {
+      earlyDeathWave: clampInt(demotion.earlyDeathWave, 1, 20, defaults.demotion.earlyDeathWave),
+      earlyDeathLimit: clampInt(demotion.earlyDeathLimit, 1, 20, defaults.demotion.earlyDeathLimit),
+      cooldownRuns: clampInt(demotion.cooldownRuns, 0, 20, defaults.demotion.cooldownRuns),
+    },
+    promotion: {
+      minRuns: clampInt(promotion.minRuns, 1, 30, defaults.promotion.minRuns),
+      minWinRate: clampNumber(promotion.minWinRate, 0, 1, defaults.promotion.minWinRate),
+      minAverageWave: clampNumber(promotion.minAverageWave, 1, 30, defaults.promotion.minAverageWave),
+    },
+  };
+}
+
+function normalizeWeaponTraining(value = {}) {
+  return {
+    ...AI_CONFIG.weaponTraining,
+    ...value,
+    explorationRate: clampNumber(value.explorationRate, 0, 0.6, AI_CONFIG.weaponTraining.explorationRate),
+    fallbackWeapons: Array.isArray(value.fallbackWeapons) ? value.fallbackWeapons.filter(Boolean) : AI_CONFIG.weaponTraining.fallbackWeapons,
+  };
+}
+
+function normalizeSituation(value = {}) {
+  const defaults = AI_CONFIG.situation;
+  return {
+    ...defaults,
+    ...value,
+    enabled: value.enabled !== false,
+    earlyWave: clampInt(value.earlyWave, 1, 10, defaults.earlyWave),
+    lateWave: clampInt(value.lateWave, 3, 20, defaults.lateWave),
+    criticalHpRatio: clampNumber(value.criticalHpRatio, 0.1, 0.8, defaults.criticalHpRatio),
+    lowGold: clampInt(value.lowGold, 0, 200, defaults.lowGold),
+    projectilePressureHigh: clampNumber(value.projectilePressureHigh, 0.05, 1, defaults.projectilePressureHigh),
+    surroundedEnemyCount: clampInt(value.surroundedEnemyCount, 3, 32, defaults.surroundedEnemyCount),
+  };
+}
+
+function normalizeObjectiveWeights(value = {}) {
+  return normalizeNumberMap(AI_CONFIG.objectiveWeights, value, 0, 3);
+}
+
+function normalizeBossMemory(value = {}) {
+  const defaults = AI_CONFIG.bossMemory;
+  return {
+    ...defaults,
+    ...value,
+    enabled: value.enabled !== false,
+    eventBuffer: clampInt(value.eventBuffer, 4, 60, defaults.eventBuffer),
+    dashDangerSeconds: clampNumber(value.dashDangerSeconds, 0.1, 3, defaults.dashDangerSeconds),
+    laserDangerSeconds: clampNumber(value.laserDangerSeconds, 0.1, 3, defaults.laserDangerSeconds),
+    repeatSkillPenalty: clampNumber(value.repeatSkillPenalty, 0, 1, defaults.repeatSkillPenalty),
+  };
+}
+
+function normalizeTrainingMatrix(value = {}) {
+  const defaults = AI_CONFIG.trainingMatrix;
+  return {
+    ...defaults,
+    ...value,
+    enabled: value.enabled !== false,
+    minSamplesForPenalty: clampInt(value.minSamplesForPenalty, 1, 20, defaults.minSamplesForPenalty),
+    earlyDeathPenalty: clampNumber(value.earlyDeathPenalty, 0, 100, defaults.earlyDeathPenalty),
+    profileSwitchAfterEarlyDeaths: clampInt(value.profileSwitchAfterEarlyDeaths, 1, 20, defaults.profileSwitchAfterEarlyDeaths),
+    weaponCooldownRuns: clampInt(value.weaponCooldownRuns, 0, 30, defaults.weaponCooldownRuns),
+  };
+}
+
+function normalizePerformance(value = {}) {
+  const defaults = AI_CONFIG.performance;
+  return {
+    ...defaults,
+    ...value,
+    targetAiTickMs: clampNumber(value.targetAiTickMs, 0.25, 20, defaults.targetAiTickMs),
+    maxAiTickMs: clampNumber(value.maxAiTickMs, 0.5, 50, defaults.maxAiTickMs),
+    riskCacheGrid: clampInt(value.riskCacheGrid, 8, 160, defaults.riskCacheGrid),
+    dropClusterRefreshTicks: clampInt(value.dropClusterRefreshTicks, 1, 10, defaults.dropClusterRefreshTicks),
+    bossMemoryRefreshTicks: clampInt(value.bossMemoryRefreshTicks, 1, 10, defaults.bossMemoryRefreshTicks),
+    degradedCollectLimit: clampInt(value.degradedCollectLimit, 4, 80, defaults.degradedCollectLimit),
+  };
+}
+
+function normalizeTelemetry(value = {}) {
+  const defaults = AI_CONFIG.telemetry;
+  return {
+    ...defaults,
+    ...value,
+    decisionLogInterval: clampNumber(value.decisionLogInterval, 0, 60, defaults.decisionLogInterval),
+    performanceLogInterval: clampNumber(value.performanceLogInterval, 1, 60, defaults.performanceLogInterval),
+    printSituationOnRunStart: value.printSituationOnRunStart !== false,
+    printLoadoutReason: value.printLoadoutReason !== false,
+    printBossMemory: value.printBossMemory === true,
+  };
+}
+
+function normalizeNumberMap(defaults, value, min, max) {
+  const output = { ...defaults };
+  for (const key of Object.keys(output)) {
+    output[key] = clampNumber(value?.[key], min, max, output[key]);
+  }
+  return output;
+}
+
+function deepMerge(base, patch) {
+  const output = { ...(base || {}) };
+  for (const [key, value] of Object.entries(patch || {})) {
+    output[key] = isPlainObject(value) && isPlainObject(output[key]) ? deepMerge(output[key], value) : value;
+  }
+  return output;
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function clampInt(value, min, max, fallback) {
+  return Math.round(clampNumber(value, min, max, fallback));
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}

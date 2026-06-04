@@ -9,6 +9,10 @@ export function exportTrainingSummary(training = {}) {
     recentRuns: (training.recentRuns || []).slice(-10),
     bestWeapons: rankedStats(training.weaponStats || {}),
     bestDifficulties: rankedStats(training.difficultyStats || {}),
+    bestMatrix: rankedMatrix(training.matrix || {}, "best"),
+    worstMatrix: rankedMatrix(training.matrix || {}, "worst"),
+    recentFailures: (training.recentRuns || []).filter((run) => !run.victory).slice(-6).map((run) => run.deathReason),
+    nextRecommendation: recommendNext(training),
     adjustments: training.adjustments || {},
   };
 }
@@ -24,4 +28,37 @@ function rankedStats(stats) {
     }))
     .sort((a, b) => b.winRate - a.winRate || b.averageTime - a.averageTime)
     .slice(0, 8);
+}
+
+function rankedMatrix(matrix, mode) {
+  return Object.entries(matrix)
+    .map(([key, value]) => {
+      const [profile, difficultyId, weaponId] = key.split("|");
+      return {
+        key,
+        profile,
+        difficultyId,
+        weaponId,
+        runs: value.runs || 0,
+        wins: value.wins || 0,
+        earlyDeaths: value.earlyDeaths || 0,
+        winRate: value.runs ? (value.wins || 0) / value.runs : 0,
+        averageWave: value.runs ? (value.survivalWaveTotal || 0) / value.runs : 0,
+        averageTime: value.runs ? (value.totalTime || 0) / value.runs : 0,
+      };
+    })
+    .filter((entry) => entry.runs > 0)
+    .sort((a, b) => mode === "worst"
+      ? b.earlyDeaths - a.earlyDeaths || a.winRate - b.winRate || a.averageWave - b.averageWave
+      : b.winRate - a.winRate || b.averageWave - a.averageWave || b.averageTime - a.averageTime)
+    .slice(0, 8);
+}
+
+function recommendNext(training) {
+  const worst = rankedMatrix(training.matrix || {}, "worst")[0];
+  const best = rankedMatrix(training.matrix || {}, "best")[0];
+  return {
+    avoid: worst ? { profile: worst.profile, difficultyId: worst.difficultyId, weaponId: worst.weaponId, reason: "matrix_early_deaths" } : null,
+    prefer: best ? { profile: best.profile, difficultyId: best.difficultyId, weaponId: best.weaponId, reason: "matrix_best_result" } : null,
+  };
 }

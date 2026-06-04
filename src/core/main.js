@@ -59,6 +59,7 @@ export async function bootGame() {
   function start() {
     closeCodex();
     hideAllOverlays();
+    state.mode = "choosingWeapon";
     showRunSetup({
       weapons: STARTER_WEAPONS,
       onConfirm: startWithLoadout,

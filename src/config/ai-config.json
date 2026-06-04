@@ -1,0 +1,179 @@
+{
+  "enabled": false,
+  "autoStart": true,
+  "autoRestart": true,
+  "reloadBeforeEachRun": true,
+  "maxTrainingRuns": 50,
+  "logLevel": "decision",
+  "storageKey": "pixel-survivor-ai-training",
+  "tickHz": 20,
+  "actionCooldown": 0.28,
+  "restartDelay": 0.8,
+  "profile": "balanced",
+  "movement": {
+    "lookAhead": 0.85,
+    "maxNeighbors": 28,
+    "queryRadius": 620,
+    "candidateDirections": 32,
+    "boundaryPadding": 180,
+    "stuckSeconds": 1.2,
+    "riskTolerance": 1,
+    "greed": 1,
+    "bossAggression": 1
+  },
+  "orca": {
+    "lowRiskCandidates": 16,
+    "midRiskCandidates": 24,
+    "highRiskCandidates": 40,
+    "reuseSafeVelocitySeconds": 0.35,
+    "maxSolveMs": 3
+  },
+  "economy": {
+    "minRefreshReserve": 10,
+    "maxRefreshesPerShop": 2,
+    "lockAffordableHighValue": true,
+    "refreshAggression": 1,
+    "reserveGoldMultiplier": 1
+  },
+  "upgrade": {
+    "survivalMultiplier": 1,
+    "mobilityMultiplier": 1,
+    "damageMultiplier": 1,
+    "economyMultiplier": 1
+  },
+  "difficultyTraining": {
+    "enabled": true,
+    "demotion": {
+      "earlyDeathWave": 2,
+      "earlyDeathLimit": 3,
+      "cooldownRuns": 2
+    },
+    "promotion": {
+      "minRuns": 3,
+      "minWinRate": 0.45,
+      "minAverageWave": 4
+    }
+  },
+  "weaponTraining": {
+    "explorationRate": 0.08,
+    "fallbackWeapons": ["ice", "missile", "arc"]
+  },
+  "situation": {
+    "enabled": true,
+    "earlyWave": 3,
+    "lateWave": 8,
+    "criticalHpRatio": 0.35,
+    "lowGold": 25,
+    "projectilePressureHigh": 0.45,
+    "surroundedEnemyCount": 8
+  },
+  "objectiveWeights": {
+    "survive": 1,
+    "collect": 0.85,
+    "bossDamage": 1,
+    "breakout": 1.25,
+    "centerReturn": 0.55
+  },
+  "bossMemory": {
+    "enabled": true,
+    "eventBuffer": 12,
+    "dashDangerSeconds": 0.75,
+    "laserDangerSeconds": 0.9,
+    "repeatSkillPenalty": 0.18
+  },
+  "trainingMatrix": {
+    "enabled": true,
+    "minSamplesForPenalty": 2,
+    "earlyDeathPenalty": 22,
+    "profileSwitchAfterEarlyDeaths": 2,
+    "weaponCooldownRuns": 4
+  },
+  "performance": {
+    "targetAiTickMs": 2,
+    "maxAiTickMs": 5,
+    "riskCacheGrid": 48,
+    "dropClusterRefreshTicks": 2,
+    "bossMemoryRefreshTicks": 1,
+    "degradedCollectLimit": 12
+  },
+  "telemetry": {
+    "decisionLogInterval": 1,
+    "performanceLogInterval": 5,
+    "printSituationOnRunStart": true,
+    "printLoadoutReason": true,
+    "printBossMemory": false
+  },
+  "profiles": {
+    "balanced": {
+      "movement": {
+        "riskTolerance": 1,
+        "greed": 1,
+        "bossAggression": 1
+      },
+      "economy": {
+        "refreshAggression": 1,
+        "reserveGoldMultiplier": 1
+      },
+      "upgrade": {
+        "survivalMultiplier": 1,
+        "mobilityMultiplier": 1,
+        "damageMultiplier": 1,
+        "economyMultiplier": 1
+      }
+    },
+    "survivor": {
+      "movement": {
+        "riskTolerance": 0.72,
+        "greed": 0.82,
+        "bossAggression": 0.88
+      },
+      "economy": {
+        "maxRefreshesPerShop": 1,
+        "reserveGoldMultiplier": 1.2
+      },
+      "upgrade": {
+        "survivalMultiplier": 1.35,
+        "mobilityMultiplier": 1.2,
+        "damageMultiplier": 0.95,
+        "economyMultiplier": 0.9
+      }
+    },
+    "aggressive": {
+      "movement": {
+        "riskTolerance": 1.18,
+        "greed": 1.06,
+        "bossAggression": 1.28
+      },
+      "economy": {
+        "maxRefreshesPerShop": 3,
+        "refreshAggression": 1.18,
+        "reserveGoldMultiplier": 0.85
+      },
+      "upgrade": {
+        "survivalMultiplier": 0.9,
+        "mobilityMultiplier": 1,
+        "damageMultiplier": 1.3,
+        "economyMultiplier": 1
+      }
+    },
+    "farmer": {
+      "movement": {
+        "riskTolerance": 0.95,
+        "greed": 1.3,
+        "bossAggression": 0.95
+      },
+      "economy": {
+        "maxRefreshesPerShop": 2,
+        "refreshAggression": 0.9,
+        "reserveGoldMultiplier": 1.1
+      },
+      "upgrade": {
+        "survivalMultiplier": 1,
+        "mobilityMultiplier": 1.05,
+        "damageMultiplier": 0.95,
+        "economyMultiplier": 1.35
+      }
+    }
+  },
+  "debugDraw": false
+}

@@ -1,24 +1,34 @@
 import { input, state, world } from "../state.js";
 import { difficultyCards } from "../difficulty.js";
 import { AI_CONFIG, AI_STORAGE_ENABLED_KEY, readAiEnabled } from "./aiConfig.js";
-import { createAiRuntime, inferRunFailure, loadAiTraining, pushAiEvent, saveAiTraining, recordRunResult, recordShopAction, recordUpgrade } from "./aiState.js";
+import { loadAiRunConfig, mergeAiConfig, normalizeAiConfig } from "./aiConfigLoader.js";
+import { clearAiTrainingStorage, createAiRuntime, createTrainingState, inferRunFailure, loadAiTraining, pushAiEvent, saveAiTraining, recordRunResult, recordShopAction, recordUpgrade } from "./aiState.js";
 import { planMovement } from "./movementPlanner.js";
 import { chooseOpeningLoadout, chooseUpgrade, shouldRefreshUpgradeChoices } from "./progressionStrategy.js";
 import { decideShopActions } from "./shopStrategy.js";
 import { aiLog, markPerf, maybeLogPerf, nowMs } from "./telemetry.js";
 import { exportTrainingSummary } from "./trainingExport.js";
+import { beginAiTick } from "./aiTickCache.js";
+import { classifySituation } from "./situationModel.js";
+import { updateBossMemory } from "./bossStrategy.js";
 import { canFuseWeapons, findFuseCandidate, fuseWeaponSlots } from "../economy/inventory.js";
 import { purchaseOffer, refreshCost, refreshShopOffers, shopOffers, toggleOfferLock } from "../economy/shop.js";
 import { closeShop, renderShop } from "../ui/shopUi.js";
 
-let config = { ...AI_CONFIG, movement: { ...AI_CONFIG.movement }, economy: { ...AI_CONFIG.economy } };
+let config = normalizeAiConfig(AI_CONFIG);
 let actions = {};
 let training = null;
 
 export function initAi(options = {}) {
   actions = options.actions || {};
-  config = mergeConfig(config, options.config || {});
-  training = loadAiTraining(undefined, config.storageKey);
+  config = mergeAiConfig(config, options.config || {});
+  if (options.clearTrainingOnStartup !== false) {
+    const removed = clearAiTrainingStorage(undefined, config.storageKey);
+    training = createTrainingState();
+    aiLog(config, "training_reset", { reason: "startup", removed }, "summary");
+  } else {
+    training = loadAiTraining(undefined, config.storageKey);
+  }
   state.ai ||= {};
   state.ai.runtime = createAiRuntime(state.ai.runtime || {});
   state.ai.training = training;
@@ -47,6 +57,26 @@ export function updateAi(dt) {
     return;
   }
   runtime.tickAccumulator = 0;
+  const tickCache = beginAiTick(runtime, config);
+  const situation = classifySituation({ state, world, runtime, config });
+  runtime.situation = situation;
+  tickCache.situation = situation;
+  if (world.boss) {
+    const memory = updateBossMemory(runtime, state, world, config);
+    if (memory && config.telemetry?.printBossMemory && memory.lastMode !== runtime.lastLoggedBossMode) {
+      runtime.lastLoggedBossMode = memory.lastMode;
+      aiLog(config, "boss_memory", { mode: memory.lastMode, repeated: memory.repeatedModeCount, dangerUntil: memory.dangerUntil }, "debug");
+    }
+  }
+  if (situation.objective !== runtime.lastLoggedObjective) {
+    runtime.lastLoggedObjective = situation.objective;
+    aiLog(config, "situation", {
+      objective: situation.objective,
+      pressure: situation.pressure,
+      survival: situation.survival,
+      position: situation.position,
+    }, "decision");
+  }
   const started = nowMs();
   const plan = planMovement({ state, world, runtime, config });
   const elapsed = markPerf(runtime, "movementPlanMs", started);
@@ -77,28 +107,36 @@ export function setAiEnabled(enabled, persist = true) {
 
 function handleUiMode(runtime, dt) {
   if (runtime.actionCooldown > 0) return;
-  if (state.mode === "menu") return chooseAndStartRun(runtime);
-  if (state.mode === "choosingWeapon") return chooseAndStartRun(runtime);
+  if (state.mode === "menu") return void chooseAndStartRun(runtime);
+  if (state.mode === "choosingWeapon") return void chooseAndStartRun(runtime);
   if (state.mode === "leveling") return handleLeveling(runtime);
   if (state.mode === "shop") return handleShop(runtime);
   if (state.mode === "ended") return handleEnded(runtime, dt);
 }
 
-function chooseAndStartRun(runtime) {
+async function chooseAndStartRun(runtime) {
   if (!config.autoStart) return;
-  const options = actions.getLoadoutOptions?.() || {};
-  const loadout = chooseOpeningLoadout({
-    training,
-    difficulties: options.difficulties || difficultyCards(),
-    weapons: options.weapons || [],
-  });
-  if (!loadout.difficulty || !loadout.weapon) return;
-  runtime.runRecorded = false;
-  runtime.shopRefreshesUsed = 0;
-  runtime.upgradeRefreshesUsed = 0;
-  runtime.actionCooldown = config.actionCooldown;
-  aiLog(config, "start", { difficulty: loadout.difficulty.id, weapon: loadout.weapon.id });
-  actions.startWithLoadout?.({ difficulty: loadout.difficulty, weapon: loadout.weapon });
+  if (runtime.pendingConfigReload) return;
+  runtime.pendingConfigReload = true;
+  try {
+    await reloadConfigForNextRun(runtime);
+    const options = actions.getLoadoutOptions?.() || {};
+    const loadout = chooseOpeningLoadout({
+      training,
+      difficulties: options.difficulties || difficultyCards(),
+      weapons: options.weapons || [],
+      config,
+    });
+    if (!loadout.difficulty || !loadout.weapon) return;
+    runtime.runRecorded = false;
+    runtime.shopRefreshesUsed = 0;
+    runtime.upgradeRefreshesUsed = 0;
+    runtime.actionCooldown = config.actionCooldown;
+    aiLog(config, "start", { difficulty: loadout.difficulty.id, weapon: loadout.weapon.id, profile: config.profile });
+    actions.startWithLoadout?.({ difficulty: loadout.difficulty, weapon: loadout.weapon });
+  } finally {
+    runtime.pendingConfigReload = false;
+  }
 }
 
 function handleLeveling(runtime) {
@@ -111,8 +149,9 @@ function handleLeveling(runtime) {
     bossActive: Boolean(world.boss),
     lowDamage: state.kills < Math.max(8, state.time * 0.1),
     shortRange: mainWeaponRange() < 600,
+    situation: runtime.situation,
   };
-  const decision = chooseUpgrade({ player: state.player, state, items: panel.items, context, training });
+  const decision = chooseUpgrade({ player: state.player, state, items: panel.items, context, training, config });
   if (!decision) return;
   if (panel.refresh && shouldRefreshUpgradeChoices({
     bestScore: decision.score,
@@ -120,6 +159,10 @@ function handleLeveling(runtime) {
     refreshCost: panel.refreshCost || 10,
     refreshesUsed: runtime.upgradeRefreshesUsed || 0,
     reserveGold: config.economy.minRefreshReserve,
+    situation: runtime.situation,
+    training,
+    items: panel.items,
+    config,
   })) {
     runtime.upgradeRefreshesUsed = (runtime.upgradeRefreshesUsed || 0) + 1;
     runtime.actionCooldown = config.actionCooldown;
@@ -147,6 +190,7 @@ function handleShop(runtime) {
     refreshCost: refreshCost(),
     refreshesUsed: runtime.shopRefreshesUsed || 0,
     config: config.economy,
+    situation: runtime.situation,
   });
   for (const action of decision) {
     if (action.type === "buy") {
@@ -200,6 +244,8 @@ function handleEnded(runtime, dt) {
       level: state.player?.level,
       weaponId: state.initialWeaponId,
       difficultyId: state.difficultyId,
+      wave: state.wave,
+      profile: config.profile,
       stuckEvents: runtime.stuckEvents,
       deathReason: inferRunFailure(runtime, state, world),
     });
@@ -208,11 +254,36 @@ function handleEnded(runtime, dt) {
     aiLog(config, "run_summary", { runs: training.totalRuns, victory: state.victory, time: state.time, kills: state.kills, gold: state.gold }, "summary");
     runtime.restartTimer = config.restartDelay;
   }
-  if (!config.autoRestart || training.totalRuns >= config.maxTrainingRuns) return;
+  if (!config.autoRestart) {
+    aiLog(config, "restart_blocked", { reason: "autoRestart_false" }, "summary");
+    return;
+  }
+  if (training.totalRuns >= config.maxTrainingRuns) {
+    aiLog(config, "restart_blocked", { reason: "maxTrainingRuns", runs: training.totalRuns, max: config.maxTrainingRuns }, "summary");
+    return;
+  }
   runtime.restartTimer = Math.max(0, (runtime.restartTimer ?? config.restartDelay) - dt);
   if (runtime.restartTimer <= 0) {
-    chooseAndStartRun(runtime);
+    aiLog(config, "restart", { runs: training.totalRuns, delay: config.restartDelay }, "summary");
+    void chooseAndStartRun(runtime);
   }
+}
+
+async function reloadConfigForNextRun(runtime) {
+  if (config.reloadBeforeEachRun === false) return;
+  const previousEnabled = runtime.enabled;
+  const previousLogLevel = config.logLevel;
+  const next = await loadAiRunConfig();
+  config = mergeAiConfig(AI_CONFIG, next);
+  config.enabled = previousEnabled;
+  if (previousLogLevel && !next.logLevel) config.logLevel = previousLogLevel;
+  state.ai.config = config;
+  aiLog(config, "config_reload", {
+    profile: config.profile,
+    difficultyTraining: config.difficultyTraining?.enabled !== false,
+    maxTrainingRuns: config.maxTrainingRuns,
+    error: config.configLoadError || "",
+  }, config.configLoadError ? "summary" : "decision");
 }
 
 function fuseExistingWeapons(runtime) {
@@ -280,20 +351,10 @@ function exposeDebugApi() {
     status: () => ({ enabled: ensureRuntime().enabled, mode: state.mode, target: ensureRuntime().currentTarget, budgetLevel: ensureRuntime().budgetLevel || 0, training }),
     exportTraining: () => exportTrainingSummary(training),
     configure: (patch) => {
-      config = mergeConfig(config, patch || {});
+      config = mergeAiConfig(config, patch || {});
       state.ai.config = config;
       return globalThis.survivorAi.status();
     },
-  };
-}
-
-function mergeConfig(base, patch) {
-  return {
-    ...base,
-    ...patch,
-    movement: { ...(base.movement || {}), ...(patch.movement || {}) },
-    economy: { ...(base.economy || {}), ...(patch.economy || {}) },
-    orca: { ...(base.orca || {}), ...(patch.orca || {}) },
   };
 }
 

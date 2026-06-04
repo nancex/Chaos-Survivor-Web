@@ -14,15 +14,15 @@ const UPGRADE_BASE = {
   lucky_cache: 32,
 };
 
-export function chooseOpeningLoadout({ training, difficulties, weapons }) {
-  return chooseLoadoutFromTraining({ training, difficulties, weapons });
+export function chooseOpeningLoadout({ training, difficulties, weapons, config }) {
+  return chooseLoadoutFromTraining({ training, difficulties, weapons, config });
 }
 
-export function chooseUpgrade({ player, state, items, context = {}, training }) {
+export function chooseUpgrade({ player, state, items, context = {}, training, config }) {
   let best = null;
   let bestScore = -Infinity;
   for (const item of items || []) {
-    const score = scoreUpgrade({ item, player, state, context, training });
+    const score = scoreUpgrade({ item, player, state, context, training, config });
     if (score.score > bestScore) {
       best = { item, ...score };
       bestScore = score.score;
@@ -31,12 +31,13 @@ export function chooseUpgrade({ player, state, items, context = {}, training }) 
   return best;
 }
 
-export function scoreUpgrade({ item, player, state, context = {}, training }) {
+export function scoreUpgrade({ item, player, state, context = {}, training, config }) {
   const id = item.id;
   const hpRatio = player.maxHp ? player.hp / player.maxHp : 1;
   const wave = state.wave || 1;
   const adjustments = training?.adjustments || {};
   const upgradeBias = adjustments.upgradeBias || {};
+  const situation = context.situation || {};
   let score = UPGRADE_BASE[id] ?? 20;
   const reasons = [];
 
@@ -82,11 +83,39 @@ export function scoreUpgrade({ item, player, state, context = {}, training }) {
     reasons.push("shop");
   }
 
+  if (situation.survival === "critical" && ["vital_core", "regen_cell", "armor_plate", "phase_stride", "evasion_ghost"].includes(id)) score += 36;
+  if (situation.damage === "low" && ["damage_matrix", "overclock", "scope_lens", "crit_kernel"].includes(id)) score += 24;
+  if (situation.economy === "poor" && ["magnet_field", "lucky_cache"].includes(id)) score += 20;
+  if (situation.phase === "boss" && ["damage_matrix", "overclock", "scope_lens", "crit_kernel"].includes(id)) score += 18;
+  score *= upgradeCategoryMultiplier(id, config?.upgrade);
   return { score, reason: reasons.join(",") || "baseline" };
 }
 
-export function shouldRefreshUpgradeChoices({ bestScore, gold, refreshCost, refreshesUsed, reserveGold = 12 }) {
+function upgradeCategoryMultiplier(id, upgrade = {}) {
+  if (["vital_core", "regen_cell", "armor_plate"].includes(id)) return upgrade.survivalMultiplier || 1;
+  if (["phase_stride", "evasion_ghost"].includes(id)) return upgrade.mobilityMultiplier || 1;
+  if (["damage_matrix", "overclock", "scope_lens", "crit_kernel"].includes(id)) return upgrade.damageMultiplier || 1;
+  if (["magnet_field", "lucky_cache"].includes(id)) return upgrade.economyMultiplier || 1;
+  return 1;
+}
+
+export function shouldRefreshUpgradeChoices({ bestScore, gold, refreshCost, refreshesUsed, reserveGold = 12, situation = {}, training, items = [], config = {} }) {
   if (refreshesUsed > 0) return false;
   if (gold < refreshCost + reserveGold) return false;
-  return bestScore < 35;
+  const coverage = upgradePanelCoverage(items);
+  if (situation.survival === "critical" && coverage.survival) return false;
+  const recentLowDamage = (training?.recentRuns || []).slice(-4).filter((run) => run.deathReason?.includes("damage")).length >= 2;
+  if (recentLowDamage && !coverage.damage) return true;
+  const threshold = situation.phase === "boss" ? 44 : situation.economy === "poor" ? 32 : 35;
+  return bestScore < threshold * (config.upgrade?.refreshThresholdMultiplier || 1);
+}
+
+export function upgradePanelCoverage(items = []) {
+  const ids = new Set(items.map((item) => item.id));
+  return {
+    survival: ["vital_core", "regen_cell", "armor_plate", "evasion_ghost"].some((id) => ids.has(id)),
+    mobility: ["phase_stride", "evasion_ghost"].some((id) => ids.has(id)),
+    damage: ["damage_matrix", "overclock", "scope_lens", "crit_kernel"].some((id) => ids.has(id)),
+    economy: ["magnet_field", "lucky_cache"].some((id) => ids.has(id)),
+  };
 }

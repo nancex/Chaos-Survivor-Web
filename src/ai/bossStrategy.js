@@ -34,6 +34,27 @@ export function bossContext(state, world) {
   };
 }
 
+export function updateBossMemory(runtime, state, world, config = {}) {
+  const settings = config.bossMemory || {};
+  if (settings.enabled === false || !world.boss) return null;
+  const context = bossContext(state, world);
+  const memory = runtime.bossMemory || { events: [], lastMode: "", repeatedModeCount: 0, dangerUntil: 0, preferredStrafeSide: 1 };
+  const mode = context.mode || "idle";
+  if (mode !== memory.lastMode) {
+    memory.repeatedModeCount = 1;
+    memory.lastMode = mode;
+  } else {
+    memory.repeatedModeCount += 1;
+  }
+  const dangerSeconds = context.dashLike ? settings.dashDangerSeconds || 0.75 : context.laserLike ? settings.laserDangerSeconds || 0.9 : 0;
+  if (dangerSeconds) memory.dangerUntil = Math.max(memory.dangerUntil || 0, (state.time || 0) + dangerSeconds);
+  if (context.dashLike || context.laserLike) memory.preferredStrafeSide *= -1;
+  memory.events.push({ time: state.time || 0, mode, dashLike: context.dashLike, laserLike: context.laserLike });
+  while (memory.events.length > (settings.eventBuffer || 12)) memory.events.shift();
+  runtime.bossMemory = memory;
+  return memory;
+}
+
 export function bestBossRange(state) {
   let bestId = null;
   let bestScore = -Infinity;
@@ -54,7 +75,7 @@ export function bestBossRange(state) {
   return range;
 }
 
-export function bossMovementTarget(state, world, threats, context = bossContext(state, world), training = null) {
+export function bossMovementTarget(state, world, threats, context = bossContext(state, world), training = null, memory = null) {
   const boss = context.boss || world.boss;
   const p = state.player;
   if (!boss || !p) return null;
@@ -64,15 +85,16 @@ export function bossMovementTarget(state, world, threats, context = bossContext(
   const d = Math.max(1, Math.hypot(dx, dy));
   const nx = dx / d;
   const ny = dy / d;
-  const side = sideSign(state, world, context);
+  const side = memory?.preferredStrafeSide || sideSign(state, world, context);
   const aggression = bossAggressionScore(training, state, boss);
+  const dangerActive = memory?.dangerUntil > (state.time || 0);
 
   let radial = 0;
-  if (context.dashLike || d < range.min) radial = -1;
+  if (context.dashLike || dangerActive || d < range.min) radial = -1;
   else if (d > range.max) radial = 1;
   else if (context.recoveryLike || context.lowHp) radial = aggression > 0.62 ? 0.35 : 0.1;
 
-  const strafe = context.laserLike || context.dashLike ? 260 : 180;
+  const strafe = context.laserLike || context.dashLike || dangerActive ? 320 : 180;
   return {
     kind: "boss_kite",
     weaponId: range.weaponId,
@@ -80,7 +102,7 @@ export function bossMovementTarget(state, world, threats, context = bossContext(
     x: p.x + nx * radial * 280 + -ny * side * strafe,
     y: p.y + ny * radial * 280 + nx * side * strafe,
     priority: 88,
-    reason: context.dashLike ? "dash_evade" : d > range.max ? "approach" : d < range.min ? "separate" : "strafe",
+    reason: context.dashLike || dangerActive ? "dash_evade" : context.laserLike ? "laser_strafe" : d > range.max ? "approach" : d < range.min ? "separate" : "strafe",
   };
 }
 

@@ -30,16 +30,18 @@ const ITEM_VALUES = {
   bait: 16,
 };
 
-export function decideShopActions({ offers, player, inventory, state, refreshCost, refreshesUsed = 0, config = {} }) {
+export function decideShopActions({ offers, player, inventory, state, refreshCost, refreshesUsed = 0, config = {}, situation = {} }) {
   const actions = [];
-  const profile = buildInventoryProfile(player, inventory, state);
+  const profile = buildInventoryProfile(player, inventory, state, situation);
+  const reserveGold = dynamicReserveGold(state, profile) * (config.reserveGoldMultiplier || 1);
+  const refreshThreshold = 58 * (config.refreshAggression ? 1 / config.refreshAggression : 1);
   const scored = (offers || [])
     .filter((offer) => !isSoldOut(offer))
-    .map((offer) => scoreOffer({ offer, player, inventory, state, profile }))
+    .map((offer) => scoreOffer({ offer, player, inventory, state, profile, situation, config }))
     .sort((a, b) => b.score - a.score);
 
   for (const entry of scored) {
-    if (entry.score >= 50 && state.gold >= entry.offer.price + dynamicReserveGold(state, profile)) {
+    if (entry.score >= 50 && state.gold >= entry.offer.price + reserveGold) {
       actions.push({ type: "buy", uid: entry.offer.uid, fuseWeaponUid: entry.fuseWeaponUid, score: entry.score, reason: entry.reason });
       state = { ...state, gold: state.gold - entry.offer.price };
     } else if (shouldLockOffer(entry.offer, entry.score, state.gold + expectedNextWaveGold(state)) && !entry.offer.locked && config.lockAffordableHighValue !== false) {
@@ -48,15 +50,15 @@ export function decideShopActions({ offers, player, inventory, state, refreshCos
   }
 
   const bestScore = scored
-    .filter((entry) => state.gold >= (entry.offer.price || 0) + dynamicReserveGold(state, profile))
+    .filter((entry) => state.gold >= (entry.offer.price || 0) + reserveGold)
     .reduce((best, entry) => Math.max(best, entry.score), 0);
-  const canRefresh = state.gold >= refreshCost + dynamicReserveGold(state, profile) && refreshesUsed < (config.maxRefreshesPerShop ?? 2);
-  if (bestScore < 58 && canRefresh) actions.push({ type: "refresh", cost: refreshCost, reason: "low_offer_value" });
+  const canRefresh = state.gold >= refreshCost + reserveGold && refreshesUsed < (config.maxRefreshesPerShop ?? 2);
+  if (bestScore < refreshThreshold && canRefresh) actions.push({ type: "refresh", cost: refreshCost, reason: "low_offer_value" });
   actions.push({ type: "continue" });
   return actions;
 }
 
-export function scoreOffer({ offer, player, inventory, state, profile = buildInventoryProfile(player, inventory, state) }) {
+export function scoreOffer({ offer, player, inventory, state, profile = buildInventoryProfile(player, inventory, state), situation = {}, config = {} }) {
   const category = offerCategory(offer);
   const rank = QUALITY_RANK[offer.rarity] ?? 0;
   let score = 0;
@@ -91,13 +93,18 @@ export function scoreOffer({ offer, player, inventory, state, profile = buildInv
     if (id === "thief_mark" && state.gold > 80) score -= 18;
   }
 
+  const impact = simulatePurchaseImpact(offer, profile, inventory, state, situation);
+  score += impact.immediateGain + impact.buildSynergy + impact.shortageFix + impact.fuseValue - impact.opportunityCost;
+  if (situation.survival === "critical" && reason.includes("heal")) score += 16;
+  if (situation.phase === "boss" && ["rapid_cord", "knife", "gloves", "fang", "split_shot"].includes(offer.itemId || offer.id)) score += 14;
+  if (config.refreshAggression > 1 && score < 62) score -= 4;
   const affordability = Math.min(1, Math.max(0.35, (state.gold || 0) / Math.max(1, offer.price || 1)));
   if ((offer.price || 0) > (state.gold || 0)) score *= 0.92;
   else score *= affordability;
   return { offer, score, reason, fuseWeaponUid };
 }
 
-export function buildInventoryProfile(player, inventory, state) {
+export function buildInventoryProfile(player, inventory, state, situation = {}) {
   const slots = inventory?.weaponSlots || [];
   const fuseMap = new Map();
   for (const slot of slots) {
@@ -110,11 +117,35 @@ export function buildInventoryProfile(player, inventory, state) {
     hasOpenWeaponSlot,
     fuseMap,
     weaponCount: slots.length,
-    needsSurvival: hpRatio < 0.45 || (state.wave || 1) >= 8 && (player.defense || 0) < 4,
-    needsDamage: (player.damageScale || 1) < 1.08 && (state.wave || 1) >= 6 || slots.length < 2,
-    needsEconomy: (state.gold || 0) < 28 && (state.wave || 1) <= 8,
+    needsSurvival: situation.survival === "critical" || hpRatio < 0.45 || (state.wave || 1) >= 8 && (player.defense || 0) < 4,
+    needsDamage: situation.damage === "low" || (player.damageScale || 1) < 1.08 && (state.wave || 1) >= 6 || slots.length < 2,
+    needsEconomy: situation.economy === "poor" || (state.gold || 0) < 28 && (state.wave || 1) <= 8,
     needsMobility: (player.speed || 0) < 230,
   };
+}
+
+export function simulatePurchaseImpact(offer, profile, inventory, state, situation = {}) {
+  const category = offerCategory(offer);
+  const price = offer.price || 0;
+  const reserve = dynamicReserveGold(state, profile);
+  let immediateGain = 0;
+  let buildSynergy = 0;
+  let shortageFix = 0;
+  let fuseValue = 0;
+  if (category === "weapon") {
+    const fuse = profile.fuseMap.get(`${offer.weaponId}:${offer.rarity}`);
+    fuseValue = fuse ? 34 + (QUALITY_RANK[offer.rarity] || 0) * 8 : 0;
+    buildSynergy = offer.weaponId === state.initialWeaponId ? 10 : profile.hasOpenWeaponSlot ? 6 : -40;
+  } else {
+    const id = offer.itemId || offer.id;
+    immediateGain = (ITEM_VALUES[id] || 35) * 0.08;
+    if (profile.needsSurvival && ["heart_container", "healing_potion", "healing_aura", "tardigrade", "heavy_armor"].includes(id)) shortageFix += 18;
+    if (profile.needsDamage && ["rapid_cord", "knife", "gloves", "fang", "split_shot"].includes(id)) shortageFix += 16;
+    if (profile.needsEconomy && ["magnet", "lucky_clover", "thief_mark"].includes(id)) shortageFix += 12;
+    if (situation.phase === "boss" && ["rapid_cord", "knife", "gloves", "fang", "split_shot"].includes(id)) buildSynergy += 10;
+  }
+  const opportunityCost = (state.gold || 0) - price < reserve ? 18 : price > (state.gold || 0) * 0.75 ? 8 : 0;
+  return { immediateGain, buildSynergy, shortageFix, fuseValue, opportunityCost };
 }
 
 export function estimateOfferGain(offer, profile) {

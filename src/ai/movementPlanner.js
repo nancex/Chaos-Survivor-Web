@@ -2,6 +2,7 @@ import { AI_CONFIG } from "./aiConfig.js";
 import { bossContext, bossMovementTarget } from "./bossStrategy.js";
 import { solveAvoidanceVelocity } from "./orcaAvoidance.js";
 import { collectThreats, pathRisk, riskAtPoint, surroundScore } from "./riskModel.js";
+import { getCachedDropClusters } from "./aiTickCache.js";
 
 export function planMovement({ state, world, runtime = {}, config = AI_CONFIG }) {
   const p = state.player;
@@ -9,7 +10,7 @@ export function planMovement({ state, world, runtime = {}, config = AI_CONFIG })
   const movement = config.movement || AI_CONFIG.movement;
   const threats = collectThreats(state, world, movement);
   const context = movementContext({ state, world, threats, movement });
-  const target = chooseTarget({ state, world, threats, context, runtime, movement });
+  const target = chooseTarget({ state, world, threats, context, runtime, movement, config });
   const desired = desiredVelocityForTarget(p, target);
   const velocity = solveAvoidanceVelocity({
     player: p,
@@ -43,7 +44,7 @@ export function movementContext({ state, world, threats, movement }) {
   };
 }
 
-function chooseTarget({ state, world, threats, context, runtime, movement }) {
+function chooseTarget({ state, world, threats, context, runtime, movement, config }) {
   const p = state.player;
   if (runtime.stuckTimer > (movement.stuckSeconds || 1.2) || context.surrounded) {
     return { kind: "breakout", x: p.x + Math.cos(context.breakoutAngle) * 260, y: p.y + Math.sin(context.breakoutAngle) * 260, priority: 100 };
@@ -51,19 +52,74 @@ function chooseTarget({ state, world, threats, context, runtime, movement }) {
   if (context.lowHp || context.projectilePressure > 0.42) {
     return safestNearbyPoint(p, threats, movement);
   }
-  if (world.boss) return bossMovementTarget(state, world, threats, bossContext(state, world), state.ai?.training);
-  const collect = bestCollectTarget(p, world, threats, movement, state);
+  const blended = blendedTarget({ state, world, threats, context, runtime, movement, config });
+  if (blended) return blended;
+  const collect = bestCollectTarget(p, world, threats, movement, state, runtime);
   if (collect) return collect;
   const nearest = nearestEnemy(p, world.enemies || []);
   if (nearest) return { kind: "farm", x: p.x - normalize(nearest.x - p.x, nearest.y - p.y).x * 180, y: p.y - normalize(nearest.x - p.x, nearest.y - p.y).y * 180, priority: 35 };
   return { kind: "idle", x: p.x, y: p.y, priority: 0 };
 }
 
-function bestCollectTarget(p, world, threats, movement, state) {
+export function blendedTarget({ state, world, threats, context, runtime, movement, config = AI_CONFIG }) {
+  const objectives = buildMovementObjectives({ state, world, threats, context, runtime, movement, config });
+  return blendMovementObjectives(objectives, state.player);
+}
+
+export function buildMovementObjectives({ state, world, threats, context, runtime, movement, config = AI_CONFIG }) {
+  const p = state.player;
+  const situation = runtime.situation || (world.boss ? { phase: "boss" } : {});
+  const weights = config.objectiveWeights || {};
+  const objectives = [];
+  const survive = safestNearbyPoint(p, threats, movement);
+  objectives.push({ ...survive, weight: objectiveWeight("survive", situation, weights) });
+  const collect = bestCollectTarget(p, world, threats, movement, state, runtime);
+  if (collect) objectives.push({ ...collect, weight: objectiveWeight("collect", situation, weights) });
+  if (world.boss) {
+    const boss = bossMovementTarget(state, world, threats, bossContext(state, world), state.ai?.training, runtime.bossMemory);
+    if (boss) objectives.push({ ...boss, weight: objectiveWeight("bossDamage", situation, weights) });
+  }
+  if (context.surrounded || situation.objective === "breakout") {
+    objectives.push({ kind: "breakout", x: p.x + Math.cos(context.breakoutAngle) * 300, y: p.y + Math.sin(context.breakoutAngle) * 300, weight: objectiveWeight("breakout", situation, weights) });
+  }
+  if (situation.position === "edge" || situation.position === "corner") {
+    objectives.push({ kind: "center_return", x: p.x * 0.4, y: p.y * 0.4, weight: objectiveWeight("centerReturn", situation, weights) });
+  }
+  return objectives.filter((item) => item && item.weight > 0);
+}
+
+export function blendMovementObjectives(objectives, player) {
+  if (!objectives?.length || !player) return null;
+  let x = 0;
+  let y = 0;
+  let total = 0;
+  let top = objectives[0];
+  for (const objective of objectives) {
+    const weight = objective.weight || 0;
+    x += (objective.x || player.x) * weight;
+    y += (objective.y || player.y) * weight;
+    total += weight;
+    if (weight > (top.weight || 0)) top = objective;
+  }
+  if (total <= 0) return null;
+  return { kind: top.kind, x: x / total, y: y / total, priority: top.priority || 50, components: objectives.length, blended: objectives.length > 1 };
+}
+
+function objectiveWeight(name, situation, weights) {
+  let weight = weights[name] ?? 1;
+  if (name === "survive" && (situation.survival === "critical" || situation.pressure === "high")) weight *= 2.2;
+  if (name === "collect" && situation.phase === "boss") weight *= 0.35;
+  if (name === "collect" && situation.objective === "shop_prepare") weight *= 1.5;
+  if (name === "bossDamage" && situation.phase === "boss") weight *= 1.55;
+  if ((name === "breakout" || name === "centerReturn") && (situation.position === "edge" || situation.position === "corner")) weight *= 1.8;
+  return weight;
+}
+
+function bestCollectTarget(p, world, threats, movement, state, runtime = {}) {
   let best = null;
   let bestScore = -Infinity;
-  const clusters = clusterDrops(world.gems || [], world.coins || [], 180);
-  const limit = movement.budgetLevel >= 2 ? 18 : 42;
+  const clusters = getCachedDropClusters(runtime.tickCache, () => clusterDrops(world.gems || [], world.coins || [], 180));
+  const limit = runtime.budgetLevel >= 2 ? 18 : 42;
   for (const cluster of clusters.slice(0, limit)) {
     const d = dist(p, cluster);
     if (d < (p.magnet || 90) * 0.85) continue;
@@ -135,11 +191,13 @@ export function scoreDropCluster(cluster, state, threats, movement) {
   const gemWeight = xpRatio > 0.75 ? 2.1 : 1.1;
   const coinWeight = state.gold < 35 ? 2.2 : 1.2;
   const bossPenalty = state.bossWaveActive ? 0.65 : 1;
+  const greed = movement.greed || 1;
+  const riskTolerance = movement.riskTolerance || 1;
   const routeRisk = pathRisk({ x: p.x, y: p.y, r: p.r || 14 }, { x: cluster.x, y: cluster.y, r: p.r || 14 }, threats, { ...movement, samples: movement.samples || 8 });
   const value = cluster.gemValue * gemWeight + cluster.coinValue * coinWeight + cluster.count * 1.5;
   return {
-    score: value * 160 / Math.max(90, d) * bossPenalty - routeRisk * 0.55,
-    safe: routeRisk < (movement.collectRiskLimit || 32),
+    score: value * 160 * greed / Math.max(90, d) * bossPenalty - routeRisk * 0.55,
+    safe: routeRisk < (movement.collectRiskLimit || 32) * riskTolerance,
     routeRisk,
   };
 }

@@ -33,6 +33,8 @@ import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "../audi
 import { CAMERA_ZOOM } from "../constants.js";
 import { loadDifficultyProgress, recordDifficultyVictory, selectDifficulty, setupDifficultyConfig } from "../difficulty.js";
 import { loadEditableGameData } from "../config/editableGameData.js";
+import { initAi, updateAi } from "../ai/aiController.js";
+import { difficultyCards } from "../difficulty.js";
 
 const LEVEL_CHOICE_REFRESH_COST = 10;
 
@@ -88,6 +90,7 @@ export async function bootGame() {
   }
 
   function renderLevelChoices(items) {
+    state.ai ||= {};
     showChoices({
       eyebrow: "LEVEL UP",
       title: "选择一次强化",
@@ -108,6 +111,7 @@ export async function bootGame() {
       },
       onPick: (item) => {
         item.apply();
+        if (state.ai?.levelPanel) state.ai.levelPanel = null;
         hideChoices();
         state.flash = 0.18;
         if (!checkLevelUps()) {
@@ -115,6 +119,30 @@ export async function bootGame() {
         }
       },
     });
+    state.ai.levelPanel = {
+      items,
+      refreshCost: LEVEL_CHOICE_REFRESH_COST,
+      refresh: () => {
+        if (state.gold < LEVEL_CHOICE_REFRESH_COST) {
+          playSfx("deny");
+          return false;
+        }
+        state.gold -= LEVEL_CHOICE_REFRESH_COST;
+        playSfx("select");
+        renderLevelChoices(pickThree(UPGRADE_DEFS));
+        return true;
+      },
+      pick: (id) => {
+        const item = items.find((entry) => entry.id === id) || items[0];
+        if (!item) return false;
+        item.apply();
+        state.ai.levelPanel = null;
+        hideChoices();
+        state.flash = 0.18;
+        if (!checkLevelUps()) finishPostLevelFlow();
+        return true;
+      },
+    };
   }
 
   function checkLevelUps() {
@@ -221,6 +249,7 @@ export async function bootGame() {
   }
 
   function update(dt) {
+    updateAi(dt);
     if (state.mode !== "playing") return;
     const bossWave = isBossWave(state.wave);
     state.bossWaveActive = bossWave;
@@ -274,6 +303,16 @@ export async function bootGame() {
   resetRun(generateMap());
   state.shop = createShopState();
   state.mode = "menu";
+  initAi({
+    actions: {
+      openLoadout: start,
+      startWithLoadout,
+      restart: start,
+      continueToNextWave: finishWaveTransition,
+      returnToMenu,
+      getLoadoutOptions: () => ({ difficulties: difficultyCards(), weapons: STARTER_WEAPONS }),
+    },
+  });
   updateBestText();
   requestAnimationFrame(loop);
 }

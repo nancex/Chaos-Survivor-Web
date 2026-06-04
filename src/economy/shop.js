@@ -151,6 +151,15 @@ function findOffer(uid) {
   return state.shop.offers.find((offer) => offer.uid === uid) || null;
 }
 
+export function shopOffers() {
+  ensureShop();
+  return state.shop.offers;
+}
+
+export function getOfferByUid(uid) {
+  return findOffer(uid);
+}
+
 function createOffer() {
   return Math.random() < 0.58 ? createWeaponOffer() : createItemOffer();
 }

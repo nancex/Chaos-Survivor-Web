@@ -33,6 +33,7 @@ export const state = {
   difficultyId: "ember",
   difficulty: null,
   difficultyProgress: null,
+  ai: null,
 };
 
 export const world = {
@@ -144,7 +145,34 @@ export function createEasterEggState() {
   };
 }
 
+export function createAiState(previous = {}) {
+  return {
+    enabled: Boolean(previous.enabled),
+    runtime: {
+      ...(previous.runtime || {}),
+      tickAccumulator: 0,
+      actionCooldown: 0,
+      restartTimer: 0,
+      runRecorded: false,
+      shopRefreshesUsed: 0,
+      upgradeRefreshesUsed: 0,
+      currentTarget: null,
+      lastVelocity: { x: 0, y: 0 },
+      lastPosition: null,
+      stuckTimer: 0,
+      stuckEvents: 0,
+      recentDamage: 0,
+      lastHp: null,
+      perf: {},
+      enabled: Boolean(previous.runtime?.enabled ?? previous.enabled),
+    },
+    training: previous.training || null,
+    levelPanel: null,
+  };
+}
+
 export function resetRun(map) {
+  const previousAi = state.ai;
   world.enemies.length = 0;
   world.projectiles.length = 0;
   world.enemyProjectiles.length = 0;
@@ -187,4 +215,5 @@ export function resetRun(map) {
   state.waveScenario = null;
   state.spawnedWaveEvents = new Set();
   state.difficultyId = state.difficultyId || "ember";
+  state.ai = createAiState(previousAi || {});
 }

@@ -1,6 +1,7 @@
 import { AI_CONFIG } from "./aiConfig.js";
 
 export const AI_CONFIG_PATH = "../config/ai-config.json";
+export const AI_TRAINING_CONFIG_PATH = "../config/ai-training-config.json";
 
 export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust = true } = {}) {
   if (typeof fetchImpl !== "function") return normalizeAiConfig();
@@ -15,6 +16,30 @@ export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust 
     config.configLoadError = error?.message || "unknown";
     return config;
   }
+}
+
+export async function loadAiTrainingModeConfig({ fetchImpl = globalThis.fetch, cacheBust = true } = {}) {
+  if (typeof fetchImpl !== "function") return normalizeAiTrainingModeConfig();
+  try {
+    const url = new URL(AI_TRAINING_CONFIG_PATH, import.meta.url);
+    if (cacheBust) url.searchParams.set("t", String(Date.now()));
+    const response = await fetchImpl(url, { cache: "no-store" });
+    if (!response?.ok) throw new Error(`HTTP ${response?.status || 0}`);
+    return normalizeAiTrainingModeConfig(await response.json());
+  } catch (error) {
+    const config = normalizeAiTrainingModeConfig();
+    config.configLoadError = error?.message || "unknown";
+    return config;
+  }
+}
+
+export function normalizeAiTrainingModeConfig(value = {}) {
+  const source = isPlainObject(value) ? value : {};
+  return {
+    enabled: source.enabled === true,
+    clearTrainingOnStartup: source.clearTrainingOnStartup !== false,
+    openLoadoutOnStartup: source.openLoadoutOnStartup !== false,
+  };
 }
 
 export function normalizeAiConfig(value = {}) {

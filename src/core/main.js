@@ -34,6 +34,7 @@ import { CAMERA_ZOOM } from "../constants.js";
 import { loadDifficultyProgress, recordDifficultyVictory, selectDifficulty, setupDifficultyConfig } from "../difficulty.js";
 import { loadEditableGameData } from "../config/editableGameData.js";
 import { initAi, updateAi } from "../ai/aiController.js";
+import { loadAiRunConfig, loadAiTrainingModeConfig } from "../ai/aiConfigLoader.js";
 import { difficultyCards } from "../difficulty.js";
 
 const LEVEL_CHOICE_REFRESH_COST = 10;
@@ -49,6 +50,8 @@ export async function bootGame() {
   await setupDifficultyConfig();
   loadDifficultyProgress();
   await setupEnemyRegistry();
+  const aiTrainingMode = await loadAiTrainingModeConfig();
+  const aiRunConfig = await loadAiRunConfig();
   const MAX_FRAME_RATE = 60;
   const FRAME_MS = 1000 / MAX_FRAME_RATE;
   let lastTime = 0;
@@ -305,6 +308,12 @@ export async function bootGame() {
   state.shop = createShopState();
   state.mode = "menu";
   initAi({
+    clearTrainingOnStartup: aiTrainingMode.clearTrainingOnStartup,
+    ignoreStoredEnabled: aiTrainingMode.enabled,
+    config: {
+      ...aiRunConfig,
+      enabled: aiTrainingMode.enabled === true,
+    },
     actions: {
       openLoadout: start,
       startWithLoadout,

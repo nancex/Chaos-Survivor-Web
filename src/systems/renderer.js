@@ -8,7 +8,7 @@ import { drawBlackhole } from "../blackhole.js";
 import { createDecorativeEnemy, decorativeEnemyIds } from "./enemyRegistry.js";
 import { drawEasterEggObject, drawEasterEggToast } from "./easterEggs.js";
 import { activeWaveEffect } from "./waveScenarios.js";
-import { drawAiDebug } from "../ai/aiDebugDraw.js";
+import { drawAiDebug, drawAiHud } from "../ai/aiDebugDraw.js";
 
 export const viewport = { width: 1, height: 1, dpr: 1 };
 
@@ -184,6 +184,7 @@ export function render(ctx) {
   }
   drawScenarioOverlay(ctx);
   drawAiDebug(ctx, viewport, { x: state.cameraX, y: state.cameraY });
+  drawAiHud(ctx, viewport);
   drawEasterEggToast(ctx, viewport);
 }
 

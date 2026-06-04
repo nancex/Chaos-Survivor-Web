@@ -158,6 +158,7 @@ export function updateBestText() {
 
 export function showRunSetup({ weapons, onConfirm, onBack }) {
   clearPreview();
+  state.ai ||= {};
   ui.quickActions?.classList.add("blocked");
   const difficulties = difficultyCards();
   let difficultyIndex = Math.max(0, difficulties.findIndex((item) => item.currentHighest));
@@ -348,6 +349,34 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
       onBack?.();
     };
   }
+  state.ai.loadoutPanel = {
+    difficulties,
+    weapons,
+    selectDifficulty: (id) => {
+      const index = difficulties.findIndex((item) => item.id === id && item.unlocked);
+      if (index < 0) return false;
+      difficultyIndex = index;
+      selectedDifficulty = difficulties[difficultyIndex];
+      renderDifficultyList();
+      updateSummary();
+      return true;
+    },
+    selectWeapon: (id) => {
+      const index = weapons.findIndex((item) => item.id === id);
+      if (index < 0) return false;
+      weaponIndex = index;
+      selectedWeapon = weapons[weaponIndex];
+      renderWeaponList();
+      updateWeaponPreviewInfo();
+      updateSummary();
+      return true;
+    },
+    confirm: () => {
+      if (confirmed || !selectedDifficulty?.unlocked || !selectedWeapon) return false;
+      ui.loadoutConfirmButton.onclick?.();
+      return true;
+    },
+  };
 
   renderDifficultyList();
   renderWeaponList();
@@ -362,6 +391,7 @@ export function showRunSetup({ weapons, onConfirm, onBack }) {
 
 export function hideRunSetup() {
   clearPreview();
+  if (state.ai?.loadoutPanel) state.ai.loadoutPanel = null;
   ui.loadoutOverlay?.classList.remove("active");
   ui.loadoutOverlay?.setAttribute("aria-hidden", "true");
   ui.quickActions?.classList.remove("blocked");

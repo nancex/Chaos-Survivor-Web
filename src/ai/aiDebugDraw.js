@@ -16,11 +16,68 @@ export function drawAiDebug(ctx, view, camera) {
   ctx.restore();
 }
 
+export function drawAiHud(ctx, view) {
+  const runtime = state.ai?.runtime;
+  if (!runtime?.enabled || state.mode === "menu") return;
+  const training = state.ai?.training || {};
+  const config = state.ai?.config || {};
+  const p = state.player || {};
+  const runs = training.totalRuns || 0;
+  const victories = training.victories || 0;
+  const winRate = runs ? Math.round(victories / runs * 100) : 0;
+  const target = runtime.currentTarget?.kind || (state.mode === "playing" ? "thinking" : state.mode);
+  const risk = Math.round(runtime.lastPlanRisk || 0);
+  const threatCount = runtime.lastThreatCount || runtime.debugThreats?.length || 0;
+  const hp = p.maxHp ? `${Math.ceil(Math.max(0, p.hp || 0))}/${Math.ceil(p.maxHp)}` : "--";
+  const lines = [
+    ["AI", runtime.enabled ? "TRAIN" : "OFF"],
+    ["Mode", `${state.mode} / ${config.profile || "balanced"}`],
+    ["Run", `${runs}  Win ${winRate}%`],
+    ["Wave", `${state.wave || 0}  HP ${hp}`],
+    ["Target", target],
+    ["Risk", `${risk}  Threat ${threatCount}`],
+    ["Damage", `${Math.round(runtime.recentDamage || 0)}  Budget ${runtime.budgetLevel || 0}`],
+  ];
+  const width = Math.min(260, Math.max(210, view.width * 0.32));
+  const rowH = 17;
+  const height = 16 + lines.length * rowH;
+  const x = Math.max(8, view.width - width - 14);
+  const y = 14;
+  ctx.save();
+  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  drawHudPanel(ctx, x, y, width, height, risk);
+  ctx.font = "12px 'Zpix', 'Fusion Pixel 12px Monospaced SC', 'Cubic 11', 'Courier New', monospace";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i < lines.length; i++) {
+    const rowY = y + 13 + i * rowH;
+    const [label, value] = lines[i];
+    ctx.fillStyle = i === 0 ? "#77ff8a" : "rgba(159,244,255,0.82)";
+    ctx.fillText(label, x + 12, rowY);
+    ctx.fillStyle = i === 0 ? "#ffffff" : "rgba(255,255,255,0.88)";
+    ctx.fillText(value, x + 78, rowY);
+  }
+  ctx.restore();
+}
+
 function toScreen(point, view, camera) {
   return {
     x: (point.x - camera.x) * CAMERA_ZOOM + view.width / 2,
     y: (point.y - camera.y) * CAMERA_ZOOM + view.height / 2,
   };
+}
+
+function drawHudPanel(ctx, x, y, w, h, risk) {
+  const danger = risk > 85;
+  ctx.fillStyle = "rgba(6,9,18,0.78)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = danger ? "rgba(255,77,109,0.12)" : "rgba(66,232,255,0.08)";
+  ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+  ctx.strokeStyle = danger ? "rgba(255,77,109,0.92)" : "rgba(66,232,255,0.82)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 5.5, y + 5.5, w - 11, h - 11);
 }
 
 function drawTarget(ctx, runtime, view, camera) {

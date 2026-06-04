@@ -46,6 +46,12 @@ export function movementContext({ state, world, threats, movement }) {
 
 function chooseTarget({ state, world, threats, context, runtime, movement, config }) {
   const p = state.player;
+  const gravityEscape = blackholeEscapeTarget(p, world.blackhole, runtime);
+  if (gravityEscape) return gravityEscape;
+  const disruptionMove = disruptionMoveTarget(p, world.hazards || [], runtime);
+  if (disruptionMove) return disruptionMove;
+  const stormRailEscape = stormRailDashEscapeTarget(p, world.boss, runtime);
+  if (stormRailEscape) return stormRailEscape;
   if (runtime.stuckTimer > (movement.stuckSeconds || 1.2) || context.surrounded) {
     return { kind: "breakout", x: p.x + Math.cos(context.breakoutAngle) * 260, y: p.y + Math.sin(context.breakoutAngle) * 260, priority: 100 };
   }
@@ -73,6 +79,12 @@ export function buildMovementObjectives({ state, world, threats, context, runtim
   const objectives = [];
   const survive = safestNearbyPoint(p, threats, movement);
   objectives.push({ ...survive, weight: objectiveWeight("survive", situation, weights) });
+  const gravityEscape = blackholeEscapeTarget(p, world.blackhole, runtime);
+  if (gravityEscape) objectives.push({ ...gravityEscape, weight: objectiveWeight("survive", situation, weights) * 2.4 });
+  const disruptionMove = disruptionMoveTarget(p, world.hazards || [], runtime);
+  if (disruptionMove) objectives.push({ ...disruptionMove, weight: objectiveWeight("survive", situation, weights) * 1.6 });
+  const stormRailEscape = stormRailDashEscapeTarget(p, world.boss, runtime);
+  if (stormRailEscape) objectives.push({ ...stormRailEscape, weight: objectiveWeight("survive", situation, weights) * 2.8 });
   const collect = bestCollectTarget(p, world, threats, movement, state, runtime);
   if (collect) objectives.push({ ...collect, weight: objectiveWeight("collect", situation, weights) });
   if (world.boss) {
@@ -133,6 +145,84 @@ function bestCollectTarget(p, world, threats, movement, state, runtime = {}) {
     }
   }
   return best;
+}
+
+function blackholeEscapeTarget(p, blackhole, runtime = {}) {
+  if (!blackhole || (blackhole.life ?? 1) <= 0) return null;
+  const radius = blackhole.pullRadius || blackhole.radius || blackhole.r || 220;
+  const dx = p.x - (blackhole.x || 0);
+  const dy = p.y - (blackhole.y || 0);
+  const d = Math.hypot(dx, dy);
+  if (d > radius + (p.r || 14) + 90) return null;
+  const fallback = normalize(runtime.lastVelocity?.x || 1, runtime.lastVelocity?.y || 0);
+  const away = d > 1 ? { x: dx / d, y: dy / d } : fallback;
+  const pull = Math.max(1, blackhole.pull || 1);
+  const distanceScale = d < radius * 0.55 ? 420 : 320;
+  return {
+    kind: "blackhole_escape",
+    x: p.x + away.x * distanceScale + fallback.x * Math.min(80, pull * 0.08),
+    y: p.y + away.y * distanceScale + fallback.y * Math.min(80, pull * 0.08),
+    priority: 120,
+  };
+}
+
+function disruptionMoveTarget(p, hazards, runtime = {}) {
+  let best = null;
+  let bestD = Infinity;
+  for (const h of hazards || []) {
+    if (h.kind !== "blizzard_core" || (h.life ?? 1) <= 0) continue;
+    const radius = h.r || h.triggerRadius || 120;
+    const d = dist(p, h);
+    if (d > radius + (p.r || 14) + 48) continue;
+    if (d < bestD) {
+      bestD = d;
+      best = h;
+    }
+  }
+  if (!best) return null;
+  const dx = p.x - (best.x || 0);
+  const dy = p.y - (best.y || 0);
+  const d = Math.hypot(dx, dy);
+  const last = normalize(runtime.lastVelocity?.x || 0, runtime.lastVelocity?.y || 0);
+  const away = d > 1 ? { x: dx / d, y: dy / d } : (Math.hypot(last.x, last.y) > 0 ? last : { x: 1, y: 0 });
+  const tangent = { x: -away.y, y: away.x };
+  const drift = (runtime.disruptionTurn || 1) >= 0 ? tangent : { x: -tangent.x, y: -tangent.y };
+  runtime.disruptionTurn = runtime.disruptionTurn || 1;
+  return {
+    kind: "disruption_move",
+    x: p.x + away.x * 260 + drift.x * 110,
+    y: p.y + away.y * 260 + drift.y * 110,
+    priority: 95,
+  };
+}
+
+function stormRailDashEscapeTarget(p, boss, runtime = {}) {
+  if (!boss || boss.dead || (boss.id !== "storm_rail_devourer" && boss.behavior !== "boss_storm_rail")) return null;
+  if (!stormRailDashActive(boss)) return null;
+  const heading = boss.heading ?? Math.atan2(boss.moveVy || 0, boss.moveVx || 1);
+  const vx = Math.cos(heading);
+  const vy = Math.sin(heading);
+  const dx = p.x - boss.x;
+  const dy = p.y - boss.y;
+  const forward = dx * vx + dy * vy;
+  const side = dx * -vy + dy * vx;
+  const dashReach = boss.dashState === "burst_dash" ? 980 : 720;
+  const corridor = (boss.r || 44) + (p.r || 14) + (boss.dashState === "burst_dash" ? 180 : 130);
+  const closeToHead = Math.hypot(dx, dy) < corridor + 140;
+  if (!closeToHead && (forward < -180 || forward > dashReach || Math.abs(side) > corridor)) return null;
+  const preferredSide = side >= 0 ? 1 : -1;
+  const last = runtime.lastVelocity || { x: 0, y: 0 };
+  const lastSide = last.x * -vy + last.y * vx;
+  const escapeSide = Math.abs(side) < corridor * 0.35 && Math.abs(lastSide) > 1 ? Math.sign(lastSide) : preferredSide;
+  const awayFromHead = normalize(p.x - boss.x, p.y - boss.y);
+  const lateralX = -vy * escapeSide;
+  const lateralY = vx * escapeSide;
+  return {
+    kind: "storm_rail_dash_evade",
+    x: p.x + lateralX * 420 + awayFromHead.x * 160,
+    y: p.y + lateralY * 420 + awayFromHead.y * 160,
+    priority: 125,
+  };
 }
 
 function safestNearbyPoint(p, threats, movement) {
@@ -243,6 +333,12 @@ function nearestEnemy(p, enemies) {
 function normalize(x, y) {
   const d = Math.max(1, Math.hypot(x, y));
   return { x: x / d, y: y / d };
+}
+
+function stormRailDashActive(boss) {
+  if (boss.mode === "dash") return true;
+  if (boss.mode === "portal_dash" && boss.portalState === "burst") return true;
+  return boss.dashState === "high_speed" || boss.dashState === "burst_dash" || boss.dashState === "coast";
 }
 
 function dist(a, b) {

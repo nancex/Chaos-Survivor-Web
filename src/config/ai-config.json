@@ -15,11 +15,11 @@
     "maxNeighbors": 28,
     "queryRadius": 620,
     "candidateDirections": 32,
-    "boundaryPadding": 180,
+    "boundaryPadding": 50,
     "stuckSeconds": 1.2,
     "riskTolerance": 1,
-    "greed": 1.5,
-    "bossAggression": 1.5
+    "greed": 1,
+    "bossAggression": 1
   },
   "orca": {
     "lowRiskCandidates": 16,
@@ -140,12 +140,12 @@
     },
     "aggressive": {
       "movement": {
-        "riskTolerance": 1.18,
-        "greed": 1.06,
-        "bossAggression": 1.28
+        "riskTolerance": 2.18,
+        "greed": 1.57,
+        "bossAggression": 2.55
       },
       "economy": {
-        "maxRefreshesPerShop": 3,
+        "maxRefreshesPerShop": 10,
         "refreshAggression": 1.18,
         "reserveGoldMultiplier": 0.85
       },

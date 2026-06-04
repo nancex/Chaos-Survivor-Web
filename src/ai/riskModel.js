@@ -18,6 +18,12 @@ export function collectThreats(state, world, options = {}) {
     if (distanceSq(p, h) > (queryRadius + (h.r || 0) + 120) ** 2) continue;
     threats.push(normalizeThreat("hazard", h, hazardWeight(h)));
   }
+  if (world.blackhole && (world.blackhole.life ?? 1) > 0) {
+    const radius = blackholeRadius(world.blackhole);
+    if (distanceSq(p, world.blackhole) <= (queryRadius + radius) ** 2) {
+      threats.push(normalizeThreat("blackhole", world.blackhole, 2.4));
+    }
+  }
   for (const e of world.enemies || []) {
     if (e.dead) continue;
     if (distanceSq(p, e) > (queryRadius + (e.r || 0)) ** 2) continue;
@@ -26,12 +32,15 @@ export function collectThreats(state, world, options = {}) {
   if (world.boss && !world.boss.dead && !threats.some((t) => t.source === world.boss)) {
     threats.push(normalizeThreat("boss", world.boss, 1.3));
   }
+  if (world.boss && !world.boss.dead) addBossSegmentThreats(threats, p, world.boss, queryRadius);
   return threats;
 }
 
 export function normalizeThreat(kind, source, weight = 1) {
-  const vx = source.vx ?? source.eliteDashVx ?? source.dashVx ?? source.knockbackX ?? 0;
-  const vy = source.vy ?? source.eliteDashVy ?? source.dashVy ?? source.knockbackY ?? 0;
+  const fallbackVx = Number.isFinite(source.currentSpeed) && Number.isFinite(source.heading) ? Math.cos(source.heading) * source.currentSpeed : 0;
+  const fallbackVy = Number.isFinite(source.currentSpeed) && Number.isFinite(source.heading) ? Math.sin(source.heading) * source.currentSpeed : 0;
+  const vx = source.vx ?? source.eliteDashVx ?? source.dashVx ?? source.moveVx ?? source.knockbackX ?? fallbackVx;
+  const vy = source.vy ?? source.eliteDashVy ?? source.dashVy ?? source.moveVy ?? source.knockbackY ?? fallbackVy;
   const type = classifyThreat(source, kind);
   return {
     kind: type,
@@ -41,7 +50,7 @@ export function normalizeThreat(kind, source, weight = 1) {
     y: source.y || 0,
     vx,
     vy,
-    r: source.triggerRadius || source.r || 8,
+    r: kind === "blackhole" ? blackholeRadius(source) : source.triggerRadius || source.r || 8,
     damage: source.damage || 1,
     life: source.life ?? source.modeTimer ?? 1,
     weight,
@@ -54,6 +63,7 @@ export function normalizeThreat(kind, source, weight = 1) {
 }
 
 export function classifyThreat(source, kind) {
+  if (kind === "blackhole") return "gravity_well";
   if (kind === "projectile") {
     const speed = Math.hypot(source.vx || 0, source.vy || 0);
     if (speed >= 560) return "projectile_fast";
@@ -61,6 +71,7 @@ export function classifyThreat(source, kind) {
     return "projectile";
   }
   if (kind === "hazard") {
+    if (source.kind === "blizzard_core") return "hazard_disruption";
     if ((source.armTime || 0) > 0.35) return "hazard_windup";
     return "hazard_armed";
   }
@@ -69,13 +80,14 @@ export function classifyThreat(source, kind) {
     if (speed > 260 || source.mode === "dash" || source.dashing || source.eliteDashTime > 0 || source.dashState) return "enemy_dash";
     return "enemy_contact";
   }
-  if (kind === "boss") return "boss_body";
+  if (kind === "boss") return isBossDashLike(source) ? "boss_dash" : "boss_body";
+  if (kind === "boss_segment") return isBossDashLike(source) ? "boss_segment_dash" : "boss_segment";
   return kind;
 }
 
 export function riskSamplesForThreat(threat, lookAhead = DEFAULT_LOOK_AHEAD) {
-  if (threat.kind === "projectile_fast" || threat.kind === "enemy_dash") return [0, 0.12, 0.24, 0.38].filter((t) => t <= lookAhead);
-  if (threat.kind === "projectile_slow_field" || threat.kind === "hazard_armed") return [0, 0.25, 0.55, 0.85].filter((t) => t <= lookAhead);
+  if (threat.kind === "projectile_fast" || threat.kind === "enemy_dash" || threat.kind === "boss_dash" || threat.kind === "boss_segment_dash") return [0, 0.1, 0.2, 0.34, 0.52].filter((t) => t <= lookAhead);
+  if (threat.kind === "projectile_slow_field" || threat.kind === "hazard_armed" || threat.kind === "gravity_well" || threat.kind === "hazard_disruption") return [0, 0.25, 0.55, 0.85].filter((t) => t <= lookAhead);
   return SAMPLE_TIMES.filter((t) => t <= lookAhead);
 }
 
@@ -90,7 +102,11 @@ export function riskAtPoint(point, threats, options = {}) {
   const lookAhead = options.lookAhead || DEFAULT_LOOK_AHEAD;
   let risk = boundaryRisk(point, options);
   for (const threat of threats || []) {
-    if (threat.kind === "hazard_armed" || threat.kind === "hazard_windup") {
+    if (threat.kind === "gravity_well") {
+      risk += gravityRisk(point, threat);
+      continue;
+    }
+    if (threat.kind === "hazard_armed" || threat.kind === "hazard_windup" || threat.kind === "hazard_disruption") {
       risk += hazardRisk(point, threat);
       continue;
     }
@@ -189,9 +205,26 @@ function hazardRisk(point, threat) {
   const dy = point.y - threat.y;
   const d = Math.max(1, Math.hypot(dx, dy));
   const safeRadius = (point.r || 14) + threat.r + 24;
+  if (threat.kind === "hazard_disruption") {
+    const disruptionRadius = (point.r || 14) + threat.r + 36;
+    if (d < disruptionRadius) return (threat.weight || 1) * (1 + (disruptionRadius - d) / disruptionRadius) * 14;
+    return (threat.weight || 1) * Math.max(0, 1 - (d - disruptionRadius) / 110) * 2;
+  }
   const severity = (threat.damage || 1) * (threat.weight || 1);
   if (d < safeRadius) return severity * (1 + (safeRadius - d) / safeRadius) * 9;
   return severity * Math.max(0, 1 - (d - safeRadius) / 150);
+}
+
+function gravityRisk(point, threat) {
+  const dx = point.x - threat.x;
+  const dy = point.y - threat.y;
+  const d = Math.max(1, Math.hypot(dx, dy));
+  const pullRadius = (threat.r || 220) + (point.r || 14);
+  const coreRadius = Math.max(36, pullRadius * 0.32);
+  const severity = Math.max(4, threat.damage || 1) * (threat.weight || 1);
+  if (d < coreRadius) return severity * (2.2 + (coreRadius - d) / coreRadius) * 12;
+  if (d < pullRadius) return severity * (1 + (pullRadius - d) / pullRadius) * 5.5;
+  return severity * Math.max(0, 1 - (d - pullRadius) / 180) * 0.8;
 }
 
 function lineRisk(point, threat) {
@@ -212,14 +245,56 @@ function threatPadding(threat) {
   if (threat.kind === "projectile_slow_field") return 42;
   if (threat.kind === "projectile") return 22;
   if (threat.kind === "enemy_dash") return 64;
+  if (threat.kind === "boss_dash") return 150;
+  if (threat.kind === "boss_segment_dash") return 86;
+  if (threat.kind === "boss_segment") return 48;
   if (threat.kind === "boss_body") return 90;
+  if (threat.kind === "gravity_well") return 96;
   return 38;
 }
 
 function hazardWeight(h) {
   if (h.kind === "toxic_residue" || h.kind === "frost_zone") return 1.35;
   if (h.kind === "storm_laser_net") return 1.8;
+  if (h.kind === "blizzard_core") return 0.9;
   return 1.15;
+}
+
+function blackholeRadius(h) {
+  return h.pullRadius || h.radius || h.r || 220;
+}
+
+function addBossSegmentThreats(threats, player, boss, queryRadius) {
+  if (boss.id !== "storm_rail_devourer" && boss.behavior !== "boss_storm_rail") return;
+  if (!boss.bodyDamageEnabled || !Array.isArray(boss.segments)) return;
+  const fast = isBossDashLike(boss);
+  const stride = fast ? 2 : 3;
+  let added = 0;
+  for (let i = 0; i < boss.segments.length && added < 28; i += stride) {
+    const seg = boss.segments[i];
+    if (!seg) continue;
+    const r = typeof boss.segmentRadius === "function" ? boss.segmentRadius(seg) : (boss.r || 44) * (seg.node ? 0.74 : 0.58);
+    if (distanceSq(player, seg) > (queryRadius + r + 60) ** 2) continue;
+    threats.push(normalizeThreat("boss_segment", {
+      x: seg.x,
+      y: seg.y,
+      r,
+      damage: boss.damage * (fast ? 0.82 : 0.62),
+      life: boss.modeTimer ?? 1,
+      vx: boss.moveVx || Math.cos(boss.heading || 0) * (boss.currentSpeed || 0),
+      vy: boss.moveVy || Math.sin(boss.heading || 0) * (boss.currentSpeed || 0),
+      mode: boss.mode,
+      dashState: boss.dashState,
+      portalState: boss.portalState,
+    }, fast ? 2.05 : 1.2));
+    added++;
+  }
+}
+
+function isBossDashLike(source) {
+  if (source.mode === "dash") return true;
+  if (source.mode === "portal_dash" && source.portalState === "burst") return true;
+  return source.dashState === "high_speed" || source.dashState === "burst_dash" || source.dashState === "coast";
 }
 
 function enemyWeight(e) {

@@ -1,4 +1,4 @@
-import { input, state, world } from "../state.js";
+﻿import { input, state, world } from "../state.js";
 import { difficultyCards } from "../difficulty.js";
 import { AI_CONFIG, AI_STORAGE_ENABLED_KEY, readAiEnabled } from "./aiConfig.js";
 import { loadAiRunConfig, mergeAiConfig, normalizeAiConfig } from "./aiConfigLoader.js";
@@ -33,7 +33,7 @@ export function initAi(options = {}) {
   state.ai.runtime = createAiRuntime(state.ai.runtime || {});
   state.ai.training = training;
   state.ai.config = config;
-  setAiEnabled(readAiEnabled(), false);
+  setAiEnabled(readAiEnabled(undefined, undefined, config.enabled, { ignoreStorage: options.ignoreStoredEnabled === true }), false);
   exposeDebugApi();
 }
 
@@ -82,6 +82,8 @@ export function updateAi(dt) {
   const elapsed = markPerf(runtime, "movementPlanMs", started);
   adjustBudget(runtime, elapsed);
   runtime.debugThreats = plan.threats || [];
+  runtime.lastPlanRisk = plan.risk || 0;
+  runtime.lastThreatCount = runtime.debugThreats.length;
   if (plan.target?.kind !== runtime.lastLoggedTarget) {
     runtime.lastLoggedTarget = plan.target?.kind;
     pushAiEvent(runtime, { type: "target", targetKind: plan.target?.kind, time: state.time });
@@ -106,6 +108,10 @@ export function setAiEnabled(enabled, persist = true) {
 }
 
 function handleUiMode(runtime, dt) {
+  if (state.mode === "choosingWeapon" && runtime.restartRequested) {
+    runtime.actionCooldown = 0;
+    return void chooseAndStartRun(runtime);
+  }
   if (runtime.actionCooldown > 0) return;
   if (state.mode === "menu") return void chooseAndStartRun(runtime);
   if (state.mode === "choosingWeapon") return void chooseAndStartRun(runtime);
@@ -119,6 +125,9 @@ async function chooseAndStartRun(runtime) {
   if (runtime.pendingConfigReload) return;
   runtime.pendingConfigReload = true;
   try {
+    if (state.mode === "menu" && typeof actions.openLoadout === "function") {
+      actions.openLoadout();
+    }
     await reloadConfigForNextRun(runtime);
     const options = actions.getLoadoutOptions?.() || {};
     const loadout = chooseOpeningLoadout({
@@ -128,16 +137,58 @@ async function chooseAndStartRun(runtime) {
       config,
     });
     if (!loadout.difficulty || !loadout.weapon) return;
-    runtime.runRecorded = false;
-    runtime.restartRequested = false;
-    runtime.shopRefreshesUsed = 0;
-    runtime.upgradeRefreshesUsed = 0;
-    runtime.actionCooldown = config.actionCooldown;
-    aiLog(config, "start", { difficulty: loadout.difficulty.id, weapon: loadout.weapon.id, profile: config.profile });
-    actions.startWithLoadout?.({ difficulty: loadout.difficulty, weapon: loadout.weapon });
+    if (!startSelectedLoadout(runtime, loadout)) return;
   } finally {
     runtime.pendingConfigReload = false;
   }
+}
+
+function startSelectedLoadout(runtime, loadout) {
+  const panel = state.ai?.loadoutPanel;
+  const usingPanel = state.mode === "choosingWeapon" && panel;
+  if (usingPanel) {
+    const difficultySelected = panel.selectDifficulty?.(loadout.difficulty.id);
+    const weaponSelected = panel.selectWeapon?.(loadout.weapon.id);
+    if (!difficultySelected || !weaponSelected || !panel.confirm?.()) {
+      aiLog(config, "start_blocked", {
+        reason: "loadout_panel",
+        difficulty: loadout.difficulty.id,
+        weapon: loadout.weapon.id,
+        difficultySelected: Boolean(difficultySelected),
+        weaponSelected: Boolean(weaponSelected),
+      }, "summary");
+      return false;
+    }
+  } else if (typeof actions.startWithLoadout === "function") {
+    actions.startWithLoadout({ difficulty: loadout.difficulty, weapon: loadout.weapon });
+  } else {
+    aiLog(config, "start_blocked", { reason: "missing_start_action" }, "summary");
+    return false;
+  }
+  runtime.runRecorded = false;
+  runtime.restartRequested = false;
+  runtime.shopRefreshesUsed = 0;
+  runtime.upgradeRefreshesUsed = 0;
+  runtime.actionCooldown = config.actionCooldown;
+  aiLog(config, "start", { difficulty: loadout.difficulty.id, weapon: loadout.weapon.id, profile: config.profile });
+  return true;
+}
+
+async function reloadConfigForNextRun(runtime) {
+  if (config.reloadBeforeEachRun === false) return;
+  const previousEnabled = runtime.enabled;
+  const previousLogLevel = config.logLevel;
+  const next = await loadAiRunConfig();
+  config = mergeAiConfig(AI_CONFIG, next);
+  config.enabled = previousEnabled;
+  if (previousLogLevel && !next.logLevel) config.logLevel = previousLogLevel;
+  state.ai.config = config;
+  aiLog(config, "config_reload", {
+    profile: config.profile,
+    difficultyTraining: config.difficultyTraining?.enabled !== false,
+    maxTrainingRuns: config.maxTrainingRuns,
+    error: config.configLoadError || "",
+  }, config.configLoadError ? "summary" : "decision");
 }
 
 function handleLeveling(runtime) {
@@ -271,28 +322,20 @@ function handleEnded(runtime, dt) {
     aiLog(config, "restart", { runs: training.totalRuns, delay: config.restartDelay }, "summary");
     if (typeof actions.restart === "function") {
       actions.restart();
+      if (state.mode === "choosingWeapon") {
+        runtime.actionCooldown = 0;
+        void chooseAndStartRun(runtime);
+      }
       return;
     }
     void chooseAndStartRun(runtime);
   }
 }
 
-async function reloadConfigForNextRun(runtime) {
-  if (config.reloadBeforeEachRun === false) return;
-  const previousEnabled = runtime.enabled;
-  const previousLogLevel = config.logLevel;
-  const next = await loadAiRunConfig();
-  config = mergeAiConfig(AI_CONFIG, next);
-  config.enabled = previousEnabled;
-  if (previousLogLevel && !next.logLevel) config.logLevel = previousLogLevel;
-  state.ai.config = config;
-  aiLog(config, "config_reload", {
-    profile: config.profile,
-    difficultyTraining: config.difficultyTraining?.enabled !== false,
-    maxTrainingRuns: config.maxTrainingRuns,
-    error: config.configLoadError || "",
-  }, config.configLoadError ? "summary" : "decision");
-}
+/*
+ * The functions below are intentionally kept after the game-flow handlers.
+ * They are shared by movement, progression, shop, and training summary logic.
+ */
 
 function fuseExistingWeapons(runtime) {
   for (const slot of state.inventory?.weaponSlots || []) {

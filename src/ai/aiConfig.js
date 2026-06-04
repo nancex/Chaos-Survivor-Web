@@ -105,7 +105,7 @@ export const AI_CONFIG = {
   debugDraw: false,
 };
 
-export function readAiEnabled(search = globalThis.location?.search || "", storage = globalThis.localStorage) {
+export function readAiEnabled(search = globalThis.location?.search || "", storage = globalThis.localStorage, fallback = AI_CONFIG.enabled, options = {}) {
   try {
     const params = new URLSearchParams(search);
     if (params.get("ai") === "1" || params.get("ai") === "true") return true;
@@ -113,9 +113,13 @@ export function readAiEnabled(search = globalThis.location?.search || "", storag
   } catch {
     // Ignore invalid URLSearchParams input in tests or embedded pages.
   }
+  if (options.ignoreStorage) return Boolean(fallback);
   try {
-    return storage?.getItem(AI_STORAGE_ENABLED_KEY) === "1";
+    const stored = storage?.getItem(AI_STORAGE_ENABLED_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+    return Boolean(fallback);
   } catch {
-    return AI_CONFIG.enabled;
+    return Boolean(fallback);
   }
 }

@@ -451,6 +451,7 @@ function drawStarfallScepter(ctx, cx, cy, t, rank, color) {
     impactPoints.push({ x: tx, y: ty });
     if (cycle < 0.32) {
       ring(ctx, tx, ty, 24 + cycle * 80, color, 0.52 * (1 - cycle));
+      previewStarWarning(ctx, tx, ty, 32 + cycle * 34, i === 0 && rank >= 4 ? "#ffd166" : color, 0.66 * (1 - cycle), t + i);
       previewStarGlyph(ctx, tx, ty, 9 + cycle * 8, color, rank, t + i);
     } else if (cycle < 0.72) {
       const k = (cycle - 0.32) / 0.4;
@@ -483,6 +484,29 @@ function drawStarfallScepter(ctx, cx, cy, t, rank, color) {
     }
     ctx.lineCap = "butt";
   }
+}
+
+function previewStarWarning(ctx, x, y, r, color, alpha, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(t * 1.6);
+  ctx.strokeStyle = colorWithAlpha(color, alpha);
+  ctx.lineWidth = 1.4;
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r * 0.46, Math.sin(a) * r * 0.46);
+    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = colorWithAlpha("#ffffff", alpha * 0.52);
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.34, 0);
+  ctx.lineTo(r * 0.34, 0);
+  ctx.moveTo(0, -r * 0.34);
+  ctx.lineTo(0, r * 0.34);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function previewStarTrail(ctx, x1, y1, x2, y2, color, major) {
@@ -872,6 +896,7 @@ function previewRiftAnchor(ctx, x, y, color, rank, t) {
   ctx.strokeStyle = rank >= 4 ? "#ffd166" : color;
   ctx.lineWidth = 1.4;
   ctx.stroke();
+  ctx.strokeRect(-8, -5, 16, 10);
   ctx.beginPath();
   ctx.arc(0, 0, 11, 0, Math.PI * 1.4);
   ctx.stroke();
@@ -935,6 +960,19 @@ function drawPreviewBlackHole(ctx, x, y, core, diskR, t, rank, color) {
   ctx.arc(0, 0, diskR * 0.82, 0, TAU);
   ctx.stroke();
   ctx.setLineDash([]);
+  const collapse = (t % 3.2) / 3.2;
+  if (collapse > 0.78) {
+    const warn = (collapse - 0.78) / 0.22;
+    ctx.strokeStyle = colorWithAlpha(rank >= 4 ? "#ffd166" : "#ffffff", 0.28 + warn * 0.36);
+    ctx.lineWidth = 1.5 + warn * 1.5;
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(TAU / 4);
+      ctx.beginPath();
+      ctx.moveTo(core * (1.2 + warn), 0);
+      ctx.lineTo(diskR * (0.72 - warn * 0.12), 0);
+      ctx.stroke();
+    }
+  }
   for (let i = 0; i < 10; i++) {
     const a = t * (i % 2 ? -1.2 : 1.5) + i * TAU / 10;
     const r = core * (1.65 + (i % 3) * 0.35);
@@ -1096,6 +1134,12 @@ function drone(ctx, x, y, t, attacking, color = "#77ff8a", rank = 0) {
   ctx.save();
   ctx.translate(x, y + Math.sin(t * 8) * 2);
   glow(ctx, 0, 0, 20, attacking ? color : "#ffd166", attacking ? 0.5 : 0.34);
+  const energy = attacking ? 0.88 : 0.38 + Math.max(0, Math.sin(t * 2.8)) * 0.34;
+  ctx.strokeStyle = colorWithAlpha(attacking ? color : "#ffd166", 0.42);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 18, -Math.PI / 2, -Math.PI / 2 + TAU * energy);
+  ctx.stroke();
   ctx.fillStyle = "rgba(10,16,28,0.95)";
   ctx.strokeStyle = attacking ? color : "#42e8ff";
   ctx.lineWidth = 2;

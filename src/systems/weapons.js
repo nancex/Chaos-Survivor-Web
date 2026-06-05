@@ -225,7 +225,7 @@ function updateArcWeapon(dt) {
     visited.add(target);
     const dx = target.x - source.x;
     const dy = target.y - source.y;
-    segments.push({ x1: source.x, y1: source.y, x2: target.x, y2: target.y, seed: Math.random() * 999 });
+    segments.push({ x1: source.x, y1: source.y, x2: target.x, y2: target.y, seed: Math.random() * 999, index: i, power: damage / Math.max(1, weaponPower(w, w.damage)) });
     damageEnemy(target, damage, target.x, target.y);
     applyKnockback(target, dx, dy, 70);
     burst(target.x, target.y, 6, color, 150);
@@ -255,7 +255,7 @@ function arcMicroBurst(source, damage, color, visited) {
     applyKnockback(e, e.x - source.x, e.y - source.y, 54);
     world.weaponFx.push({
       kind: "arc",
-      segments: [{ x1: source.x, y1: source.y, x2: e.x, y2: e.y, seed: Math.random() * 999 }],
+      segments: [{ x1: source.x, y1: source.y, x2: e.x, y2: e.y, seed: Math.random() * 999, index: count, power: 0.45 }],
       life: 0.12,
       maxLife: 0.12,
       color,
@@ -451,9 +451,11 @@ function updateDroneWeapon(dt) {
         d.energy = Math.max(0, d.energy - w.shotCost);
         const a = Math.atan2(target.y - d.y, target.x - d.x);
         if (d.qualityRank >= 4 && d.legendReady) {
+          world.weaponFx.push({ kind: "droneLock", x: d.x, y: d.y, targetX: target.x, targetY: target.y, radius: target.r || 18, color: d.color, life: 0.16, maxLife: 0.16, seed: d.anim || 0 });
           fireDroneBeam(d, target, w, d.color, true);
           d.legendReady = false;
         } else {
+          world.weaponFx.push({ kind: "droneLock", x: d.x, y: d.y, targetX: target.x, targetY: target.y, radius: target.r || 18, color: d.color, life: 0.08, maxLife: 0.08, seed: d.anim || 0 });
           fireDroneBullet(d.x, d.y, a, w, d);
           if (d.qualityRank >= 3 && d.beamTimer <= 0) {
             fireDroneBeam(d, target, w, d.color, false);
@@ -716,6 +718,7 @@ function fireDroneBeam(drone, target, w, color, legendary) {
     life: legendary ? 0.28 : 0.18,
     maxLife: legendary ? 0.28 : 0.18,
     color,
+    legendary,
   });
 }
 
@@ -811,6 +814,19 @@ function firePrismRail(shot, base, angle, color, rank, damageScale, beamIndex, b
   if (rank >= 3) prismRiftDamage(x1, y1, x2, y2, width + 42, damage * 0.2, color, hitSet);
 
   world.weaponFx.push({
+    kind: "prismChargeGhost",
+    x: x1,
+    y: y1,
+    angle,
+    width,
+    color,
+    rank,
+    secondary,
+    life: secondary ? 0.12 : 0.16,
+    maxLife: secondary ? 0.12 : 0.16,
+    seed: Math.random() * 999,
+  });
+  world.weaponFx.push({
     kind: "prismRail",
     x1, y1, x2, y2,
     width,
@@ -850,7 +866,7 @@ function prismRefraction(sourceHit, shot, base, color, excluded, damage) {
     applyKnockback(e, e.x - sourceHit.x, e.y - sourceHit.y, 58);
     arcs.push({ x1: sourceHit.x, y1: sourceHit.y, x2: e.x, y2: e.y, seed: Math.random() * 999 });
   }
-  if (arcs.length) world.weaponFx.push({ kind: "arc", segments: arcs, life: 0.16, maxLife: 0.16, color });
+  if (arcs.length) world.weaponFx.push({ kind: "arc", segments: arcs.map((seg, index) => ({ ...seg, index, power: 0.55 })), life: 0.16, maxLife: 0.16, color });
 }
 
 function prismRiftDamage(x1, y1, x2, y2, width, damage, color, excluded) {
@@ -1013,6 +1029,7 @@ function placeTeslaNode(base, shot, rank, color, anchor, index, count, mini) {
     pulseCooldown: Math.max(0.36, base.pulseCooldown - rank * 0.035),
     pulseTimer: base.armTime + 0.08 + index * 0.05,
     armTime: base.armTime,
+    maxArmTime: base.armTime,
     life,
     maxLife: life,
     fieldRadius: base.fieldRadius + rank * 12,
@@ -1021,7 +1038,7 @@ function placeTeslaNode(base, shot, rank, color, anchor, index, count, mini) {
     t: 0,
   });
   pulse(x, y, mini ? 30 : 44, color, 0.12);
-  world.weaponFx.push({ kind: "teslaNodePulse", x, y, radius: mini ? 64 : 86, color, rank, life: 0.28, maxLife: 0.28, seed: Math.random() * 999 });
+  world.weaponFx.push({ kind: "teslaNodePulse", x, y, radius: mini ? 64 : 86, color, rank, armed: false, life: 0.28, maxLife: 0.28, seed: Math.random() * 999 });
 }
 
 function updateTeslaNodes(dt) {
@@ -1070,8 +1087,8 @@ function dischargeTeslaNode(node, firstTarget) {
   if (node.qualityRank >= 3) teslaFieldDamage(node, visited);
   if (segments.length) {
     addCameraShake(Math.min(5.5, 1.6 + segments.length * 0.32));
-    world.weaponFx.push({ kind: "teslaChain", segments, color: node.color, rank: node.qualityRank, life: 0.17, maxLife: 0.17 });
-    world.weaponFx.push({ kind: "teslaNodePulse", x: node.x, y: node.y, radius: node.triggerRadius, color: node.color, rank: node.qualityRank, life: 0.32, maxLife: 0.32, seed: node.seed });
+    world.weaponFx.push({ kind: "teslaChain", segments, color: node.color, rank: node.qualityRank, life: 0.17, maxLife: 0.17, seed: node.seed });
+    world.weaponFx.push({ kind: "teslaNodePulse", x: node.x, y: node.y, radius: node.triggerRadius, color: node.color, rank: node.qualityRank, armed: true, life: 0.32, maxLife: 0.32, seed: node.seed });
     playSfx("hit");
   }
 }
@@ -1631,6 +1648,7 @@ function fireProjectile(angle, w, opt) {
     shape: opt.shape,
     variant: opt.variant || opt.shape,
     quality: opt.quality || w.quality || "common",
+    qualityRank: qualityRankOf(opt.quality || w.quality || "common"),
     tracking: opt.tracking,
     turnSpeed: opt.turnSpeed || 3,
     returning: opt.returning,
@@ -1655,6 +1673,7 @@ function fireProjectile(angle, w, opt) {
     hitIds: new Set(),
     spin: Math.random() * TAU,
     trailTimer: 0,
+    recallFxDone: false,
   });
   pulse(sx, sy, 16, opt.color, 0.13);
 }
@@ -1674,6 +1693,7 @@ function updateProjectiles(dt) {
     }
     b.px = b.x;
     b.py = b.y;
+    const wasReturning = b.shape === "boomerang" && b.returnTimer >= b.returnAfter;
     steer(b, dt);
     b.x += b.vx * dt;
     b.y += b.vy * dt;
@@ -1681,8 +1701,16 @@ function updateProjectiles(dt) {
     b.spin += dt * (b.shape === "boomerang" ? 18 : 7);
     b.trailTimer -= dt;
     if (b.trailTimer <= 0) {
-      b.trailTimer = b.shape === "phaseNeedle" ? 0.014 : b.shape === "missile" ? 0.026 : 0.035;
-      trail(b.x, b.y, b.px, b.py, b.color, b.shape === "phaseNeedle" ? 4 : b.shape === "droneBolt" ? 3 : 5);
+      b.trailTimer = b.shape === "phaseNeedle" ? 0.014 : b.shape === "ice" ? 0.05 : b.shape === "missile" ? 0.026 : 0.035;
+      if (b.shape === "ice") {
+        world.weaponFx.push({ kind: "iceShardTrail", x: b.x, y: b.y, px: b.px, py: b.py, angle: b.angle, color: b.color, rank: b.qualityRank || 0, life: 0.2, maxLife: 0.2, seed: b.spin });
+      } else {
+        trail(b.x, b.y, b.px, b.py, b.color, b.shape === "phaseNeedle" ? 4 : b.shape === "droneBolt" ? 3 : 5);
+      }
+    }
+    if (b.shape === "boomerang" && !wasReturning && b.returnTimer >= b.returnAfter && !b.recallFxDone) {
+      b.recallFxDone = true;
+      world.weaponFx.push({ kind: "boomerangRecall", x: b.x, y: b.y, angle: b.angle, color: b.color, rank: b.qualityRank || 0, life: 0.26, maxLife: 0.26, spin: b.spin });
     }
     if (b.shape === "boomerang" && b.farBurst && !b.farBurstDone && b.returnTimer >= b.returnAfter) {
       b.farBurstDone = true;
@@ -1702,7 +1730,7 @@ function updateProjectiles(dt) {
       if (b.shape === "phaseNeedle") phaseNeedleHit(b, e);
       if (b.freezeDuration > 0 && !e.dead && !e.boss && !e.controlImmune) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration);
       burst(b.x, b.y, b.shape === "ice" ? 12 : 8, b.color, b.shape === "missile" ? 220 : 170);
-      world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, life: 0.18, maxLife: 0.18, color: b.color });
+      world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, rank: b.qualityRank || 0, life: 0.18, maxLife: 0.18, color: b.color });
       if (b.shape === "ice" && b.iceRing) iceRingBurst(b);
       if (b.shape === "ice" && b.frostZone && !e.dead) frostZone(b);
       if (b.shape === "boomerang" && b.chainHitsLeft > 0) chainBoomerangToNextTarget(b, e);
@@ -1717,6 +1745,7 @@ function updateProjectiles(dt) {
     if (b.shape === "boomerang" && b.returnBounceLeft > 0 && b.returnTimer > b.returnAfter && distSq(b.x, b.y, state.player.x, state.player.y) < 34 * 34) {
       b.returnBounceLeft--;
       b.returnTimer = 0;
+      b.recallFxDone = false;
       b.farBurstDone = false;
       const a = Math.atan2(state.player.dirY, state.player.dirX) + 0.7;
       b.vx = Math.cos(a) * b.speed;
@@ -1801,6 +1830,10 @@ function updateSingularityProjectile(b, index, dt) {
     singularityPulse(b, hits);
   }
 
+  if (!b.collapseWarnDone && b.life <= 0.22) {
+    b.collapseWarnDone = true;
+    world.weaponFx.push({ kind: "voidCollapseWarning", x: b.x, y: b.y, radius: b.collapseRadius, color: b.color, rank: b.qualityRank, life: 0.22, maxLife: 0.22, seed: b.seed });
+  }
   if (affected && Math.random() < dt * 8) burst(b.x, b.y, 2, b.color, 90);
 
   const half = WORLD_SIZE / 2 + 240;
@@ -2029,6 +2062,7 @@ function explode(b) {
   }
   pulse(b.x, b.y, b.explodeRadius, b.color, 0.3);
   world.weaponFx.push({ kind: "explosion", x: b.x, y: b.y, radius: b.explodeRadius, life: 0.38, maxLife: 0.38, color: b.color, seed: Math.random() * 999 });
+  world.weaponFx.push({ kind: "scorchRing", x: b.x, y: b.y, radius: b.explodeRadius * 0.9, color: b.color, rank: b.qualityRank || 0, life: 0.35, maxLife: 0.35, seed: Math.random() * 999 });
   if (b.splitOnHit) splitMissileBlast(b);
   if (b.secondaryBurst) {
     world.weaponFx.push({ kind: "shockRing", x: b.x, y: b.y, radius: b.explodeRadius * 1.34, life: 0.42, maxLife: 0.42, color: b.color });
@@ -2076,6 +2110,7 @@ function phaseNeedleHit(b, e) {
     color: b.color,
     rank: b.qualityRank || 0,
     major: b.major,
+    stacks: e.phaseNeedleVolleyHits || 1,
     life: 0.2,
     maxLife: 0.2,
     seed: Math.random() * 999,
@@ -2090,6 +2125,7 @@ function phaseNeedleHit(b, e) {
     color: b.color,
     rank: b.qualityRank || 0,
     major: b.major,
+    stacks: e.phaseNeedleVolleyHits || 1,
     timer: b.phaseDelay,
     life: b.phaseDelay,
     maxLife: Math.max(0.1, b.phaseDelay),
@@ -2259,6 +2295,17 @@ function collapseRiftLoom(fx) {
     secondary: fx.secondary,
     life: fx.rank >= 4 ? 0.46 : 0.36,
     maxLife: fx.rank >= 4 ? 0.46 : 0.36,
+    seed: fx.seed || Math.random() * 999,
+  });
+  world.weaponFx.push({
+    kind: "riftAfterimage",
+    x: fx.x,
+    y: fx.y,
+    segments: riftLoomSegments(riftLoomPoints(fx), fx.rank),
+    color: fx.color,
+    rank: fx.rank,
+    life: 0.25,
+    maxLife: 0.25,
     seed: fx.seed || Math.random() * 999,
   });
   burst(fx.x, fx.y, fx.rank >= 4 ? 24 : 16, fx.color, fx.rank >= 4 ? 280 : 210);

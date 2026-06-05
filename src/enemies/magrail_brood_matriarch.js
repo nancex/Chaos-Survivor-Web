@@ -21,6 +21,8 @@ export class MagrailBroodMatriarch extends BaseEnemy {
     this.aim = 0;
     this.dashVx = 0;
     this.dashVy = 0;
+    this.railAngle = 0;
+    this.railAltAngle = 0;
     this.trailTimer = 0;
     this.phase2 = false;
     this.overheat = false;
@@ -85,6 +87,8 @@ export class MagrailBroodMatriarch extends BaseEnemy {
     this.modeIndex++;
     this.attackCount = 0;
     this.attackTimer = 0.08;
+    this.railAngle = this.aim;
+    this.railAltAngle = this.aim + (this.modeIndex % 2 ? 0.72 : -0.72);
     this.modeTimer = this.mode === "rail_charge" ? 0.84 : this.mode === "core_exposed" ? (this.overheat ? 1.45 : 1.1) : 4.2;
     pulse(this.x, this.y, this.r + 60, this.mode === "rail_charge" ? "#42e8ff" : this.color, 0.24);
   }
@@ -103,13 +107,31 @@ export class MagrailBroodMatriarch extends BaseEnemy {
   updateRailCharge(dt) {
     if (this.attackCount === 0) {
       this.attackCount = 1;
-      this.dashVx = Math.cos(this.aim) * (this.overheat ? 840 : this.phase2 ? 740 : 640);
-      this.dashVy = Math.sin(this.aim) * (this.overheat ? 840 : this.phase2 ? 740 : 640);
-      this.modeTimer = this.overheat ? 0.46 : 0.4;
-      const warnX = this.x + Math.cos(this.aim) * 190;
-      const warnY = this.y + Math.sin(this.aim) * 190;
-      pulse(warnX, warnY, 92, "#42e8ff", 0.22);
+      this.railAngle = this.aim;
+      this.railAltAngle = this.aim + (this.overheat ? -0.88 : 0.72) * (this.modeIndex % 2 ? 1 : -1);
+      for (const a of [this.railAngle, this.railAltAngle]) {
+        pulse(this.x + Math.cos(a) * 190, this.y + Math.sin(a) * 190, 92, "#42e8ff", 0.18);
+      }
       playSfx("wave");
+      return;
+    }
+    if (this.attackCount === 1) {
+      if (this.trailTimer <= 0) {
+        this.trailTimer = 0.09;
+        for (const a of [this.railAngle, this.railAltAngle]) {
+          const sx = this.x + Math.cos(a) * 230;
+          const sy = this.y + Math.sin(a) * 230;
+          trail(sx, sy, this.x - Math.cos(a) * 180, this.y - Math.sin(a) * 180, "#42e8ff", 16);
+        }
+      }
+      this.trailTimer -= dt;
+      if (this.modeTimer > 0.38) return;
+      this.attackCount = 2;
+      const chosen = this.overheat || this.phase2 ? this.railAltAngle : this.railAngle;
+      this.dashVx = Math.cos(chosen) * (this.overheat ? 840 : this.phase2 ? 740 : 640);
+      this.dashVy = Math.sin(chosen) * (this.overheat ? 840 : this.phase2 ? 740 : 640);
+      this.modeTimer = this.overheat ? 0.46 : 0.4;
+      pulse(this.x + Math.cos(chosen) * 220, this.y + Math.sin(chosen) * 220, 108, "#f3f7ff", 0.26);
     }
     this.x += this.dashVx * dt;
     this.y += this.dashVy * dt;
@@ -133,6 +155,13 @@ export class MagrailBroodMatriarch extends BaseEnemy {
         const t = i - (count - 1) / 2;
         this.shootGeometry(this.aim + t * spread / count, 250 + i * 5, this.damage * 0.28);
       }
+      if (this.attackCount % 2 === 0) {
+        const sideBase = this.aim + Math.PI + (this.attackCount % 4 === 0 ? 0.28 : -0.28);
+        for (const offset of [-0.2, 0.2]) this.shootGeometry(sideBase + offset, 190, this.damage * 0.2);
+      }
+      if (this.overheat && this.attackCount % 3 === 0) {
+        for (let i = 0; i < 6; i++) this.shootGeometry(this.spin + i / 6 * TAU, 170, this.damage * 0.18);
+      }
       if (this.attackCount >= (this.overheat ? 10 : 8)) this.recover(0.75, true);
     }
   }
@@ -148,6 +177,7 @@ export class MagrailBroodMatriarch extends BaseEnemy {
     if (this.modeTimer <= 2.4 && this.attackCount === 1) {
       this.attackCount = 2;
       for (let i = 0; i < (this.overheat ? 22 : 16); i++) this.shootGeometry(this.spin + i / (this.overheat ? 22 : 16) * TAU, 210, this.damage * 0.22);
+      for (const offset of [-0.36, 0, 0.36]) this.shootGeometry(this.aim + offset, 245, this.damage * 0.2);
       pulse(this.x, this.y, this.r + 130, "#42e8ff", 0.34);
     }
     if (this.modeTimer <= 1.4) this.recover(0.9, true);
@@ -159,6 +189,7 @@ export class MagrailBroodMatriarch extends BaseEnemy {
       this.attackTimer = this.overheat ? 0.42 : 0.58;
       this.attackCount++;
       this.launchPodNearPlayer();
+      if (this.phase2 && this.attackCount % 2 === 1) this.launchPodNearPlayer(Math.PI);
       if (this.attackCount === 2 || (this.phase2 && this.attackCount === 4)) this.summonGuard();
       if (this.attackCount >= (this.overheat ? 7 : 5)) this.recover(0.85, true);
     }
@@ -174,6 +205,9 @@ export class MagrailBroodMatriarch extends BaseEnemy {
       const a = this.spin + this.attackCount * 0.42;
       const index = this.attackCount % petals;
       this.placeMine(p.x + Math.cos(a + index / petals * TAU) * 190, p.y + Math.sin(a + index / petals * TAU) * 190);
+      if (this.phase2 && this.attackCount % 2 === 0) {
+        this.placeMine(p.x + Math.cos(a + (index + 2) / petals * TAU) * 235, p.y + Math.sin(a + (index + 2) / petals * TAU) * 235);
+      }
       if (this.attackCount >= (this.overheat ? 12 : 9)) this.recover(0.8, true);
     }
   }
@@ -200,11 +234,11 @@ export class MagrailBroodMatriarch extends BaseEnemy {
     });
   }
 
-  launchPodNearPlayer() {
+  launchPodNearPlayer(angleOffset = 0) {
     const p = state.player;
     const side = this.attackCount % 2 ? 1 : -1;
-    const x = p.x + Math.cos(this.aim + side * Math.PI / 2) * (110 + Math.random() * 70);
-    const y = p.y + Math.sin(this.aim + side * Math.PI / 2) * (110 + Math.random() * 70);
+    const x = p.x + Math.cos(this.aim + angleOffset + side * Math.PI / 2) * (110 + Math.random() * 70);
+    const y = p.y + Math.sin(this.aim + angleOffset + side * Math.PI / 2) * (110 + Math.random() * 70);
     this.placePod(x, y);
   }
 

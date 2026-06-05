@@ -95,6 +95,9 @@ export class VoidFoldArchon extends BaseEnemy {
       const tx = p.x + (p.dirX || dx / d) * (120 + this.attackCount * 18) + -dy / d * side * 80;
       const ty = p.y + (p.dirY || dy / d) * (120 + this.attackCount * 18) + dx / d * side * 80;
       this.placeGravityWell(tx, ty, this.phase2 ? 126 : 112, 2.6);
+      if (this.phase2 || this.attackCount % 2 === 0) {
+        this.placeGravityWell(tx + dy / d * side * 116, ty - dx / d * side * 116, this.phase2 ? 104 : 92, 2.25);
+      }
       if (this.attackCount >= (this.phase2 ? 4 : 3)) this.recover(0.55);
     }
   }
@@ -108,6 +111,13 @@ export class VoidFoldArchon extends BaseEnemy {
       for (let i = 0; i < count; i++) {
         const a = this.orbit + i / count * TAU;
         this.shootShard(a, 145 + (i % 3) * 28, this.damage * 0.24);
+      }
+      if (this.attackCount % 2 === 0) {
+        const aimed = Math.atan2(state.player.y - this.y, state.player.x - this.x);
+        for (const offset of [-0.24, 0, 0.24]) this.shootShard(aimed + offset, 185, this.damage * 0.18);
+      }
+      if (this.phase2 && this.attackCount % 3 === 0) {
+        for (let i = 0; i < 6; i++) this.shootShard(-this.orbit + i / 6 * TAU + 0.22, 118, this.damage * 0.16);
       }
       if (this.attackCount >= (this.phase2 ? 6 : 5)) this.recover(0.72);
     }
@@ -131,6 +141,7 @@ export class VoidFoldArchon extends BaseEnemy {
     }
     if (this.modeTimer <= 0) {
       for (let i = 0; i < (this.phase2 ? 14 : 10); i++) this.shootShard(this.orbit + i / (this.phase2 ? 14 : 10) * TAU, 180, this.damage * 0.22);
+      for (const side of [-1, 1]) this.shootShard(this.aim + side * 0.58, this.phase2 ? 235 : 205, this.damage * 0.18, true);
       this.recover(0.82);
     }
   }
@@ -145,6 +156,10 @@ export class VoidFoldArchon extends BaseEnemy {
       for (let i = 0; i < count; i++) {
         const t = i - (count - 1) / 2;
         this.shootShard(this.aim + t * spread / count, 245, this.damage * (Math.abs(t) < 0.5 ? 0.34 : 0.22), true);
+      }
+      if (this.attackCount % 3 === 0) {
+        const sweep = this.attackCount % 2 ? 1 : -1;
+        for (const offset of [0.42, 0.58]) this.shootShard(this.aim + sweep * offset, 205, this.damage * 0.2);
       }
       if (this.attackCount >= (this.phase2 ? 13 : 10)) this.recover(0.65);
     }
@@ -165,11 +180,11 @@ export class VoidFoldArchon extends BaseEnemy {
     if (this.attackTimer <= 0) {
       this.attackTimer = 0.28;
       this.attackCount++;
-      const count = 12;
-      const gap = this.attackCount % count;
+      const count = 16;
+      const gap = (this.attackCount * 2) % count;
       for (let i = 0; i < count; i++) {
-        if (i === gap || i === (gap + 1) % count) continue;
-        this.shootShard(this.orbit + i / count * TAU, 210, this.damage * 0.2);
+        if (i === gap || i === (gap + 1) % count || i === (gap + 9) % count) continue;
+        this.shootShard(this.orbit + i / count * TAU, i % 2 ? 225 : 185, this.damage * 0.2);
       }
     }
     if (this.modeTimer <= 0) this.recover(1.0);

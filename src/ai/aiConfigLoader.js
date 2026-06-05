@@ -3,14 +3,15 @@ import { AI_CONFIG } from "./aiConfig.js";
 export const AI_CONFIG_PATH = "../config/ai-config.json";
 export const AI_TRAINING_CONFIG_PATH = "../config/ai-training-config.json";
 
-export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust = true } = {}) {
+export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust = true, timeoutMs = AI_CONFIG.configReloadTimeoutMs } = {}) {
   if (typeof fetchImpl !== "function") return normalizeAiConfig();
+  const controller = createAbortController();
   try {
     const url = new URL(AI_CONFIG_PATH, import.meta.url);
     if (cacheBust) url.searchParams.set("t", String(Date.now()));
-    const response = await fetchImpl(url, { cache: "no-store" });
+    const response = await withTimeout(fetchImpl(url, { cache: "no-store", signal: controller?.signal }), timeoutMs, controller);
     if (!response?.ok) throw new Error(`HTTP ${response?.status || 0}`);
-    return normalizeAiConfig(await response.json());
+    return normalizeAiConfig(await withTimeout(response.json(), timeoutMs, controller));
   } catch (error) {
     const config = normalizeAiConfig();
     config.configLoadError = error?.message || "unknown";
@@ -18,14 +19,15 @@ export async function loadAiRunConfig({ fetchImpl = globalThis.fetch, cacheBust 
   }
 }
 
-export async function loadAiTrainingModeConfig({ fetchImpl = globalThis.fetch, cacheBust = true } = {}) {
+export async function loadAiTrainingModeConfig({ fetchImpl = globalThis.fetch, cacheBust = true, timeoutMs = AI_CONFIG.configReloadTimeoutMs } = {}) {
   if (typeof fetchImpl !== "function") return normalizeAiTrainingModeConfig();
+  const controller = createAbortController();
   try {
     const url = new URL(AI_TRAINING_CONFIG_PATH, import.meta.url);
     if (cacheBust) url.searchParams.set("t", String(Date.now()));
-    const response = await fetchImpl(url, { cache: "no-store" });
+    const response = await withTimeout(fetchImpl(url, { cache: "no-store", signal: controller?.signal }), timeoutMs, controller);
     if (!response?.ok) throw new Error(`HTTP ${response?.status || 0}`);
-    return normalizeAiTrainingModeConfig(await response.json());
+    return normalizeAiTrainingModeConfig(await withTimeout(response.json(), timeoutMs, controller));
   } catch (error) {
     const config = normalizeAiTrainingModeConfig();
     config.configLoadError = error?.message || "unknown";
@@ -51,7 +53,8 @@ export function normalizeAiConfig(value = {}) {
   config.profile = profileId;
   config.activeProfile = profile;
   config.reloadBeforeEachRun = config.reloadBeforeEachRun !== false;
-  config.maxTrainingRuns = clampInt(config.maxTrainingRuns, 1, 9999, AI_CONFIG.maxTrainingRuns);
+  config.maxTrainingRuns = normalizeMaxTrainingRuns(config.maxTrainingRuns);
+  config.configReloadTimeoutMs = clampInt(config.configReloadTimeoutMs, 100, 10000, AI_CONFIG.configReloadTimeoutMs);
   config.tickHz = clampInt(config.tickHz, 4, 60, AI_CONFIG.tickHz);
   config.actionCooldown = clampNumber(config.actionCooldown, 0.05, 2, AI_CONFIG.actionCooldown);
   config.restartDelay = clampNumber(config.restartDelay, 0.1, 10, AI_CONFIG.restartDelay);
@@ -69,6 +72,7 @@ export function normalizeAiConfig(value = {}) {
   config.routePlanner = normalizeRoutePlanner(config.routePlanner);
   config.threatMemory = normalizeThreatMemory(config.threatMemory);
   config.buildEvaluator = normalizeBuildEvaluator(config.buildEvaluator);
+  config.dynamicProfile = normalizeDynamicProfile(config.dynamicProfile);
   config.hud = normalizeHud(config.hud);
   config.telemetry = normalizeTelemetry(config.telemetry);
   return config;
@@ -110,6 +114,7 @@ function normalizeOrca(value = {}) {
 }
 
 function normalizeEconomy(value = {}) {
+  const replacement = { ...AI_CONFIG.economy.weaponReplacement, ...(value.weaponReplacement || {}) };
   return {
     ...AI_CONFIG.economy,
     ...value,
@@ -117,6 +122,12 @@ function normalizeEconomy(value = {}) {
     maxRefreshesPerShop: clampInt(value.maxRefreshesPerShop, 0, 8, AI_CONFIG.economy.maxRefreshesPerShop),
     refreshAggression: clampNumber(value.refreshAggression, 0.25, 2, 1),
     reserveGoldMultiplier: clampNumber(value.reserveGoldMultiplier, 0.25, 2, 1),
+    weaponReplacement: {
+      enabled: replacement.enabled !== false,
+      minOfferScore: clampNumber(replacement.minOfferScore, 0, 180, AI_CONFIG.economy.weaponReplacement.minOfferScore),
+      minUpgradeScoreDelta: clampNumber(replacement.minUpgradeScoreDelta, 0, 120, AI_CONFIG.economy.weaponReplacement.minUpgradeScoreDelta),
+      minOfferQualityRank: clampInt(replacement.minOfferQualityRank, 0, 4, AI_CONFIG.economy.weaponReplacement.minOfferQualityRank),
+    },
   };
 }
 
@@ -254,7 +265,32 @@ function normalizeBuildEvaluator(value = {}) {
     minWeaponCoverage: clampInt(value.minWeaponCoverage, 1, 6, defaults.minWeaponCoverage),
     bossDpsWeight: clampNumber(value.bossDpsWeight, 0, 3, defaults.bossDpsWeight),
     survivalDeficitWeight: clampNumber(value.survivalDeficitWeight, 0, 3, defaults.survivalDeficitWeight),
+    healingDeficitWeight: clampNumber(value.healingDeficitWeight, 0, 3, defaults.healingDeficitWeight),
   };
+}
+
+function normalizeDynamicProfile(value = {}) {
+  const defaults = AI_CONFIG.dynamicProfile;
+  return {
+    ...defaults,
+    ...value,
+    enabled: value.enabled !== false,
+    criticalHpRatio: clampNumber(value.criticalHpRatio, 0.1, 0.9, defaults.criticalHpRatio),
+    aggressiveHpRatio: clampNumber(value.aggressiveHpRatio, 0.2, 1, defaults.aggressiveHpRatio),
+    lowGold: clampInt(value.lowGold, 0, 200, defaults.lowGold),
+    farmerMaxWave: clampInt(value.farmerMaxWave, 1, 20, defaults.farmerMaxWave),
+  };
+}
+
+function normalizeMaxTrainingRuns(value) {
+  if (value === Infinity) return Infinity;
+  if (typeof value === "string") {
+    const text = value.trim().toLowerCase();
+    if (text === "infinite" || text === "unlimited" || text === "forever") return Infinity;
+  }
+  const number = Number(value);
+  if (number === 0) return Infinity;
+  return clampInt(value, 1, 9999, AI_CONFIG.maxTrainingRuns);
 }
 
 function normalizeHud(value = {}) {
@@ -296,6 +332,30 @@ function deepMerge(base, patch) {
     output[key] = isPlainObject(value) && isPlainObject(output[key]) ? deepMerge(output[key], value) : value;
   }
   return output;
+}
+
+function createAbortController() {
+  try {
+    return typeof AbortController === "function" ? new AbortController() : null;
+  } catch {
+    return null;
+  }
+}
+
+function withTimeout(promise, timeoutMs = AI_CONFIG.configReloadTimeoutMs, controller = null) {
+  const delay = Math.max(50, Number(timeoutMs) || AI_CONFIG.configReloadTimeoutMs);
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      try {
+        controller?.abort?.();
+      } catch {
+        // Ignore abort failures; the timeout rejection is enough.
+      }
+      reject(new Error(`config_reload_timeout_${delay}ms`));
+    }, delay);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function isPlainObject(value) {

@@ -1,4 +1,5 @@
 const SURVIVAL_ITEMS = new Set(["heart_container", "healing_potion", "healing_aura", "tardigrade", "heavy_armor", "dodge_cloak"]);
+const HEALING_ITEMS = new Set(["healing_potion", "healing_aura", "tardigrade"]);
 const DAMAGE_ITEMS = new Set(["rapid_cord", "knife", "gloves", "fang", "split_shot", "airburst", "turret"]);
 const ECONOMY_ITEMS = new Set(["magnet", "lucky_clover", "thief_mark"]);
 const MOBILITY_ITEMS = new Set(["speed_boots", "magnet"]);
@@ -12,6 +13,7 @@ export function evaluateBuild({ player = {}, state = {}, inventory = {}, weapons
   const attackSpeed = player.attackSpeedBonus || 0;
   const range = Math.max(0, ...activeWeapons.map((weapon) => weapon.range || weapon.attackRange || weapon.acquireRange || 0), player.attackRangeBonus || 0);
   const weaponCoverage = new Set(slots.map((slot) => slot.id)).size;
+  const healingScore = clamp01((player.regen || 0) / 2.2 + (player.lifeSteal || 0) * 2.4 + hpRatio * 0.22);
   const survivalScore = clamp01(hpRatio * 0.62 + Math.min(1, (player.maxHp || 80) / 150) * 0.2 + Math.min(1, (player.defense || 0) / 8) * 0.18);
   const mobilityScore = clamp01((speed - 160) / 140 + (player.dodge || 0) * 0.35);
   const damageScore = clamp01((damageScale - 0.75) / 0.9 + attackSpeed * 0.35 + Math.min(1, slots.length / 4) * 0.18);
@@ -21,6 +23,7 @@ export function evaluateBuild({ player = {}, state = {}, inventory = {}, weapons
   const projectileControlScore = clamp01(mobilityScore * 0.55 + rangeScore * 0.2 + (situation.pressure === "high" ? 0.05 : 0.2));
   const deficits = {
     survival: 1 - survivalScore,
+    healing: 1 - healingScore,
     mobility: 1 - mobilityScore,
     damage: 1 - damageScore,
     economy: 1 - economyScore,
@@ -31,6 +34,7 @@ export function evaluateBuild({ player = {}, state = {}, inventory = {}, weapons
   return {
     hpRatio,
     weaponCoverage,
+    healingScore,
     survivalScore,
     mobilityScore,
     damageScore,
@@ -46,6 +50,7 @@ export function scoreItemForBuild(id, build, { situation = {}, config = {} } = {
   const weight = config.survivalDeficitWeight || 1.35;
   let score = 0;
   if (SURVIVAL_ITEMS.has(id)) score += build.deficits.survival * 58 * weight;
+  if (HEALING_ITEMS.has(id)) score += build.deficits.healing * 54 * (config.healingDeficitWeight || 1.45);
   if (MOBILITY_ITEMS.has(id)) score += build.deficits.mobility * 42 + build.deficits.projectileControl * 18;
   if (DAMAGE_ITEMS.has(id)) score += build.deficits.damage * 52 + (situation.phase === "boss" ? build.deficits.bossDps * 38 * (config.bossDpsWeight || 1.2) : 0);
   if (ECONOMY_ITEMS.has(id)) score += build.deficits.economy * (situation.pressure === "high" ? 24 : 48);
@@ -55,7 +60,8 @@ export function scoreItemForBuild(id, build, { situation = {}, config = {} } = {
 }
 
 export function scoreUpgradeForBuild(id, build, { situation = {}, config = {} } = {}) {
-  if (["vital_core", "regen_cell", "armor_plate", "evasion_ghost"].includes(id)) return build.deficits.survival * 56 * (config.survivalDeficitWeight || 1.35);
+  if (id === "regen_cell") return build.deficits.healing * 72 * (config.healingDeficitWeight || 1.45) + build.deficits.survival * 24;
+  if (["vital_core", "armor_plate", "evasion_ghost"].includes(id)) return build.deficits.survival * 56 * (config.survivalDeficitWeight || 1.35);
   if (["phase_stride"].includes(id)) return build.deficits.mobility * 64 + build.deficits.projectileControl * 20;
   if (["damage_matrix", "overclock", "crit_kernel"].includes(id)) return build.deficits.damage * 58 + (situation.phase === "boss" ? build.deficits.bossDps * 22 : 0);
   if (["scope_lens"].includes(id)) return build.deficits.range * 42 + (situation.phase === "boss" ? build.deficits.bossDps * 34 : 0);

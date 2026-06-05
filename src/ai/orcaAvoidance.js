@@ -69,6 +69,7 @@ function velocityConstraintCost(player, velocity, threats, options) {
   let cost = 0;
   const horizon = options.lookAhead || 0.85;
   for (const threat of threats) {
+    if (threat.line) continue;
     const relX = threat.x - player.x;
     const relY = threat.y - player.y;
     const relVx = (threat.vx || 0) - velocity.x;
@@ -173,6 +174,8 @@ function isSpecialThreat(threat) {
     || threat.kind === "boss_dash"
     || threat.kind === "boss_segment_dash"
     || threat.kind === "boss_body_chain"
+    || threat.kind === "warning_line"
+    || (threat.kind === "hazard_zone_hard" && threat.line)
     || threat.kind === "enemy_dash"
     || threat.baseKind === "boss"
     || threat.baseKind === "blackhole";

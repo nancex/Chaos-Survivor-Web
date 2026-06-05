@@ -52,6 +52,8 @@ function chooseTarget({ state, world, threats, context, runtime, movement, confi
   if (gravityEscape) return gravityEscape;
   const disruptionMove = disruptionMoveTarget(p, world.hazards || [], runtime);
   if (disruptionMove) return disruptionMove;
+  const laserNetEscape = stormLaserNetEscapeTarget(p, world.hazards || [], runtime);
+  if (laserNetEscape) return laserNetEscape;
   const stormRailEscape = stormRailDashEscapeTarget(p, world.boss, runtime);
   if (stormRailEscape) return stormRailEscape;
   if (runtime.stuckTimer > (movement.stuckSeconds || 1.2) || context.surrounded) {
@@ -85,13 +87,15 @@ export function buildMovementObjectives({ state, world, threats, context, runtim
   if (gravityEscape) objectives.push({ ...gravityEscape, weight: objectiveWeight("survive", situation, weights) * 2.4 });
   const disruptionMove = disruptionMoveTarget(p, world.hazards || [], runtime);
   if (disruptionMove) objectives.push({ ...disruptionMove, weight: objectiveWeight("survive", situation, weights) * 1.6 });
+  const laserNetEscape = stormLaserNetEscapeTarget(p, world.hazards || [], runtime);
+  if (laserNetEscape) objectives.push({ ...laserNetEscape, weight: objectiveWeight("survive", situation, weights) * 3.1 });
   const stormRailEscape = stormRailDashEscapeTarget(p, world.boss, runtime);
   if (stormRailEscape) objectives.push({ ...stormRailEscape, weight: objectiveWeight("survive", situation, weights) * 2.8 });
   const collect = bestCollectTarget(p, world, threats, movement, state, runtime);
   if (collect) objectives.push({ ...collect, weight: objectiveWeight("collect", situation, weights) });
   if (world.boss) {
     const boss = bossMovementTarget(state, world, threats, bossContext(state, world), state.ai?.training, runtime.bossMemory);
-    if (boss) objectives.push({ ...boss, weight: objectiveWeight("bossDamage", situation, weights) });
+    if (boss) objectives.push({ ...boss, weight: objectiveWeight("bossDamage", situation, weights) * (boss.reason === "regen_trade" ? 1.75 : 1) });
   }
   if (context.surrounded || situation.objective === "breakout") {
     objectives.push({ kind: "breakout", x: p.x + Math.cos(context.breakoutAngle) * 300, y: p.y + Math.sin(context.breakoutAngle) * 300, weight: objectiveWeight("breakout", situation, weights) });
@@ -195,6 +199,55 @@ function disruptionMoveTarget(p, hazards, runtime = {}) {
     x: p.x + away.x * 260 + drift.x * 110,
     y: p.y + away.y * 260 + drift.y * 110,
     priority: 95,
+  };
+}
+
+function stormLaserNetEscapeTarget(p, hazards, runtime = {}) {
+  let escapeX = 0;
+  let escapeY = 0;
+  let activeLines = 0;
+  let mostUrgent = 0;
+  const last = runtime.lastVelocity || { x: 0, y: 0 };
+  const turn = runtime.stormLaserNetTurn ||= 1;
+  for (const h of hazards || []) {
+    if (h.kind !== "storm_laser_net" || (h.life ?? 1) <= 0) continue;
+    const angle = h.angle || 0;
+    const vx = Math.cos(angle);
+    const vy = Math.sin(angle);
+    const nx = -vy;
+    const ny = vx;
+    const dx = (p.x || 0) - (h.x || 0);
+    const dy = (p.y || 0) - (h.y || 0);
+    const forward = dx * vx + dy * vy;
+    const half = (h.length || 1200) / 2;
+    if (forward < -half - 80 || forward > half + 80) continue;
+    const side = dx * nx + dy * ny;
+    const arm = Math.max(0, h.armTime || 0);
+    const warningPadding = arm > 0 ? 92 : 124;
+    const safe = (p.r || 14) + (h.width || 34) + warningPadding;
+    const absSide = Math.abs(side);
+    if (absSide > safe) continue;
+    let sign = Math.sign(side);
+    if (!sign) {
+      const lastSide = (last.x || 0) * nx + (last.y || 0) * ny;
+      sign = Math.sign(lastSide) || turn;
+      runtime.stormLaserNetTurn = -turn;
+    }
+    const urgency = 1 + Math.max(0, (safe - absSide) / safe) * (arm > 0 ? 2.2 : 3.2) + Math.max(0, 0.55 - arm) * 1.8;
+    escapeX += nx * sign * urgency;
+    escapeY += ny * sign * urgency;
+    activeLines++;
+    mostUrgent = Math.max(mostUrgent, urgency);
+  }
+  if (!activeLines) return null;
+  const dir = normalize(escapeX, escapeY);
+  const distance = Math.min(520, 280 + activeLines * 80 + mostUrgent * 24);
+  return {
+    kind: "storm_laser_net_escape",
+    x: p.x + dir.x * distance,
+    y: p.y + dir.y * distance,
+    priority: 135,
+    lines: activeLines,
   };
 }
 

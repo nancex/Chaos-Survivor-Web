@@ -22,50 +22,155 @@ export function drawAiHud(ctx, view) {
   const training = state.ai?.training || {};
   const config = state.ai?.config || {};
   if (config.hud?.showAiPanel === false) return;
-  const p = state.player || {};
   const runs = training.totalRuns || 0;
   const victories = training.victories || 0;
   const winRate = runs ? Math.round(victories / runs * 100) : 0;
   const target = runtime.currentTarget?.kind || (state.mode === "playing" ? "thinking" : state.mode);
   const risk = Math.round(runtime.lastPlanRisk || 0);
   const threatCount = runtime.lastThreatCount || runtime.debugThreats?.length || 0;
-  const hp = p.maxHp ? `${Math.ceil(Math.max(0, p.hp || 0))}/${Math.ceil(p.maxHp)}` : "--";
   const latestDeath = [...(training.recentRuns || [])].reverse().find((run) => !run.victory)?.deathReason || "";
   const recommendation = training.recommendations || {};
   const perf = runtime.perf?.movementPlanMs;
   const avgMs = perf ? (perf.total / Math.max(1, perf.count)).toFixed(1) : "0.0";
   const compact = view.width < 760;
+  const profile = runtime.dynamicProfile || config.runtimeProfile || config.profile || "balanced";
+  const profileText = profileName(profile);
+  const targetText = targetName(target);
+  const latestDeathText = deathReasonName(latestDeath);
+  const recommendedText = profileName(recommendation.profile || config.profile || "balanced");
+  const reasonText = dynamicReasonName(runtime.dynamicProfileReason || "base");
+  const difficultyText = difficultyName(state.difficulty || { id: state.difficultyId || recommendation.difficultyId || "" });
   const lines = compact ? [
-    ["AI", `${runtime.enabled ? "TRAIN" : "OFF"} ${config.profile || "balanced"}`],
-    ["Run", `${runs} Win ${winRate}%`],
-    ["Target", target],
-    ["Risk", `${risk} T${threatCount}`],
+    ["状态", `${runtime.enabled ? "训练" : "关闭"} ${profileText}`],
+    ["轮次", `${runs}局 胜率${winRate}%`],
+    ["难度", difficultyText],
+    ["目标", targetText],
+    ["风险", `${risk} 威胁${threatCount}`],
   ] : [
-    ["RUN", `${runs} Win ${winRate}%  W${state.wave || 0} HP ${hp}`],
-    ["PLAN", `${target}  Risk ${risk} T${threatCount}`],
-    ["TRAIN", `${latestDeath || "none"} -> ${recommendation.profile || config.profile || "balanced"}`],
-    ["CONFIG", `${runtime.configSource?.aiRunConfigProfile || config.profile || "balanced"} enabled=${runtime.configSource?.aiTrainingConfigEnabled ? "Y" : "N"}`],
-    ["PERF", `${avgMs}ms  Budget ${runtime.budgetLevel || 0}`],
+    ["状态", `${runtime.enabled ? "训练中" : "关闭"} ${profileText}`],
+    ["轮次", `${runs}局 胜率${winRate}%`],
+    ["难度", difficultyText],
+    ["计划", `${targetText} 风险${risk} 威胁${threatCount}`],
+    ["训练", `${latestDeathText} -> ${recommendedText}`],
+    ["策略", `${profileText} (${reasonText})`],
+    ["性能", `${avgMs}ms  预算${runtime.budgetLevel || 0}`],
   ];
-  const width = compact ? Math.min(230, Math.max(190, view.width * 0.42)) : Math.min(320, Math.max(255, view.width * 0.34));
-  const rowH = 17;
-  const height = 16 + lines.length * rowH;
+  const padding = compact ? 14 : 16;
+  const labelWidth = Math.ceil(Math.max(...lines.map(([label]) => textWidth(ctx, label)), 28));
+  const valueWidth = Math.ceil(Math.max(...lines.map(([, value]) => textWidth(ctx, value)), compact ? 96 : 150));
+  const columnGap = compact ? 16 : 20;
+  const desiredWidth = padding * 2 + labelWidth + columnGap + valueWidth;
+  const width = compact
+    ? Math.min(300, Math.max(238, desiredWidth, view.width * 0.5))
+    : Math.min(380, Math.max(320, desiredWidth, view.width * 0.36));
+  const rowH = compact ? 20 : 21;
+  const height = 20 + lines.length * rowH;
   const x = Math.max(8, view.width - width - 14);
   const y = 14;
+  const labelX = x + padding;
+  const valueX = labelX + labelWidth + columnGap;
+  const valueMaxWidth = Math.max(40, x + width - padding - valueX);
   ctx.save();
   ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   drawHudPanel(ctx, x, y, width, height, risk);
-  ctx.font = "12px 'Zpix', 'Fusion Pixel 12px Monospaced SC', 'Cubic 11', 'Courier New', monospace";
+  ctx.beginPath();
+  ctx.rect(x + 4, y + 4, width - 8, height - 8);
+  ctx.clip();
+  ctx.font = "11px 'Zpix', 'Fusion Pixel 12px Monospaced SC', 'Cubic 11', 'Courier New', monospace";
   ctx.textBaseline = "middle";
   for (let i = 0; i < lines.length; i++) {
-    const rowY = y + 13 + i * rowH;
+    const rowY = y + 15 + i * rowH;
     const [label, value] = lines[i];
     ctx.fillStyle = i === 0 ? "#77ff8a" : "rgba(159,244,255,0.82)";
-    ctx.fillText(label, x + 12, rowY);
+    ctx.fillText(label, labelX, rowY);
     ctx.fillStyle = i === 0 ? "#ffffff" : "rgba(255,255,255,0.88)";
-    ctx.fillText(value, x + 78, rowY);
+    ctx.fillText(fitText(ctx, value, valueMaxWidth), valueX, rowY);
   }
   ctx.restore();
+}
+
+function textWidth(ctx, text) {
+  if (typeof ctx.measureText === "function") return ctx.measureText(String(text)).width || 0;
+  return String(text).length * 7;
+}
+
+function fitText(ctx, text, maxWidth) {
+  const source = String(text);
+  if (textWidth(ctx, source) <= maxWidth) return source;
+  const ellipsis = "...";
+  let output = source;
+  while (output.length > 1 && textWidth(ctx, `${output}${ellipsis}`) > maxWidth) output = output.slice(0, -1);
+  return `${output}${ellipsis}`;
+}
+
+function difficultyName(difficulty) {
+  const id = typeof difficulty === "string" ? difficulty : difficulty?.id;
+  const name = typeof difficulty === "object" ? difficulty?.name : "";
+  if (name) return name;
+  return ({
+    ember: "难度1",
+    neon: "难度2",
+    overclock: "难度3",
+    singularity: "难度4",
+    apocalypse: "难度5",
+    void_crown: "难度6",
+  })[id] || id || "未知";
+}
+
+function profileName(id) {
+  return ({
+    balanced: "均衡",
+    survivor: "生存",
+    aggressive: "进攻",
+    farmer: "发育",
+  })[id] || id || "均衡";
+}
+
+function targetName(kind) {
+  return ({
+    thinking: "思考",
+    collect: "拾取",
+    farm: "拉扯",
+    survive: "避险",
+    breakout: "突围",
+    center_return: "回中",
+    blackhole_escape: "黑洞脱离",
+    disruption_move: "脱离干扰",
+    storm_rail_dash_evade: "躲冲刺",
+    escape_route: "逃生路线",
+    shop: "商店",
+    leveling: "升级",
+    ended: "结算",
+  })[kind] || kind || "待机";
+}
+
+function deathReasonName(reason) {
+  if (!reason) return "暂无";
+  return ({
+    victory: "胜利",
+    death_by_projectile: "弹幕伤害",
+    death_by_hazard: "区域伤害",
+    death_by_enemy_contact: "敌人接触",
+    greedy_collect_death: "贪拾取",
+    corner_pressure_death: "边角压制",
+    boss_dash_death: "Boss冲刺",
+    hazard_standstill_death: "区域停滞",
+    low_boss_damage: "Boss输出不足",
+    low_damage: "输出不足",
+    low_gold: "经济不足",
+    corner_stuck: "边角卡住",
+    death_by_pressure: "压力死亡",
+  })[reason] || reason;
+}
+
+function dynamicReasonName(reason) {
+  return ({
+    disabled: "固定",
+    survival_pressure: "生存压力",
+    economy_gap: "经济缺口",
+    boss_or_damage_window: "输出窗口",
+    base: "默认",
+  })[reason] || reason || "默认";
 }
 
 function toScreen(point, view, camera) {

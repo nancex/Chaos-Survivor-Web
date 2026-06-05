@@ -79,7 +79,7 @@ export function bossMovementTarget(state, world, threats, context = bossContext(
   const boss = context.boss || world.boss;
   const p = state.player;
   if (!boss || !p) return null;
-  const range = bestBossRange(state);
+  let range = bestBossRange(state);
   const dx = boss.x - p.x;
   const dy = boss.y - p.y;
   const d = Math.max(1, Math.hypot(dx, dy));
@@ -88,13 +88,16 @@ export function bossMovementTarget(state, world, threats, context = bossContext(
   const side = memory?.preferredStrafeSide || sideSign(state, world, context);
   const aggression = bossAggressionScore(training, state, boss);
   const dangerActive = memory?.dangerUntil > (state.time || 0);
+  const trade = regenTradeWindow(state, boss, threats, context, dangerActive);
+  if (trade) range = closeCombatRange(range, boss, p);
 
   let radial = 0;
   if (context.dashLike || dangerActive || d < range.min) radial = -1;
   else if (d > range.max) radial = 1;
+  else if (trade && d > range.ideal) radial = 0.55;
   else if (context.recoveryLike || context.lowHp) radial = aggression > 0.62 ? 0.35 : 0.1;
 
-  const strafe = context.laserLike || context.dashLike || dangerActive ? 320 : 180;
+  const strafe = trade ? 90 : context.laserLike || context.dashLike || dangerActive ? 320 : 180;
   return {
     kind: "boss_kite",
     weaponId: range.weaponId,
@@ -102,7 +105,9 @@ export function bossMovementTarget(state, world, threats, context = bossContext(
     x: p.x + nx * radial * 280 + -ny * side * strafe,
     y: p.y + ny * radial * 280 + nx * side * strafe,
     priority: 88,
-    reason: context.dashLike || dangerActive ? "dash_evade" : context.laserLike ? "laser_strafe" : d > range.max ? "approach" : d < range.min ? "separate" : "strafe",
+    reason: context.dashLike || dangerActive ? "dash_evade" : trade ? "regen_trade" : context.laserLike ? "laser_strafe" : d > range.max ? "approach" : d < range.min ? "separate" : "strafe",
+    incomingDps: trade?.incomingDps,
+    regenDps: trade?.regenDps,
   };
 }
 
@@ -123,4 +128,77 @@ function sideSign(state, world, context) {
   if (Math.abs(p.x) > half) return p.x > 0 ? -1 : 1;
   if (Math.abs(p.y) > half) return p.y > 0 ? 1 : -1;
   return context.laserLike ? -base : base;
+}
+
+function regenTradeWindow(state, boss, threats, context, dangerActive) {
+  const p = state.player;
+  if (!p || context.dashLike || dangerActive) return null;
+  const hpRatio = p.maxHp ? (p.hp || 0) / p.maxHp : 1;
+  const regenDps = Math.max(0, p.regen || 0);
+  if (hpRatio < 0.62 || regenDps < 4) return null;
+  const incomingDps = estimatedIncomingBossPressure(p, boss, threats);
+  if (incomingDps + 1 > regenDps * 0.85) return null;
+  return { incomingDps, regenDps };
+}
+
+function closeCombatRange(range, boss, player) {
+  const contactFloor = (boss.r || 40) + (player.r || 14) + 76;
+  const ideal = Math.max(contactFloor + 70, range.ideal * 0.68);
+  return {
+    ...range,
+    min: Math.max(contactFloor, range.min * 0.55),
+    ideal,
+    max: Math.max(ideal + 90, range.max * 0.7),
+  };
+}
+
+function estimatedIncomingBossPressure(player, boss, threats = []) {
+  const horizon = 1.1;
+  let damage = 0;
+  for (const threat of threats.slice(0, 28)) {
+    const amount = threat.damage || threat.impactDamage || 0;
+    if (amount <= 0) continue;
+    if (threat.line) {
+      if (lineThreatNearPlayer(player, threat)) damage += amount * 0.8;
+      continue;
+    }
+    if (willThreatHitPlayer(player, threat, horizon)) damage += amount;
+    else if (distance(player, threat) < (player.r || 14) + (threat.r || 10) + 120) damage += amount * 0.28;
+  }
+  const bossDistance = distance(player, boss);
+  const contact = (boss.r || 40) + (player.r || 14) + 18;
+  if (bossDistance < contact) damage += (boss.damage || 14) * 0.7;
+  return damage / horizon;
+}
+
+function willThreatHitPlayer(player, threat, horizon) {
+  const safe = (player.r || 14) + (threat.r || threat.width || 10) + 10;
+  const dx = (threat.x || 0) - (player.x || 0);
+  const dy = (threat.y || 0) - (player.y || 0);
+  const vx = threat.vx || 0;
+  const vy = threat.vy || 0;
+  const vv = vx * vx + vy * vy;
+  if (dx * dx + dy * dy <= safe * safe) return true;
+  if (vv <= 1) return false;
+  const t = Math.max(0, Math.min(horizon, -(dx * vx + dy * vy) / vv));
+  const cx = dx + vx * t;
+  const cy = dy + vy * t;
+  return cx * cx + cy * cy <= safe * safe;
+}
+
+function lineThreatNearPlayer(player, threat) {
+  const angle = threat.angle || 0;
+  const vx = Math.cos(angle);
+  const vy = Math.sin(angle);
+  const dx = (player.x || 0) - (threat.x || 0);
+  const dy = (player.y || 0) - (threat.y || 0);
+  const forward = dx * vx + dy * vy;
+  const half = (threat.length || 900) / 2;
+  if (forward < -half || forward > half) return false;
+  const side = Math.abs(dx * -vy + dy * vx);
+  return side < (player.r || 14) + (threat.width || 18);
+}
+
+function distance(a, b) {
+  return Math.hypot((a.x || 0) - (b.x || 0), (a.y || 0) - (b.y || 0));
 }

@@ -11,6 +11,7 @@ export const AI_CONFIG = {
   tickHz: 20,
   actionCooldown: 0.28,
   restartDelay: 0.8,
+  configReloadTimeoutMs: 1200,
   movement: {
     lookAhead: 0.85,
     maxNeighbors: 28,
@@ -36,6 +37,12 @@ export const AI_CONFIG = {
     minRefreshReserve: 10,
     maxRefreshesPerShop: 2,
     lockAffordableHighValue: true,
+    weaponReplacement: {
+      enabled: true,
+      minOfferScore: 72,
+      minUpgradeScoreDelta: 18,
+      minOfferQualityRank: 2,
+    },
   },
   upgrade: {
     survivalMultiplier: 1,
@@ -116,6 +123,14 @@ export const AI_CONFIG = {
     minWeaponCoverage: 2,
     bossDpsWeight: 1.2,
     survivalDeficitWeight: 1.35,
+    healingDeficitWeight: 1.45,
+  },
+  dynamicProfile: {
+    enabled: true,
+    criticalHpRatio: 0.38,
+    aggressiveHpRatio: 0.7,
+    lowGold: 18,
+    farmerMaxWave: 8,
   },
   hud: {
     showAiPanel: true,

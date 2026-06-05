@@ -12,8 +12,9 @@ import { beginAiTick } from "./aiTickCache.js";
 import { classifySituation } from "./situationModel.js";
 import { updateBossMemory } from "./bossStrategy.js";
 import { inferThreatMemoryDeathReason, recordThreatSnapshot, summarizeThreatMemory } from "./threatMemory.js";
+import { applyDynamicProfile, chooseDynamicProfile } from "./dynamicProfile.js";
 import { canFuseWeapons, findFuseCandidate, fuseWeaponSlots } from "../economy/inventory.js";
-import { purchaseOffer, refreshCost, refreshShopOffers, shopOffers, toggleOfferLock } from "../economy/shop.js";
+import { purchaseOffer, refreshCost, refreshShopOffers, sellWeaponSlot, shopOffers, toggleOfferLock } from "../economy/shop.js";
 import { closeShop, renderShop } from "../ui/shopUi.js";
 
 let config = normalizeAiConfig(AI_CONFIG);
@@ -73,34 +74,41 @@ export function updateAi(dt) {
   const situation = classifySituation({ state, world, runtime, config });
   runtime.situation = situation;
   tickCache.situation = situation;
+  const dynamic = chooseDynamicProfile({ state, situation, training, config });
+  runtime.dynamicProfile = dynamic.id;
+  runtime.dynamicProfileReason = dynamic.reason;
+  const activeConfig = applyDynamicProfile(config, dynamic.id);
+  runtime.effectiveConfig = activeConfig;
+  state.ai.config = activeConfig;
   if (world.boss) {
-    const memory = updateBossMemory(runtime, state, world, config);
-    if (memory && config.telemetry?.printBossMemory && memory.lastMode !== runtime.lastLoggedBossMode) {
+    const memory = updateBossMemory(runtime, state, world, activeConfig);
+    if (memory && activeConfig.telemetry?.printBossMemory && memory.lastMode !== runtime.lastLoggedBossMode) {
       runtime.lastLoggedBossMode = memory.lastMode;
-      aiLog(config, "boss_memory", { mode: memory.lastMode, repeated: memory.repeatedModeCount, dangerUntil: memory.dangerUntil }, "debug");
+      aiLog(activeConfig, "boss_memory", { mode: memory.lastMode, repeated: memory.repeatedModeCount, dangerUntil: memory.dangerUntil }, "debug");
     }
   }
   if (situation.objective !== runtime.lastLoggedObjective) {
     runtime.lastLoggedObjective = situation.objective;
-    aiLog(config, "situation", {
+    aiLog(activeConfig, "situation", {
       objective: situation.objective,
       pressure: situation.pressure,
       survival: situation.survival,
       position: situation.position,
+      profile: dynamic.id,
     }, "decision");
   }
   const started = nowMs();
-  const plan = planMovement({ state, world, runtime, config });
+  const plan = planMovement({ state, world, runtime, config: activeConfig });
   const elapsed = markPerf(runtime, "movementPlanMs", started);
   adjustBudget(runtime, elapsed);
   runtime.debugThreats = plan.threats || [];
   runtime.lastPlanRisk = plan.risk || 0;
   runtime.lastThreatCount = runtime.debugThreats.length;
-  recordThreatSnapshot(runtime, { state, world, plan, config });
+  recordThreatSnapshot(runtime, { state, world, plan, config: activeConfig });
   if (plan.target?.kind !== runtime.lastLoggedTarget) {
     runtime.lastLoggedTarget = plan.target?.kind;
     pushAiEvent(runtime, { type: "target", targetKind: plan.target?.kind, time: state.time });
-    aiLog(config, "target", { kind: plan.target?.kind, risk: plan.risk }, "debug");
+    aiLog(activeConfig, "target", { kind: plan.target?.kind, risk: plan.risk }, "debug");
   }
   applyVelocity(plan.velocity);
 }
@@ -121,6 +129,16 @@ export function setAiEnabled(enabled, persist = true) {
 }
 
 function handleUiMode(runtime, dt) {
+  if (state.mode === "choosingWeapon" && runtime.pendingConfigReload && isConfigReloadExpired(runtime)) {
+    aiLog(config, "config_reload_recover", {
+      reason: "pending_timeout",
+      waitedMs: Math.round(nowMs() - (runtime.pendingConfigReloadSince || nowMs())),
+    }, "summary");
+    runtime.pendingConfigReload = false;
+    runtime.pendingConfigReloadSince = 0;
+    runtime.skipNextConfigReload = true;
+    runtime.actionCooldown = 0;
+  }
   if (state.mode === "choosingWeapon" && runtime.restartRequested) {
     runtime.actionCooldown = 0;
     return void chooseAndStartRun(runtime);
@@ -135,8 +153,13 @@ function handleUiMode(runtime, dt) {
 
 async function chooseAndStartRun(runtime) {
   if (!config.autoStart) return;
-  if (runtime.pendingConfigReload) return;
-  runtime.pendingConfigReload = true;
+  const skipReload = runtime.skipNextConfigReload === true;
+  runtime.skipNextConfigReload = false;
+  if (!skipReload) {
+    if (runtime.pendingConfigReload) return;
+    runtime.pendingConfigReload = true;
+    runtime.pendingConfigReloadSince = nowMs();
+  }
   try {
     if (state.mode === "menu" && typeof actions.openLoadout === "function") {
       actions.openLoadout();
@@ -144,7 +167,11 @@ async function chooseAndStartRun(runtime) {
     if (state.mode === "choosingWeapon" && !state.ai?.loadoutPanel) {
       aiLog(config, "loadout_panel_missing", { fallback: typeof actions.startWithLoadout === "function" }, "summary");
     }
-    await reloadConfigForNextRun(runtime);
+    if (skipReload) {
+      aiLog(config, "config_reload_skipped", { reason: "pending_timeout_recovery" }, "summary");
+    } else {
+      await reloadConfigForNextRun(runtime);
+    }
     const options = actions.getLoadoutOptions?.() || {};
     const loadout = chooseOpeningLoadout({
       training,
@@ -155,7 +182,10 @@ async function chooseAndStartRun(runtime) {
     if (!loadout.difficulty || !loadout.weapon) return;
     if (!startSelectedLoadout(runtime, loadout)) return;
   } finally {
-    runtime.pendingConfigReload = false;
+    if (!skipReload) {
+      runtime.pendingConfigReload = false;
+      runtime.pendingConfigReloadSince = 0;
+    }
   }
 }
 
@@ -163,9 +193,31 @@ function startSelectedLoadout(runtime, loadout) {
   const panel = state.ai?.loadoutPanel;
   const usingPanel = state.mode === "choosingWeapon" && panel;
   let selected = loadout;
+  let startedDirectly = false;
   if (usingPanel) {
     selected = selectLoadoutFromPanel(panel, loadout);
-    if (!selected || !panel.confirm?.()) {
+    if (!selected && loadout.difficulty && loadout.weapon && typeof actions.startWithLoadout === "function") {
+      selected = loadout;
+      aiLog(config, "loadout_direct_fallback", {
+        reason: "panel_selection_failed",
+        difficulty: selected.difficulty.id,
+        weapon: selected.weapon.id,
+      }, "summary");
+      actions.startWithLoadout({ difficulty: selected.difficulty, weapon: selected.weapon });
+      startedDirectly = state.mode !== "choosingWeapon";
+    }
+    if (!startedDirectly) {
+      const confirmed = Boolean(selected && panel.confirm?.());
+      if (selected && (!confirmed || state.mode === "choosingWeapon") && typeof actions.startWithLoadout === "function") {
+        aiLog(config, "loadout_direct_fallback", {
+          reason: confirmed ? "confirm_no_transition" : "confirm_false",
+          difficulty: selected.difficulty.id,
+          weapon: selected.weapon.id,
+        }, "summary");
+        actions.startWithLoadout({ difficulty: selected.difficulty, weapon: selected.weapon });
+      }
+    }
+    if (!selected || state.mode === "choosingWeapon") {
       runtime.actionCooldown = 0.15;
       aiLog(config, "start_blocked", {
         reason: "loadout_panel",
@@ -183,6 +235,8 @@ function startSelectedLoadout(runtime, loadout) {
   }
   runtime.runRecorded = false;
   runtime.restartRequested = false;
+  runtime.endConfigReloaded = false;
+  runtime.pendingEndConfigReload = false;
   runtime.shopRefreshesUsed = 0;
   runtime.upgradeRefreshesUsed = 0;
   runtime.actionCooldown = config.actionCooldown;
@@ -242,6 +296,7 @@ async function reloadConfigForNextRun(runtime) {
 function handleLeveling(runtime) {
   const panel = state.ai?.levelPanel;
   if (!panel?.items?.length || typeof panel.pick !== "function") return;
+  const activeConfig = runtime.effectiveConfig || applyDynamicProfile(config, runtime.dynamicProfile || config.profile);
   const context = {
     projectilePressure: Math.min(1, world.enemyProjectiles.length / 32),
     recentDamage: runtime.recentDamage || 0,
@@ -251,18 +306,18 @@ function handleLeveling(runtime) {
     shortRange: mainWeaponRange() < 600,
     situation: runtime.situation,
   };
-  const decision = chooseUpgrade({ player: state.player, state, items: panel.items, context, training, config });
+  const decision = chooseUpgrade({ player: state.player, state, items: panel.items, context, training, config: activeConfig });
   if (!decision) return;
   if (panel.refresh && shouldRefreshUpgradeChoices({
     bestScore: decision.score,
     gold: state.gold,
     refreshCost: panel.refreshCost || 10,
     refreshesUsed: runtime.upgradeRefreshesUsed || 0,
-    reserveGold: config.economy.minRefreshReserve,
+    reserveGold: activeConfig.economy.minRefreshReserve,
     situation: runtime.situation,
     training,
     items: panel.items,
-    config,
+    config: activeConfig,
   })) {
     runtime.upgradeRefreshesUsed = (runtime.upgradeRefreshesUsed || 0) + 1;
     runtime.actionCooldown = config.actionCooldown;
@@ -282,6 +337,7 @@ function handleLeveling(runtime) {
 function handleShop(runtime) {
   fuseExistingWeapons(runtime);
   const offers = shopOffers();
+  const activeConfig = runtime.effectiveConfig || applyDynamicProfile(config, runtime.dynamicProfile || config.profile);
   const decision = decideShopActions({
     offers,
     player: state.player,
@@ -289,7 +345,7 @@ function handleShop(runtime) {
     state,
     refreshCost: refreshCost(),
     refreshesUsed: runtime.shopRefreshesUsed || 0,
-    config: config.economy,
+    config: activeConfig.economy,
     situation: runtime.situation,
   });
   for (const action of decision) {
@@ -302,6 +358,17 @@ function handleShop(runtime) {
         renderShop?.();
         pushAiEvent(runtime, { type: "shop_buy", uid: action.uid, score: action.score, time: state.time });
         aiLog(config, "shop_buy", { uid: action.uid, score: action.score, reason: action.reason });
+        return;
+      }
+    } else if (action.type === "sell_weapon") {
+      const result = sellWeaponSlot(action.weaponUid);
+      runtime.actionCooldown = config.actionCooldown;
+      if (result.ok) {
+        recordShopAction(training, `sell_weapon:${action.weaponUid}`);
+        saveAiTraining(training, undefined, config.storageKey);
+        renderShop?.();
+        pushAiEvent(runtime, { type: "shop_sell_weapon", uid: action.weaponUid, score: action.score, time: state.time });
+        aiLog(config, "shop_sell_weapon", { uid: action.weaponUid, score: action.score, reason: action.reason });
         return;
       }
     } else if (action.type === "lock") {
@@ -354,12 +421,17 @@ function handleEnded(runtime, dt) {
     saveAiTraining(training, undefined, config.storageKey);
     aiLog(config, "run_summary", { runs: training.totalRuns, victory: state.victory, time: state.time, kills: state.kills, gold: state.gold }, "summary");
     runtime.restartTimer = config.restartDelay;
+    runtime.endConfigReloaded = false;
+  }
+  if (config.reloadBeforeEachRun !== false && !runtime.endConfigReloaded) {
+    void reloadConfigAtEnd(runtime);
+    return;
   }
   if (!config.autoRestart) {
     aiLog(config, "restart_blocked", { reason: "autoRestart_false" }, "summary");
     return;
   }
-  if (training.totalRuns >= config.maxTrainingRuns) {
+  if (Number.isFinite(config.maxTrainingRuns) && training.totalRuns >= config.maxTrainingRuns) {
     aiLog(config, "restart_blocked", { reason: "maxTrainingRuns", runs: training.totalRuns, max: config.maxTrainingRuns }, "summary");
     return;
   }
@@ -379,6 +451,28 @@ function handleEnded(runtime, dt) {
     }
     void chooseAndStartRun(runtime);
   }
+}
+
+async function reloadConfigAtEnd(runtime) {
+  if (runtime.pendingEndConfigReload) return;
+  runtime.pendingEndConfigReload = true;
+  try {
+    await reloadConfigForNextRun(runtime);
+    runtime.endConfigReloaded = true;
+    runtime.restartTimer = Math.min(runtime.restartTimer ?? config.restartDelay, config.restartDelay);
+  } finally {
+    runtime.pendingEndConfigReload = false;
+  }
+}
+
+function isConfigReloadExpired(runtime) {
+  const started = runtime.pendingConfigReloadSince || 0;
+  if (!started) {
+    runtime.pendingConfigReloadSince = nowMs();
+    return false;
+  }
+  const timeout = Math.max(100, config.configReloadTimeoutMs || 1200) + 300;
+  return nowMs() - started > timeout;
 }
 
 /*

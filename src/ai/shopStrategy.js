@@ -1,4 +1,5 @@
 import { evaluateBuild, scoreItemForBuild, scoreWeaponForBuild } from "./buildEvaluator.js";
+import { TOTAL_WAVES } from "../constants.js";
 
 const QUALITY_RANK = {
   common: 0,
@@ -45,6 +46,10 @@ export function decideShopActions({ offers, player, inventory, state, refreshCos
 
   for (const entry of scored) {
     if (entry.score >= 50 && state.gold >= entry.offer.price + reserveGold) {
+      if (entry.sellWeaponUid) {
+        actions.push({ type: "sell_weapon", weaponUid: entry.sellWeaponUid, score: entry.score, reason: "replace_low_value_weapon" });
+        state = { ...state, gold: state.gold + estimatedWeaponSellPrice(entry.sellWeaponSlot) };
+      }
       actions.push({ type: "buy", uid: entry.offer.uid, fuseWeaponUid: entry.fuseWeaponUid, score: entry.score, reason: entry.reason });
       state = { ...state, gold: state.gold - entry.offer.price };
     } else if (shouldLockOffer(entry.offer, entry.score, state.gold + expectedNextWaveGold(state)) && !entry.offer.locked && config.lockAffordableHighValue !== false) {
@@ -68,6 +73,8 @@ export function scoreOffer({ offer, player, inventory, state, profile = buildInv
   let score = 0;
   let reason = "baseline";
   let fuseWeaponUid = null;
+  let sellWeaponUid = null;
+  let sellWeaponSlot = null;
 
   if (category === "weapon") {
     const matching = profile.fuseMap.get(`${offer.weaponId}:${offer.rarity}`);
@@ -80,8 +87,16 @@ export function scoreOffer({ offer, player, inventory, state, profile = buildInv
       score = 50 + rank * 14 + (offer.weaponId === state.initialWeaponId ? 12 : 0);
       reason = offer.weaponId === state.initialWeaponId ? "starter_stack" : "new_weapon";
     } else {
-      score = -100;
-      reason = "slots_full";
+      const replacement = replacementCandidateForOffer({ offer, inventory, state, build, config });
+      if (replacement) {
+        score = replacement.offerScore;
+        sellWeaponUid = replacement.slot.uid;
+        sellWeaponSlot = replacement.slot;
+        reason = "weapon_replace";
+      } else {
+        score = -100;
+        reason = "slots_full";
+      }
     }
     score += scoreWeaponForBuild(offer.weaponId, build, {
       starterWeaponId: state.initialWeaponId,
@@ -114,7 +129,7 @@ export function scoreOffer({ offer, player, inventory, state, profile = buildInv
   const affordability = Math.min(1, Math.max(0.35, (state.gold || 0) / Math.max(1, offer.price || 1)));
   if ((offer.price || 0) > (state.gold || 0)) score *= 0.92;
   else score *= affordability;
-  return { offer, score, reason, fuseWeaponUid };
+  return { offer, score, reason, fuseWeaponUid, sellWeaponUid, sellWeaponSlot };
 }
 
 export function buildInventoryProfile(player, inventory, state, situation = {}) {
@@ -176,6 +191,7 @@ export function estimateOfferGain(offer, profile) {
 }
 
 export function dynamicReserveGold(state, profile = {}) {
+  if ((state.wave || 1) >= TOTAL_WAVES - 1) return 0;
   return Math.min(34, 5 + (state.wave || 1) + (profile.needsSurvival ? 8 : 0));
 }
 
@@ -195,4 +211,47 @@ function isSoldOut(offer) {
 function offerCategory(offer) {
   if (offer.weaponId) return "weapon";
   return "item";
+}
+
+function replacementCandidateForOffer({ offer, inventory, state, build, config = {} }) {
+  const settings = config.weaponReplacement || {};
+  if (settings.enabled === false) return null;
+  const slots = inventory?.weaponSlots || [];
+  if (slots.length < 6 || !offer?.weaponId) return null;
+  const rank = QUALITY_RANK[offer.rarity] ?? 0;
+  if (rank < (settings.minOfferQualityRank ?? 2)) return null;
+  const offerScore = 58 + rank * 22 + scoreWeaponForBuild(offer.weaponId, build, {
+    starterWeaponId: state.initialWeaponId,
+    canFuse: false,
+    config: state.ai?.config?.buildEvaluator || {},
+  });
+  if (offerScore < (settings.minOfferScore ?? 72)) return null;
+  let worst = null;
+  let worstScore = Infinity;
+  for (const slot of slots) {
+    const score = weaponSlotKeepScore(slot, state, inventory);
+    if (score < worstScore) {
+      worst = slot;
+      worstScore = score;
+    }
+  }
+  if (!worst) return null;
+  if (offerScore - worstScore < (settings.minUpgradeScoreDelta ?? 18)) return null;
+  return { slot: worst, offerScore, currentScore: worstScore };
+}
+
+function weaponSlotKeepScore(slot, state, inventory) {
+  const rank = QUALITY_RANK[slot?.quality] ?? 0;
+  const duplicateCount = (inventory?.weaponSlots || []).filter((item) => item.id === slot.id).length;
+  let score = 34 + rank * 24;
+  if (slot.id === state.initialWeaponId) score += 18;
+  if (duplicateCount > 1) score -= 12;
+  if (slot.id === "echo_tuning_fork") score -= 6;
+  if (slot.id === "missile" || slot.id === "ice") score += 8;
+  return score;
+}
+
+function estimatedWeaponSellPrice(slot) {
+  const rank = Math.max(0, QUALITY_RANK[slot?.quality] ?? 0);
+  return Math.floor(6 + rank * rank * 7 + rank * 4);
 }

@@ -1,4 +1,4 @@
-import { TOTAL_WAVES } from "../constants.js";
+﻿import { TOTAL_WAVES } from "../constants.js";
 import { state, world } from "../state.js";
 import { choice, formatTime } from "../utils.js";
 import { bestSummaryText, difficultyCards } from "../difficulty.js";
@@ -53,6 +53,7 @@ export const ui = {
   levelTitle: document.querySelector("#levelOverlay h2"),
   choiceList: document.getElementById("choiceList"),
   startButton: document.getElementById("startButton"),
+  continueButton: document.getElementById("continueButton"),
   gameVersionText: document.getElementById("gameVersionText"),
   restartButton: document.getElementById("restartButton"),
   resumeButton: document.getElementById("resumeButton"),
@@ -513,6 +514,12 @@ export function pickThree(items) {
   return choice(items, 3);
 }
 
+export function updateContinueButton(hasSave) {
+  if (ui.continueButton) {
+    ui.continueButton.disabled = !hasSave;
+    ui.continueButton.classList.toggle("has-save", hasSave);
+  }
+}
 export function showEnd(victory) {
   const p = state.player;
   ui.endEyebrow.textContent = victory ? "VICTORY" : "RUN COMPLETE";

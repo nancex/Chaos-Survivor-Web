@@ -4,6 +4,7 @@ import {
   ui,
   updateHud,
   updateBestText,
+  updateContinueButton,
   showChoices,
   showRunSetup,
   hideRunSetup,
@@ -28,6 +29,7 @@ import { updateEasterEggs } from "../systems/easterEggs.js";
 import { applyWaveStartScenario, resetWaveScenarioState } from "../systems/waveScenarios.js";
 import { createShopState } from "../economy/shop.js";
 import * as effects from "../effects.js";
+import { autoSave, loadAutoSave, clearAutoSave, hasAutoSave } from "../systems/autosave.js";
 import { resizeCanvas, updateCamera, render } from "../systems/renderer.js";
 import { playSfx, startMusic, stopMusic, pauseMusic, resumeMusic } from "../audio.js";
 import { CAMERA_ZOOM } from "../constants.js";
@@ -81,6 +83,8 @@ export async function bootGame() {
     hideRunSetup();
     state.initialWeaponId = weapon.id;
     activateWeapon(weapon.id);
+    clearAutoSave();
+    updateContinueButton(false);
     state.mode = "playing";
     resetWaveScenarioState();
     applyWaveStartScenario();
@@ -193,6 +197,8 @@ export async function bootGame() {
     state.waveDuration = waveDurationFor(state.wave);
     state.waveTimeLeft = state.waveDuration;
     state.spawnBudget = 0;
+    autoSave();
+    updateContinueButton(true);
     consumeNextWaveSpawnBonus();
     startWaveItems();
     state.mode = "playing";
@@ -209,6 +215,8 @@ export async function bootGame() {
     hidePauseMenu();
     closeInventory();
     closeShop();
+    clearAutoSave();
+    updateContinueButton(false);
     showEnd(victory);
     playSfx(victory ? "victory" : "defeat");
     stopMusic();
@@ -240,6 +248,18 @@ export async function bootGame() {
     else if (state.mode === "paused") resumeGame();
   }
 
+  function continueGame() {
+    if (!loadAutoSave()) return;
+    closeCodex();
+    hideAllOverlays();
+    state.mode = "playing";
+    updateContinueButton(false);
+    startMusic();
+    consumeNextWaveSpawnBonus();
+    startWaveItems();
+    applyWaveStartScenario();
+  }
+
   function returnToMenu() {
     closeCodex();
     stopMusic();
@@ -248,6 +268,8 @@ export async function bootGame() {
     state.mode = "menu";
     hideAllOverlays();
     ui.startOverlay.classList.add("active");
+    ui.continueButton.disabled = !hasAutoSave();
+    ui.continueButton.classList.toggle("has-save", hasAutoSave());
     ui.pauseButton.textContent = "II";
     updateBestText();
   }
@@ -304,9 +326,12 @@ export async function bootGame() {
   resizeCanvas(ui.canvas, ctx);
   window.addEventListener("resize", () => resizeCanvas(ui.canvas, ctx));
   bindInput({ start, restart: start, togglePause, resume: resumeGame, returnToMenu });
+  ui.continueButton?.addEventListener("click", continueGame);
   resetRun(generateMap());
   state.shop = createShopState();
   state.mode = "menu";
+  ui.continueButton.disabled = !hasAutoSave();
+  ui.continueButton.classList.toggle("has-save", hasAutoSave());
   initAi({
     clearTrainingOnStartup: aiTrainingMode.clearTrainingOnStartup,
     ignoreStoredEnabled: aiTrainingMode.enabled,

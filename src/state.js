@@ -1,4 +1,4 @@
-import { FIRST_WAVE_SECONDS, waveDurationFor } from "./constants.js";
+﻿import { FIRST_WAVE_SECONDS, waveDurationFor } from "./constants.js";
 import { WEAPON_BASE_STATS } from "./config/editableGameData.js";
 
 export const state = {
@@ -54,6 +54,7 @@ export const world = {
   grid: new Map(),
   boss: null,
   blackhole: null,
+  damageTexts: [],
 };
 
 export const input = {
@@ -199,6 +200,7 @@ export function resetRun(map) {
   world.grid.clear();
   world.boss = null;
   world.blackhole = null;
+  world.damageTexts = [];
 
   state.gameMode = state.gameMode || "swarm";
   state.mode = "choosingWeapon";

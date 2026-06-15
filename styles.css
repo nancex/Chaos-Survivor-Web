@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --ink: #f3f7ff;
   --muted: #a7b4c7;
   --panel: rgba(10, 16, 28, 0.78);
@@ -953,6 +953,48 @@ canvas {
   pointer-events: none;
 }
 
+
+/* Settings Button */
+.menu-settings-button {
+  position: absolute;
+  left: max(22px, env(safe-area-inset-left));
+  bottom: max(82px, calc(env(safe-area-inset-bottom) + 64px));
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 42px auto;
+  align-items: center;
+  min-width: 148px;
+  border: 1px solid rgba(180, 140, 255, 0.5);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background:
+    radial-gradient(circle at 22px 50%, rgba(180, 140, 255, 0.22), transparent 36px),
+    linear-gradient(135deg, rgba(180, 140, 255, 0.16), rgba(66, 232, 255, 0.1)),
+    rgba(3, 8, 16, 0.68);
+  color: #f8fbff;
+  box-shadow: 0 0 24px rgba(180, 140, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  pointer-events: auto;
+}
+
+.menu-settings-button::before {
+  content: "\2699";
+  font-size: 28px;
+  line-height: 1;
+  text-shadow: 0 0 14px rgba(180, 140, 255, 0.7);
+  color: #b48cff;
+}
+
+.menu-settings-button span {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.menu-settings-button:hover {
+  border-color: rgba(180, 140, 255, 0.82);
+  box-shadow: 0 0 38px rgba(180, 140, 255, 0.26), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
 .menu-codex-button {
   position: absolute;
   left: max(22px, env(safe-area-inset-left));
@@ -2216,6 +2258,180 @@ h2 {
   border-color: rgba(255, 77, 109, 0.38);
   color: #ffcdd2;
 }
+/* Settings Overlay */
+.settings-overlay {
+  align-items: stretch;
+  justify-content: center;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(66, 232, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 86% 70%, rgba(180, 140, 255, 0.14), transparent 30%),
+    linear-gradient(135deg, rgba(3, 6, 15, 0.98), rgba(1, 4, 10, 1) 62%, rgba(12, 8, 24, 0.98));
+}
+
+.settings-overlay::before,
+.settings-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.settings-overlay::before {
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(66, 232, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(115deg, transparent 0 46%, rgba(255, 209, 102, 0.08) 49%, transparent 53%);
+  background-size: 48px 48px, 48px 48px, 240px 100%;
+  mask-image: radial-gradient(circle at 50% 44%, #000 0 52%, transparent 78%);
+  opacity: 0.58;
+  animation: uiScanDrift 10s linear infinite;
+}
+
+.settings-overlay::after {
+  background:
+    repeating-linear-gradient(180deg, transparent 0 8px, rgba(255, 255, 255, 0.035) 9px, transparent 10px),
+    radial-gradient(circle at center, transparent 0 52%, rgba(0, 0, 0, 0.54) 100%);
+  opacity: 0.72;
+}
+
+.settings-panel {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: min(500px, calc(100vw - 32px));
+  max-height: calc(100vh - 44px);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(66, 232, 255, 0.46);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(25, 34, 62, 0.96), rgba(4, 8, 18, 0.98) 42%, rgba(13, 8, 28, 0.96)),
+    var(--panel-strong);
+  box-shadow:
+    0 32px 110px rgba(0, 0, 0, 0.62),
+    0 0 62px rgba(66, 232, 255, 0.18),
+    0 0 32px rgba(255, 209, 102, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  animation: uiPanelRise 280ms ease-out both;
+}
+
+.settings-panel::before,
+.settings-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.settings-panel::before {
+  background:
+    linear-gradient(90deg, transparent 0 42%, rgba(66, 232, 255, 0.16) 49%, transparent 56%),
+    repeating-linear-gradient(0deg, transparent 0 13px, rgba(255, 255, 255, 0.032) 14px, transparent 15px),
+    radial-gradient(circle at 72% 38%, rgba(66, 232, 255, 0.1), transparent 24%);
+  background-size: 210px 100%, 100% 18px, 100% 100%;
+  opacity: 0.42;
+  animation: uiScanDrift 7s linear infinite;
+}
+
+.settings-panel::after {
+  inset: 10px;
+  border: 1px solid rgba(66, 232, 255, 0.2);
+  border-radius: 8px;
+  box-shadow:
+    inset 24px 0 38px rgba(66, 232, 255, 0.06),
+    inset -24px 0 38px rgba(180, 140, 255, 0.05);
+}
+
+.settings-head {
+  position: relative;
+  z-index: 1;
+  padding: 16px 22px 8px;
+  border-bottom: 1px solid rgba(66, 232, 255, 0.2);
+  background:
+    linear-gradient(90deg, rgba(66, 232, 255, 0.12), rgba(255, 209, 102, 0.05) 54%, rgba(180, 140, 255, 0.08)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.settings-head h2 {
+  margin: 2px 0 0;
+  font-size: clamp(24px, 3vw, 38px);
+  letter-spacing: 2px;
+  text-shadow: 0 0 22px rgba(66, 232, 255, 0.42);
+}
+
+.settings-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 16px 22px 22px;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle:last-child {
+  border-bottom: none;
+}
+
+.settings-toggle-label strong {
+  display: block;
+  font-size: 15px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.settings-toggle-label p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.settings-toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.settings-toggle[aria-checked="true"] .settings-toggle-switch {
+  background: rgba(66, 232, 255, 0.42);
+  border-color: rgba(66, 232, 255, 0.7);
+}
+
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f3f7ff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.settings-toggle[aria-checked="true"] .settings-toggle-knob {
+  transform: translateX(22px);
+}
+
 .loadout-overlay {
   align-items: stretch;
   justify-content: center;

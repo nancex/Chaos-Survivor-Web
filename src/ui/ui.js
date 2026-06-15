@@ -1,8 +1,9 @@
-﻿import { TOTAL_WAVES } from "../constants.js";
+import { TOTAL_WAVES } from "../constants.js";
 import { getChallengeTotalWaves } from "../config/challenge-waves.js";
 import { state, world } from "../state.js";
 import { choice, formatTime } from "../utils.js";
 import { bestSummaryText, difficultyCards } from "../difficulty.js";
+import { getSettings, toggleSetting } from "../systems/settings.js";
 import {
   findFuseCandidate,
   fuseWeaponSlots,
@@ -76,6 +77,8 @@ export const ui = {
   endTitle: document.getElementById("endTitle"),
   endStats: document.getElementById("endStats"),
   touchStick: document.getElementById("touchStick"),
+  settingsOverlay: document.getElementById("settingsOverlay"),
+  settingsButton: document.getElementById("settingsButton"),
   modeOverlay: document.getElementById("modeOverlay"),
   modeSwarmButton: document.getElementById("modeSwarmButton"),
   modeChallengeButton: document.getElementById("modeChallengeButton"),
@@ -207,7 +210,8 @@ export function showModeSelect({ onSelect, onBack }) {
   ui.modeOverlay.onclick = (event) => {
     if (event.target === ui.modeOverlay) {
       hideModeSelect();
-      if (_modeOnBack) _modeOnBack();
+      state.mode = "menu";
+      ui.startOverlay.classList.add("active");
     }
   };
 
@@ -219,6 +223,44 @@ export function hideModeSelect() {
   ui.quickActions?.classList.remove("blocked");
 }
 
+export function showSettings({ onBack }) {
+  hideAllOverlays();
+  ui.settingsOverlay.classList.add("active");
+  ui.quickActions?.classList.add("blocked");
+
+  function renderToggles() {
+    const s = getSettings();
+    const toggles = [
+      { id: "settingShowEnemyHpBar", key: "showEnemyHpBar" },
+      { id: "settingShowDamageNumbers", key: "showDamageNumbers" },
+    ];
+    for (const t of toggles) {
+      const el = document.getElementById(t.id);
+      if (!el) continue;
+      const checked = s[t.key];
+      el.setAttribute("aria-checked", String(checked));
+      el.onclick = () => {
+        toggleSetting(t.key);
+        renderToggles();
+      };
+    }
+  }
+
+  renderToggles();
+
+  // Click outside panel to close
+  ui.settingsOverlay.onclick = (event) => {
+    if (event.target === ui.settingsOverlay) {
+      hideSettings();
+      if (onBack) onBack();
+    }
+  };
+}
+
+export function hideSettings() {
+  ui.settingsOverlay.classList.remove("active");
+  ui.quickActions?.classList.remove("blocked");
+}
 export function showRunSetup({ weapons, onConfirm, onBack, gameMode }) {
   clearPreview();
   state.ai ||= {};

@@ -1,4 +1,4 @@
-﻿import { SAVE_KEY, TOTAL_WAVES, waveDurationFor, GAME_MODE_CHALLENGE } from "../constants.js";
+import { SAVE_KEY, TOTAL_WAVES, waveDurationFor, GAME_MODE_CHALLENGE } from "../constants.js";
 import { state, world, resetRun } from "../state.js";
 import {
   ui,
@@ -17,6 +17,8 @@ import {
   pickThree,
   showEnd,
   loadGameConfig,
+  showSettings,
+  hideSettings,
 } from "../ui/ui.js";
 import { generateMap } from "../systems/map.js";
 import { bindInput } from "../systems/input.js";
@@ -29,6 +31,7 @@ import { updateWeapons, STARTER_WEAPONS, UPGRADE_DEFS, activateWeapon, refreshSt
 import { consumeNextWaveSpawnBonus, startWaveItems, updateItems } from "../systems/items.js";
 import { updateEasterEggs } from "../systems/easterEggs.js";
 import { applyWaveStartScenario, resetWaveScenarioState } from "../systems/waveScenarios.js";
+import { updateDamageTexts, drawDamageTexts } from "../effects.js";
 import { getChallengeTotalWaves } from "../config/challenge-waves.js";
 import { createShopState } from "../economy/shop.js";
 import * as effects from "../effects.js";
@@ -267,8 +270,14 @@ export async function bootGame() {
       closeInventory();
       return;
     }
+    if (ui.settingsOverlay?.classList.contains("active")) {
+      hideSettings();
+      return;
+    }
     if (state.mode === "selectingMode") {
-      returnToMenu();
+      hideModeSelect();
+      state.mode = "menu";
+      ui.startOverlay.classList.add("active");
       return;
     }
     if (state.mode === "playing") pauseGame();
@@ -295,6 +304,11 @@ export async function bootGame() {
     ui.startOverlay.classList.add("active");
     ui.continueButton.disabled = !hasAutoSave();
     ui.continueButton.classList.toggle("has-save", hasAutoSave());
+  ui.settingsButton?.addEventListener("click", () => {
+    showSettings({ onBack: () => {
+      ui.startOverlay.classList.add("active");
+    }});
+  });
     ui.pauseButton.textContent = "II";
     updateBestText();
   }
@@ -324,6 +338,7 @@ export async function bootGame() {
     updateCoins(dt);
     effects.updateAmbientParticles?.(dt, ui.canvas.clientWidth / CAMERA_ZOOM, ui.canvas.clientHeight / CAMERA_ZOOM);
     effects.updateEffects(dt);
+    updateDamageTexts(dt);
     updateCamera(dt);
     checkLevelUps();
     if (state.player.hp <= 0) endGame(false);
@@ -371,6 +386,11 @@ export async function bootGame() {
   state.mode = "menu";
   ui.continueButton.disabled = !hasAutoSave();
   ui.continueButton.classList.toggle("has-save", hasAutoSave());
+  ui.settingsButton?.addEventListener("click", () => {
+    showSettings({ onBack: () => {
+      ui.startOverlay.classList.add("active");
+    }});
+  });
   initAi({
     clearTrainingOnStartup: aiTrainingMode.clearTrainingOnStartup,
     ignoreStoredEnabled: aiTrainingMode.enabled,

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -99,6 +99,9 @@
           <i>CONTINUE</i>
         </button>
         <p id="bestText" class="menu-best">最佳纪录 00:00</p>
+                <button id="settingsButton" type="button" class="menu-settings-button" aria-label="打开设置">
+          <span>设置</span>
+        </button>
         <button id="codexButton" type="button" class="menu-codex-button" aria-label="打开图鉴">
           <span>图鉴</span>
         </button>
@@ -273,6 +276,37 @@
           </div>
         </div>
       </section>
+            <section id="settingsOverlay" class="overlay settings-overlay" aria-hidden="true">
+        <div class="panel settings-panel">
+          <header class="settings-head">
+            <div>
+              <p class="eyebrow">SETTINGS</p>
+              <h2>设置</h2>
+            </div>
+          </header>
+          <div class="settings-body">
+            <div class="settings-toggle" id="settingShowEnemyHpBar" role="switch" aria-checked="false" tabindex="0">
+              <div class="settings-toggle-label">
+                <strong>敌人血量显示</strong>
+                <p>在敌人下方显示简易HP条</p>
+              </div>
+              <div class="settings-toggle-switch">
+                <span class="settings-toggle-knob"></span>
+              </div>
+            </div>
+            <div class="settings-toggle" id="settingShowDamageNumbers" role="switch" aria-checked="false" tabindex="0">
+              <div class="settings-toggle-label">
+                <strong>造成伤害显示</strong>
+                <p>命中敌人时显示伤害数字</p>
+              </div>
+              <div class="settings-toggle-switch">
+                <span class="settings-toggle-knob"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="endOverlay" class="overlay">
         <div class="panel end">
           <p id="endEyebrow" class="eyebrow">RUN COMPLETE</p>

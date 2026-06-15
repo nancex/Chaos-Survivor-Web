@@ -3,6 +3,9 @@ import { WEAPON_BASE_STATS } from "./config/editableGameData.js";
 
 export const state = {
   mode: "menu",
+  gameMode: "swarm",
+  challengeSpawnTime: 0,
+  challengeRemaining: 0,
   controlMode: "auto",
   manualPrimaryIndex: null,
   time: 0,
@@ -197,6 +200,7 @@ export function resetRun(map) {
   world.boss = null;
   world.blackhole = null;
 
+  state.gameMode = state.gameMode || "swarm";
   state.mode = "choosingWeapon";
   state.controlMode = state.controlMode || "auto";
   state.manualPrimaryIndex = state.controlMode === "manual" ? 0 : null;
@@ -227,6 +231,9 @@ export function resetRun(map) {
   state.easterEggs = createEasterEggState();
   state.waveScenario = null;
   state.spawnedWaveEvents = new Set();
+  state.challengeSpawnTime = 0;
+  state.challengeRemaining = 0;
   state.difficultyId = state.difficultyId || "ember";
   state.ai = createAiState(previousAi || {});
 }
+

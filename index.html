@@ -58,7 +58,34 @@
 
       <div id="touchStick" class="touch-stick" aria-hidden="true"><i></i></div>
 
-      <section id="startOverlay" class="overlay active">
+      
+      <!-- 模式选择界面 -->
+      <section id="modeOverlay" class="overlay mode-overlay" aria-hidden="true">
+        <div class="panel mode-panel">
+          <header class="mode-head">
+            <div>
+              <p class="eyebrow">SELECT MODE</p>
+              <h2>选择模式</h2>
+            </div>
+          </header>
+          <div class="mode-body">
+            <button id="modeSwarmButton" type="button" class="mode-select-button swarm" data-mode="swarm">
+              <span class="mode-button-icon">&#x1F41B;</span>
+              <span class="mode-button-title">虫潮模式</span>
+              <span class="mode-button-sub">SWARM</span>
+            </button>
+            <button id="modeChallengeButton" type="button" class="mode-select-button challenge" data-mode="challenge">
+              <span class="mode-button-icon">&#x2694;</span>
+              <span class="mode-button-title">挑战模式</span>
+              <span class="mode-button-sub">CHALLENGE</span>
+            </button>
+          </div>
+          <div id="modeDescription" class="mode-description">
+            选择一种游戏模式以继续。
+          </div>
+        </div>
+      </section>
+<section id="startOverlay" class="overlay active">
         <div class="menu-title" aria-label="游戏名称">
           <span>NEON RUINS Survivor</span>
           <h1>混乱幸存者</h1>
@@ -259,3 +286,4 @@
     <script type="module" src="./src/core/game.js"></script>
   </body>
 </html>
+

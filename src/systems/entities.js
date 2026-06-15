@@ -88,6 +88,36 @@ export function updatePlayer(dt) {
   p.invuln = Math.max(0, p.invuln - dt);
 }
 
+
+export function updateChallengeSpawning(dt) {
+  spawnWaveBoss();
+  if (isBossWave(state.wave)) return;
+  state.challengeSpawnTime += dt;
+  const scenario = state.waveScenario;
+  if (!scenario || !scenario.groups) return;
+  const enemyLimit = currentDifficulty().enemyLimit || ENEMY_LIMIT;
+  const spawnedKey = `challenge_grp_${state.difficultyId}_${state.wave}`;
+  state.spawnedWaveEvents ||= new Set();
+  for (let gi = 0; gi < scenario.groups.length; gi++) {
+    const group = scenario.groups[gi];
+    const gKey = `${spawnedKey}_${gi}`;
+    if (state.spawnedWaveEvents.has(gKey)) continue;
+    const shouldSpawn = state.challengeSpawnTime >= group.time || world.enemies.length === 0;
+    if (!shouldSpawn) break;
+    state.spawnedWaveEvents.add(gKey);
+    for (const entry of group.enemies) {
+      for (let i = 0; i < entry.count; i++) {
+        if (world.enemies.length >= enemyLimit) break;
+        spawnEnemyById(entry.id);
+      }
+    }
+  }
+  // Count remaining enemies for annihilation mode
+  if (scenario.type === "annihilation") {
+    state.challengeRemaining = world.enemies.length;
+  }
+}
+
 export function updateSpawning(dt) {
   spawnWaveBoss();
   if (isBossWave(state.wave)) return;
@@ -927,3 +957,4 @@ function cellKey(x, y) {
 }
 
 export { circleHit };
+

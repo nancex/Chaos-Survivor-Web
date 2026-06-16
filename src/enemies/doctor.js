@@ -5,8 +5,8 @@ import { playSfx } from "../audio.js";
 import { clamp, distSq } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
-const HEAL_RANGE = 260;
-const KEEP_DISTANCE = 330;
+
+
 
 export class Doctor extends BaseEnemy {
   constructor(config, x, y) {
@@ -46,13 +46,13 @@ export class Doctor extends BaseEnemy {
       }
       if (this.channel <= 0) {
         this.cooldown = this.cd + Math.random() * this.cdRandom;
-        pulse(this.x, this.y, HEAL_RANGE, "#72ffb4", 0.18);
+        pulse(this.x, this.y, this.healRange, "#72ffb4", 0.18);
         playSfx("level");
       }
-      this.moveRelative(dx, dy, d, dt, d < KEEP_DISTANCE ? -0.75 : 0.15);
+      this.moveRelative(dx, dy, d, dt, d < this.keepDistance ? -0.75 : 0.15);
     } else {
       this.channel = 0;
-      this.moveRelative(dx, dy, d, dt, d < KEEP_DISTANCE ? -0.85 : 0.32);
+      this.moveRelative(dx, dy, d, dt, d < this.keepDistance ? -0.85 : 0.32);
     }
 
     const half = WORLD_SIZE / 2;
@@ -68,7 +68,7 @@ export class Doctor extends BaseEnemy {
 
   findHealTargets() {
     const targets = [];
-    const range2 = HEAL_RANGE * HEAL_RANGE;
+    const range2 = this.healRange * this.healRange;
     for (const e of world.enemies) {
       if (e === this || e.dead || e.boss || e.hp >= e.maxHp) continue;
       if (distSq(this.x, this.y, e.x, e.y) > range2) continue;
@@ -113,7 +113,7 @@ export class Doctor extends BaseEnemy {
       ctx.strokeStyle = "rgba(114,255,180,0.34)";
       ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(0, 0, HEAL_RANGE, 0, TAU);
+      ctx.arc(0, 0, this.healRange, 0, TAU);
       ctx.stroke();
     }
     ctx.restore();

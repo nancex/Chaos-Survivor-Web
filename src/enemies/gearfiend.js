@@ -4,7 +4,7 @@ import { burst, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
-const KEEP_DISTANCE = 410;
+
 
 export class Gearfiend extends BaseEnemy {
   constructor(config, x, y) {
@@ -37,11 +37,11 @@ export class Gearfiend extends BaseEnemy {
       this.angle = Math.atan2(dy, dx);
       if (this.windup <= 0) this.fireGear();
     } else {
-      const dir = d < KEEP_DISTANCE ? -0.7 : d > KEEP_DISTANCE * 1.25 ? 0.35 : 0;
+      const dir = d < this.keepDistance ? -0.7 : d > this.keepDistance * 1.25 ? 0.35 : 0;
       const strafe = Math.sin(this.anim * 0.72) * 0.36;
       this.x += (dx / d * dir + -dy / d * strafe) * this.speed * dt;
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
-      if (this.cooldown <= 0 && d < 760) {
+      if (this.cooldown <= 0 && d < this.fireRange) {
         this.windup = 0.42;
         if (!this.fastOnly) this.mode = Math.random() < 0.56 ? "fast" : "slow";
         else this.mode = "fast";

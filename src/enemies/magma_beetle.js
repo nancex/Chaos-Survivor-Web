@@ -4,7 +4,7 @@ import { burst, particle, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
-const CHARGE_RANGE = 450;
+
 
 export class MagmaBeetle extends BaseEnemy {
   constructor(config, x, y) {
@@ -35,12 +35,12 @@ export class MagmaBeetle extends BaseEnemy {
       if (Math.random() < dt * 16) particle("ember", this.x, this.y, { color: this.color, life: 0.28, size: 3, alpha: 0.85 });
       if (this.windup <= 0) {
         this.state = "charge";
-        this.chargeTime = 0.82;
+        this.chargeTime = this.chargeDuration;
         pulse(this.x, this.y, 38, this.color, 0.2);
       }
     } else if (this.state === "charge") {
       this.chargeTime -= dt;
-      const speed = this.speed * 3.55;
+      const speed = this.speed * this.chargeSpeedMul;
       const oldX = this.x;
       const oldY = this.y;
       this.x += Math.cos(this.chargeAngle) * speed * dt;
@@ -53,9 +53,9 @@ export class MagmaBeetle extends BaseEnemy {
     } else {
       this.x += dx / d * this.speed * dt;
       this.y += dy / d * this.speed * dt;
-      if (this.cooldown <= 0 && d < CHARGE_RANGE) {
+      if (this.cooldown <= 0 && d < this.chargeRange) {
         this.state = "windup";
-        this.windup = 0.58;
+        this.windup = this.windupTime;
         this.chargeAngle = Math.atan2(dy, dx);
       }
     }
@@ -72,9 +72,9 @@ export class MagmaBeetle extends BaseEnemy {
       y,
       r: 34,
       color: this.color,
-      damage: this.damage * 0.45,
-      life: 1.5,
-      maxLife: 1.5,
+      damage: this.damage * this.trailDamageMul,
+      life: this.trailLife,
+      maxLife: this.trailLife,
       angle: this.chargeAngle,
     });
     burst(x, y, 3, this.color, 80);

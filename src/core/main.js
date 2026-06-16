@@ -192,6 +192,7 @@ export async function bootGame() {
   function completeWave() {
     state.waveTimeLeft = 0;
     state.spawnBudget = 0;
+    state.challengeSpawnTime = 0;
     const totalWaves = state.gameMode === "challenge" ? getChallengeTotalWaves() : TOTAL_WAVES;
     state.pendingVictory = state.wave >= totalWaves;
     state.pendingNextWave = !state.pendingVictory;
@@ -223,6 +224,7 @@ export async function bootGame() {
     state.waveDuration = waveDurationFor(state.wave);
     state.waveTimeLeft = state.waveDuration;
     state.spawnBudget = 0;
+    state.challengeSpawnTime = 0;
     autoSave();
     updateContinueButton(true);
     consumeNextWaveSpawnBonus();

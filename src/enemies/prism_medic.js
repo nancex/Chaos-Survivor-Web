@@ -4,8 +4,8 @@ import { burst, particle, pulse, trail } from "../effects.js";
 import { clamp, distSq } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
-const ASSIST_RANGE = 330;
-const KEEP_DISTANCE = 380;
+
+
 
 export class PrismMedic extends BaseEnemy {
   constructor(config, x, y) {
@@ -33,19 +33,19 @@ export class PrismMedic extends BaseEnemy {
     this.flip = dx < 0 ? -1 : 1;
 
     this.targets = this.findTargets();
-    if (this.targets.length && this.cooldown <= 0 && this.channel <= 0) this.channel = 1.25;
+    if (this.targets.length && this.cooldown <= 0 && this.channel <= 0) this.channel = this.channelDuration;
 
     if (this.channel > 0 && this.targets.length) {
       this.channel -= dt;
       this.applyAssist(dt);
       if (this.channel <= 0) {
         this.cooldown = this.cd + Math.random() * this.cdRandom;
-        pulse(this.x, this.y, ASSIST_RANGE, this.color, 0.16);
+        pulse(this.x, this.y, this.assistRange, this.color, 0.16);
       }
-      this.move(dx, dy, d, dt, d < KEEP_DISTANCE ? -0.8 : 0.08);
+      this.move(dx, dy, d, dt, d < this.keepDistance ? -0.8 : 0.08);
     } else {
       this.channel = 0;
-      this.move(dx, dy, d, dt, d < KEEP_DISTANCE ? -0.9 : 0.25);
+      this.move(dx, dy, d, dt, d < this.keepDistance ? -0.9 : 0.25);
     }
 
     const half = WORLD_SIZE / 2;
@@ -61,20 +61,20 @@ export class PrismMedic extends BaseEnemy {
 
   findTargets() {
     const targets = [];
-    const range2 = ASSIST_RANGE * ASSIST_RANGE;
+    const range2 = this.assistRange * this.assistRange;
     for (const e of world.enemies) {
       if (e === this || e.dead || e.boss) continue;
       if (distSq(this.x, this.y, e.x, e.y) > range2) continue;
       targets.push(e);
     }
-    return targets.sort((a, b) => distSq(this.x, this.y, a.x, a.y) - distSq(this.x, this.y, b.x, b.y)).slice(0, 7);
+    return targets.sort((a, b) => distSq(this.x, this.y, a.x, a.y) - distSq(this.x, this.y, b.x, b.y)).slice(0, this.maxTargets);
   }
 
   applyAssist(dt) {
     for (const target of this.targets) {
-      target.prismAssistTimer = Math.max(target.prismAssistTimer || 0, 0.42);
-      target.prismAssistSpeedMult = target.elite ? 1.18 : 1.25;
-      target.prismAssistAttackSpeedMult = target.elite ? 1.22 : 1.34;
+      target.prismAssistTimer = Math.max(target.prismAssistTimer || 0, this.assistBuffDuration);
+      target.prismAssistSpeedMult = target.elite ? this.assistSpeedMulElite : this.assistSpeedMul;
+      target.prismAssistAttackSpeedMult = target.elite ? this.assistAttackSpeedMulElite : this.assistAttackSpeedMul;
       target.flash = Math.max(target.flash, 0.08);
       trail(this.x, this.y, target.x, target.y, this.color, 2);
       if (Math.random() < dt * 5) particle("mote", target.x, target.y, { color: this.color, life: 0.32, size: 2.6, alpha: 0.76 });

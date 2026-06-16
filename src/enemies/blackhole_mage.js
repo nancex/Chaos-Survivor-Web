@@ -88,7 +88,7 @@ export class BlackholeMage extends BaseEnemy {
     if (world.blackhole) trail(this.x, this.y, world.blackhole.x, world.blackhole.y, this.color, 3);
     if (this.channelTime <= 0) {
       this.state = "recover";
-      this.recoverTime = 0.55;
+      this.recoverTime = this.recoverDuration;
       this.cooldown = this.cd + Math.random() * this.cdRandom;
     }
   }

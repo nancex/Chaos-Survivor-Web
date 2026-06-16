@@ -22,7 +22,7 @@ export class BaseEnemy {
     this.type = config.id;
     this.x = x;
     this.y = y;
-    this.r = config.radius;
+    this.r = config.radius * (this.scale || 1);
     this.hp = config.hp * hpScale * (hpMul || 1);
     this.maxHp = this.hp;
     this.speed = config.speed * speedScale * (speedMul || 1);

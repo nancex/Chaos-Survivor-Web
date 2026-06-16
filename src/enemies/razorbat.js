@@ -4,8 +4,8 @@ import { burst, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
 import { BaseEnemy } from "./BaseEnemy.js";
 
-const ORBIT_RANGE = 330;
-const THROW_RANGE = 650;
+
+
 
 export class Razorbat extends BaseEnemy {
   constructor(config, x, y) {
@@ -34,12 +34,12 @@ export class Razorbat extends BaseEnemy {
       this.throwAngle = Math.atan2(dy, dx) + Math.sin(this.swoop) * 0.18;
       if (this.throwWindup <= 0) this.throwBlade();
     } else {
-      const dir = d < ORBIT_RANGE ? -0.42 : 0.82;
+      const dir = d < this.orbitRange ? -0.42 : 0.82;
       const strafe = 1.15 * Math.sin(this.swoop);
       this.x += (dx / d * dir + -dy / d * strafe) * this.speed * dt;
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
-      if (this.cooldown <= 0 && d < THROW_RANGE) {
-        this.throwWindup = 0.28;
+      if (this.cooldown <= 0 && d < this.throwRange) {
+        this.throwWindup = this.throwWindupTime;
         pulse(this.x, this.y, 24, this.color, 0.18);
       }
     }
@@ -55,14 +55,14 @@ export class Razorbat extends BaseEnemy {
     world.enemyProjectiles.push({
       x: this.x + Math.cos(a) * (this.r + 8),
       y: this.y + Math.sin(a) * (this.r + 8),
-      vx: Math.cos(a) * 250,
-      vy: Math.sin(a) * 250,
+      vx: Math.cos(a) * this.bladeSpeed,
+      vy: Math.sin(a) * this.bladeSpeed,
       r: 7,
       color: this.color,
-      damage: this.damage * 0.8,
-      life: 3.4,
-      maxLife: 3.4,
-      returnAt: 2.25,
+      damage: this.damage * this.bladeDamageMul,
+      life: this.bladeLife,
+      maxLife: this.bladeLife,
+      returnAt: this.bladeReturnAt,
       owner: this,
       shape: "razorBoomerang",
       spin: Math.random() * TAU,

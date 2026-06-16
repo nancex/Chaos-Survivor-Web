@@ -52,7 +52,7 @@ export class LaserEye extends BaseEnemy {
       const strafe = Math.sin(this.anim * 0.72) * 0.45;
       this.x += (dx / d * dir + -dy / d * strafe) * this.speed * dt;
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
-      if (this.cooldown <= 0 && d < 820) {
+      if (this.cooldown <= 0 && d < this.fireRange) {
         if (this.nextAttack === "shards") {
           this.fireLaserShardVolley(Math.atan2(dy, dx));
           this.nextAttack = "beam";

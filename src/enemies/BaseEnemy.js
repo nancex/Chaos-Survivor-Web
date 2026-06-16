@@ -1,4 +1,4 @@
-﻿import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE } from "../constants.js";
 import { state, world } from "../state.js";
 import { clamp, distSq } from "../utils.js";
 import { burst, pulse, spawnDamageText } from "../effects.js";
@@ -34,7 +34,7 @@ export class BaseEnemy {
     this.flash = 0;
     this.hitTimer = 0;
     this.anim = Math.random() * TAU;
-    this.cooldown = 0.8 + Math.random() * 1.2;
+    this.cooldown = this.cdInitial;
     this.flip = 1;
     this.phase = 0;
     this.shielded = false;
@@ -97,7 +97,7 @@ export class BaseEnemy {
     this.x += (dx / d) * this.speed * dir * dt;
     this.y += (dy / d) * this.speed * dir * dt;
     if (this.cooldown <= 0) {
-      this.cooldown = this.elite ? 0.75 : 1.25;
+      this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
       spawnEnemyBullet(this.x, this.y, Math.atan2(dy, dx), this.color, this.elite ? 220 : 180, this.damage * 0.65);
     }
   }
@@ -110,7 +110,7 @@ export class BaseEnemy {
   blink(dt, dx, dy, d) {
     this.chase(dt, dx, dy, d, 0.85);
     if (this.cooldown <= 0) {
-      this.cooldown = this.elite ? 1.1 : 1.8;
+      this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
       this.x = state.player.x - state.player.dirX * 150 + (Math.random() - 0.5) * 80;
       this.y = state.player.y - state.player.dirY * 150 + (Math.random() - 0.5) * 80;
       pulse(this.x, this.y, 42, this.color, 0.22);
@@ -120,7 +120,7 @@ export class BaseEnemy {
   mine(dt, dx, dy, d) {
     this.chase(dt, dx, dy, d, 0.7);
     if (this.cooldown <= 0) {
-      this.cooldown = 1.7;
+      this.cooldown = this.cd + Math.random() * this.cdRandom;
       addHazard(this.x, this.y, this.color, this.damage);
     }
   }
@@ -128,7 +128,7 @@ export class BaseEnemy {
   summoner(dt, dx, dy, d) {
     this.chase(dt, dx, dy, d, 0.55);
     if (this.cooldown <= 0) {
-      this.cooldown = this.elite ? 1.2 : 2.0;
+      this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
       spawnMinion(this.x, this.y);
     }
   }
@@ -152,7 +152,7 @@ export class BaseEnemy {
     this.phase += dt;
     this.chase(dt, dx, dy, d, 0.55);
     if (this.cooldown <= 0) {
-      this.cooldown = this.behavior === "boss_crystal" ? 1.0 : 1.45;
+      this.cooldown = this.behavior === "boss_crystal" ? this.cdElite : this.cd + Math.random() * this.cdRandom;
       const count = this.behavior === "boss_crystal" ? 18 : 10;
       for (let i = 0; i < count; i++) spawnEnemyBullet(this.x, this.y, (i / count) * TAU + this.phase, this.color, 170, this.damage * 0.45, { bossProjectile: true });
       if (this.behavior === "boss_void") addHazard(state.player.x, state.player.y, this.color, this.damage * 0.5);

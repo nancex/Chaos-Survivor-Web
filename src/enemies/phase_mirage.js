@@ -10,7 +10,7 @@ export class PhaseMirage extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "phase_mirage";
-    this.cooldown = 1.2 + Math.random() * 0.8;
+    this.cooldown = this.cdInitial;
     this.phaseState = "move";
     this.windup = 0;
     this.afterImages = [];
@@ -39,7 +39,7 @@ export class PhaseMirage extends BaseEnemy {
       this.strikeTimer -= dt;
       if (this.strikeTimer <= 0) {
         this.phaseState = "move";
-        this.cooldown = 2.2;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
       }
     } else {
       const dir = d < STRIKE_RANGE * 0.8 ? -0.35 : 0.92;

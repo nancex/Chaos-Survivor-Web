@@ -11,7 +11,7 @@ export class Gunner extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "gunner";
-    this.cooldown = 0.7 + Math.random() * 0.5;
+    this.cooldown = this.cdInitial;
     this.burstLeft = 0;
     this.burstDelay = 0;
     this.angle = 0;
@@ -46,7 +46,7 @@ export class Gunner extends BaseEnemy {
       this.pattern = ["triangle", "square", "hexagon", "circle"][Math.floor(Math.random() * 4)];
       this.burstLeft = 1;
       this.burstDelay = 0.01;
-      this.cooldown = this.elite ? 1.1 : 1.55;
+      this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
       pulse(this.x, this.y, 24, this.color, 0.12);
     }
 

@@ -11,7 +11,7 @@ export class Embermine extends BaseEnemy {
     super(config, x, y);
     this.behavior = "embermine";
     this.plantTime = 0;
-    this.cooldown = 1.2 + Math.random();
+    this.cooldown = this.cdInitial;
   }
 
   update(dt) {
@@ -36,7 +36,7 @@ export class Embermine extends BaseEnemy {
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
       if (this.cooldown <= 0 && d < 430) {
         this.plantTime = 0.36;
-        this.cooldown = 2.6;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
         pulse(this.x, this.y, 32, this.color, 0.22);
       }
     }

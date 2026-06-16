@@ -12,7 +12,7 @@ export class Pyromancer extends BaseEnemy {
     this.behavior = "pyromancer";
     this.aimTime = 0;
     this.aimAngle = 0;
-    this.cooldown = 1.2 + Math.random();
+    this.cooldown = this.cdInitial;
   }
 
   update(dt) {
@@ -48,7 +48,7 @@ export class Pyromancer extends BaseEnemy {
   }
 
   shootVolley() {
-    this.cooldown = 2.35;
+    this.cooldown = this.cd + Math.random() * this.cdRandom;
     const spread = 0.18;
     for (const offset of [-spread, 0, spread]) {
       const a = this.aimAngle + offset;

@@ -13,7 +13,7 @@ export class Wizard extends BaseEnemy {
     this.behavior = "wizard";
     this.castTime = 0;
     this.castAngle = 0;
-    this.cooldown = 1.15 + Math.random() * 0.8;
+    this.cooldown = this.cdInitial;
     this.orbit = Math.random() * TAU;
   }
 
@@ -55,7 +55,7 @@ export class Wizard extends BaseEnemy {
   }
 
   releaseSpell() {
-    this.cooldown = this.elite ? 1.35 : 1.95;
+    this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
     const count = this.elite ? 2 : 1;
     for (let i = 0; i < count; i++) {
       const a = this.castAngle + (count === 1 ? 0 : (i - 0.5) * 0.16);

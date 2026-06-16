@@ -11,7 +11,7 @@ export class MagnetRaider extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "magnet_raider";
-    this.cooldown = 1.2;
+    this.cooldown = this.cdInitial;
     this.orbit = Math.random() * TAU;
     this.stolen = 0;
     this.knockbackResistance = Math.max(this.knockbackResistance, 0.34);
@@ -35,7 +35,7 @@ export class MagnetRaider extends BaseEnemy {
     this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
     this.pullPickups(dt);
     if (this.cooldown <= 0) {
-      this.cooldown = 2.4;
+      this.cooldown = this.cd + Math.random() * this.cdRandom;
       pulse(this.x, this.y, ABSORB_RANGE * 0.22, this.color, 0.1);
     }
 

@@ -98,7 +98,7 @@
     "enemyDamage": 1,
     "enemySpeed": 1,
     "enemyHp": 1,
-    "coinGain": 2.0,
+    "coinGain": 2.5,
     "bossDamage": 1,
     "bossHp": 1,
     "name": "受控实验室",

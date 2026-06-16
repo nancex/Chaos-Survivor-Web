@@ -10,7 +10,7 @@ export class Pentastar extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "pentastar";
-    this.cooldown = 1.2 + Math.random() * 0.8;
+    this.cooldown = this.cdInitial;
     this.windup = 0;
     this.spin = Math.random() * TAU;
     this.fireAngle = 0;
@@ -51,7 +51,7 @@ export class Pentastar extends BaseEnemy {
   }
 
   firePentagram() {
-    this.cooldown = 2.25;
+    this.cooldown = this.cd + Math.random() * this.cdRandom;
     for (let i = 0; i < 5; i++) {
       const a = this.fireAngle + i * TAU / 5;
       world.enemyProjectiles.push({

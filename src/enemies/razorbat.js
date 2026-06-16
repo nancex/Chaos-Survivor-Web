@@ -11,7 +11,7 @@ export class Razorbat extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "razorbat";
-    this.cooldown = 0.9 + Math.random();
+    this.cooldown = this.cdInitial;
     this.swoop = Math.random() * TAU;
     this.throwWindup = 0;
     this.throwAngle = 0;
@@ -50,7 +50,7 @@ export class Razorbat extends BaseEnemy {
   }
 
   throwBlade() {
-    this.cooldown = this.elite ? 1.15 : 1.75;
+    this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
     const a = this.throwAngle;
     world.enemyProjectiles.push({
       x: this.x + Math.cos(a) * (this.r + 8),

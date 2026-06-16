@@ -12,7 +12,7 @@ export class SiegePylon extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "pylon";
-    this.cooldown = 1.1 + Math.random() * 0.6;
+    this.cooldown = this.cdInitial;
     this.charge = 0;
     this.volleyLeft = 0;
     this.volleyDelay = 0;
@@ -53,7 +53,7 @@ export class SiegePylon extends BaseEnemy {
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * 0.34 * dt;
       if (this.cooldown <= 0 && d < FIRE_RANGE) {
         this.charge = this.elite ? 0.28 : 0.4;
-        this.cooldown = this.elite ? 1.05 : 1.35;
+        this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
         pulse(this.x, this.y, this.r * 2.1, this.color, 0.18);
       }
     }

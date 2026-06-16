@@ -10,7 +10,7 @@ export class MagmaBeetle extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "magma_beetle";
-    this.cooldown = 1.1 + Math.random();
+    this.cooldown = this.cdInitial;
     this.state = "crawl";
     this.windup = 0;
     this.chargeTime = 0;
@@ -48,7 +48,7 @@ export class MagmaBeetle extends BaseEnemy {
       if (Math.random() < dt * 18) this.dropTrail((oldX + this.x) / 2, (oldY + this.y) / 2);
       if (this.chargeTime <= 0) {
         this.state = "crawl";
-        this.cooldown = 2.4;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
       }
     } else {
       this.x += dx / d * this.speed * dt;

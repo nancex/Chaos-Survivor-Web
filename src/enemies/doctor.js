@@ -12,7 +12,7 @@ export class Doctor extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "doctor";
-    this.cooldown = 0.8;
+    this.cooldown = this.cdInitial;
     this.healTarget = null;
     this.healTargets = [];
     this.channel = 0;
@@ -45,7 +45,7 @@ export class Doctor extends BaseEnemy {
         if (Math.random() < dt * 14) particle("healPlus", target.x, target.y - target.r - 8, { color: "#72ffb4", life: 0.42, size: 9, alpha: 0.9, vy: -18 });
       }
       if (this.channel <= 0) {
-        this.cooldown = 2.4;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
         pulse(this.x, this.y, HEAL_RANGE, "#72ffb4", 0.18);
         playSfx("level");
       }

@@ -11,7 +11,7 @@ export class BroodSeeder extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "summoner";
-    this.cooldown = 1.2 + Math.random() * 1.3;
+    this.cooldown = this.cdInitial;
     this.spawnWindup = 0;
     this.seedPulse = Math.random() * TAU;
     this.knockbackResistance = Math.max(this.knockbackResistance, 0.34);
@@ -40,7 +40,7 @@ export class BroodSeeder extends BaseEnemy {
       this.y += (dy / d * dir + dx / d * strafe) * this.speed * dt;
       if (this.cooldown <= 0 && this.canSummon()) {
         this.spawnWindup = 0.58;
-        this.cooldown = 3.2 + Math.random() * 0.8;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
         pulse(this.x, this.y, 42, this.color, 0.24);
       }
     }

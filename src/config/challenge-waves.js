@@ -18,7 +18,23 @@ export const CHALLENGE_WAVES = [
     wave: 2,
     type: "annihilation",
     groups: [
-      { time: 0, enemies: [{ id: "tank", count: 3 , config: { speed: 120 ,hp: 360} }, { id: "lancer", count: 4 , config: { speed: 180 ,hp: 300} }] },
+      { time: 0, enemies: [{ id: "tank", count: 3, config: { speed: 120, hp: 360 } }, { id: "lancer", count: 4, config: { speed: 180, hp: 300 } }] },
+    ],
+  },
+  {
+    wave: 3,
+    type: "annihilation",
+    groups: [
+      { time: 0, enemies: [{ id: "mech_worm", count: 4, config: { speed: 150, hp: 600 } }, { id: "lancer", count: 4, config: { speed: 180, hp: 300 } }] },
+      { time: 10, enemies: [{ id: "gunner", count: 3, config: { speed: 120, hp: 360 } }] },
+    ],
+  },
+  {
+    wave: 4,
+    type: "annihilation",
+    groups: [
+      { time: 0, enemies: [{ id: "zombie", count: 10, config: { speed: 160, hp: 200 } }] },
+      { time: 10, enemies: [{ id: "gunner", count: 3, config: { speed: 120, hp: 500, cd: 0.8} }] },
     ],
   },
 ];

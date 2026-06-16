@@ -1,4 +1,4 @@
-﻿import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE } from "../constants.js";
 import { state } from "../state.js";
 import { burst, pulse, trail } from "../effects.js";
 import { angleDiff, clamp } from "../utils.js";
@@ -22,7 +22,7 @@ export class MechWorm extends BaseEnemy {
     this.state = "hunt";
     this.chargeTime = 0;
     this.strikeTime = 0;
-    this.cooldown = 1.1 + Math.random() * 0.7;
+    this.cooldown = this.cdInitial;
     this.strikeAngle = 0;
     this.trailTimer = 0;
     this.coastTime = 0;
@@ -120,7 +120,7 @@ export class MechWorm extends BaseEnemy {
     if (this.strikeTime <= 0) {
       this.state = "coast";
       this.coastTime = 0.46 + this.difficultyRank * 0.05;
-      this.cooldown = 1.65;
+      this.cooldown = this.cd + Math.random() * this.cdRandom;
     }
   }
 

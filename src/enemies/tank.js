@@ -1,4 +1,4 @@
-﻿import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE } from "../constants.js";
 import { state, world } from "../state.js";
 import { burst } from "../effects.js";
 import { clamp } from "../utils.js";
@@ -13,7 +13,7 @@ export class Tank extends BaseEnemy {
     this.armor = 0.42;
     this.stance = 0;
     this.stanceCooldown = 1.4 + Math.random();
-    this.cooldown = 0.8;
+    this.cooldown = this.cdInitial;
     this.attackRange = 560;
     this.knockbackResistance = Math.max(this.knockbackResistance, 0.82);
   }
@@ -57,7 +57,7 @@ export class Tank extends BaseEnemy {
   }
 
   fireBurst(angle) {
-    this.cooldown = 2.35;
+    this.cooldown = this.cd + Math.random() * this.cdRandom;
     const baseSpeed = 250;
     for (let i = 0; i < 4; i++) {
       const a = angle + (i - 1.5) * 0.075;

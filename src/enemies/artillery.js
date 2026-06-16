@@ -11,7 +11,7 @@ export class Artillery extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "artillery";
-    this.cooldown = 1.4 + Math.random() * 0.8;
+    this.cooldown = this.cdInitial;
     this.charge = 0;
     this.target = { x, y };
     this.knockbackResistance = Math.max(this.knockbackResistance, 0.62);
@@ -40,7 +40,7 @@ export class Artillery extends BaseEnemy {
       if (this.cooldown <= 0 && d < FIRE_RANGE) {
         this.target = predictPlayerTarget();
         this.charge = this.elite ? 1.25 : 1.65;
-        this.cooldown = this.elite ? 2.7 : 3.35;
+        this.cooldown = this.elite ? this.cdElite : this.cd + Math.random() * this.cdRandom;
         pulse(this.target.x, this.target.y, 78, this.color, 0.52);
       }
     }

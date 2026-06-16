@@ -10,7 +10,7 @@ export class Gearfiend extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "gearfiend";
-    this.cooldown = 0.9 + Math.random() * 0.7;
+    this.cooldown = this.cdInitial;
     this.windup = 0;
     this.mode = "fast";
     this.angle = 0;
@@ -75,7 +75,7 @@ export class Gearfiend extends BaseEnemy {
         shape: "fastGear",
         spin: Math.random() * TAU,
       });
-      this.cooldown = 1.1;
+      this.cooldown = this.cd + Math.random() * this.cdRandom;
     } else {
       const a = this.angle;
       const x = clamp(this.x + Math.cos(a) * 180, -WORLD_SIZE / 2 + 80, WORLD_SIZE / 2 - 80);
@@ -97,7 +97,7 @@ export class Gearfiend extends BaseEnemy {
         trapDamage: this.damage * 0.82,
         trapLife: 3.4,
       });
-      this.cooldown = 1.8;
+      this.cooldown = this.cdAlt + Math.random() * this.cdAltRandom;
     }
     burst(this.x, this.y, 6, this.color, 140);
   }

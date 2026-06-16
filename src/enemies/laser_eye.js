@@ -1,4 +1,4 @@
-﻿import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE } from "../constants.js";
 import { state, world } from "../state.js";
 import { burst, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
@@ -14,7 +14,7 @@ export class LaserEye extends BaseEnemy {
     this.aimTime = 0;
     this.fireTime = 0;
     this.angle = 0;
-    this.cooldown = 1.4 + Math.random();
+    this.cooldown = this.cdInitial;
     this.nextAttack = "beam";
   }
 
@@ -45,7 +45,7 @@ export class LaserEye extends BaseEnemy {
       this.damageLaser(dt);
       if (this.fireTime <= 0) {
         this.state = "move";
-        this.cooldown = 2.4;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
       }
     } else {
       const dir = d < 480 ? -0.75 : 0.22;
@@ -56,7 +56,7 @@ export class LaserEye extends BaseEnemy {
         if (this.nextAttack === "shards") {
           this.fireLaserShardVolley(Math.atan2(dy, dx));
           this.nextAttack = "beam";
-          this.cooldown = 2.1;
+          this.cooldown = this.cdAlt + Math.random() * this.cdAltRandom;
           return;
         }
         this.state = "aim";

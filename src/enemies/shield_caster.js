@@ -11,7 +11,7 @@ export class ShieldCaster extends BaseEnemy {
   constructor(config, x, y) {
     super(config, x, y);
     this.behavior = "shield";
-    this.cooldown = 0.6;
+    this.cooldown = this.cdInitial;
     this.channel = 0;
     this.knockbackResistance = Math.max(this.knockbackResistance, 0.4);
   }
@@ -56,7 +56,7 @@ export class ShieldCaster extends BaseEnemy {
     }
 
     if (shielded > 0 && this.cooldown <= 0) {
-      this.cooldown = 1.1;
+      this.cooldown = this.cd + Math.random() * this.cdRandom;
       this.channel = 0.35;
       pulse(this.x, this.y, SHIELD_RANGE * 0.36, this.color, 0.16);
     }

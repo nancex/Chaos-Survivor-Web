@@ -13,7 +13,7 @@ export class PrismMedic extends BaseEnemy {
     this.name = "棱镜协助者";
     this.trait = "机动增幅";
     this.behavior = "prism_medic";
-    this.cooldown = 0.65 + Math.random() * 0.5;
+    this.cooldown = this.cdInitial;
     this.channel = 0;
     this.targets = [];
     this.orbit = Math.random() * TAU;
@@ -39,7 +39,7 @@ export class PrismMedic extends BaseEnemy {
       this.channel -= dt;
       this.applyAssist(dt);
       if (this.channel <= 0) {
-        this.cooldown = 1.85;
+        this.cooldown = this.cd + Math.random() * this.cdRandom;
         pulse(this.x, this.y, ASSIST_RANGE, this.color, 0.16);
       }
       this.move(dx, dy, d, dt, d < KEEP_DISTANCE ? -0.8 : 0.08);

@@ -16,13 +16,19 @@ function weaponSlotIndexForId(weaponId) {
 }
 function isManualPrimaryById(weaponId) {
   if (state.controlMode !== "manual" || weaponId === "drone") return false;
-  const idx = weaponSlotIndexForId(weaponId);
-  return idx >= 0 && idx === state.manualPrimaryIndex;
+  const inv = state.inventory;
+  if (!inv || state.manualPrimaryIndex == null) return false;
+  const primarySlot = inv.weaponSlots[state.manualPrimaryIndex];
+  return primarySlot && primarySlot.id === weaponId;
 }
+
 function manualDamageScale(weaponId) {
   if (state.controlMode !== "manual") return 1;
   if (weaponId === "drone") return 1;
-  if (isManualPrimaryById(weaponId)) return 1.5;
+  const inv = state.inventory;
+  if (!inv || state.manualPrimaryIndex == null) return 1;
+  const primarySlot = inv.weaponSlots[state.manualPrimaryIndex];
+  if (primarySlot && primarySlot.id === weaponId) return 1.5;
   return 0.5;
 }
 function getManualAimAngle() {

@@ -132,7 +132,7 @@ export class Gunner extends BaseEnemy {
     ctx.fillRect(-6 * z, -5 * z, 12 * z, 2 * z);
 
     ctx.save();
-    const localAngle = normalizeAngle(this.angle) * this.flip;
+    const localAngle = this.flip > 0 ? this.angle : Math.PI - this.angle;
     ctx.rotate(localAngle);
     ctx.fillStyle = dark;
     ctx.fillRect(6 * z, -4 * z, 25 * z, 8 * z);

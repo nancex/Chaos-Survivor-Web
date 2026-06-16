@@ -1927,7 +1927,7 @@ function updateProjectiles(dt) {
       applyKnockback(e, b.vx, b.vy, b.knockback);
       addProjectileHitShake(b);
       if (b.shape === "phaseNeedle") phaseNeedleHit(b, e);
-      if (b.freezeDuration > 0 && !e.dead && !e.boss && !e.controlImmune) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration);
+      if (b.freezeDuration > 0 && !e.dead && !e.boss && !e.controlImmune && !e.immuneFreeze) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration);
       burst(b.x, b.y, b.shape === "ice" ? 12 : 8, b.color, b.shape === "missile" ? 220 : 170);
       world.weaponFx.push({ kind: b.shape === "ice" ? "iceHit" : "hit", x: b.x, y: b.y, rank: b.qualityRank || 0, life: 0.18, maxLife: 0.18, color: b.color });
       if (b.shape === "ice" && b.iceRing) iceRingBurst(b);
@@ -2011,14 +2011,14 @@ function updateSingularityProjectile(b, index, dt) {
     const dy = b.y - e.y;
     const dist = Math.max(1, Math.hypot(dx, dy));
     const pullT = clamp(1 - dist / b.pullRadius, 0, 1);
-    const bossPullScale = e.controlImmune ? 0 : e.boss ? 0.08 : 1;
+    const bossPullScale = (e.controlImmune || e.immuneGravity) ? 0 : e.boss ? 0.08 : 1;
     const pull = b.pullStrength * pullT * pullT * bossPullScale * dt;
     e.x += (dx / dist) * pull;
     e.y += (dy / dist) * pull;
     if (dist < b.damageRadius + e.r) {
       const damageScale = 0.35 + pullT * 0.9;
       damageEnemy(e, b.damage * damageScale * dt, b.x, b.y);
-      if (!e.boss && !e.controlImmune) applyKnockback(e, dx, dy, -22 * pullT);
+      if (!e.boss && !e.controlImmune && !e.immuneGravity) applyKnockback(e, dx, dy, -22 * pullT);
       affected++;
     }
   }
@@ -2199,7 +2199,7 @@ function iceRingBurst(b) {
     if (b.hitIds.has(e) || e.dead) continue;
     damageEnemy(e, b.damage * 0.28, b.x, b.y);
     applyKnockback(e, e.x - b.x, e.y - b.y, 52);
-    if (!e.boss && !e.controlImmune) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.55);
+    if (!e.boss && !e.controlImmune && !e.immuneFreeze) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.55);
   }
   world.weaponFx.push({ kind: "shockRing", x: b.x, y: b.y, radius: 78, life: 0.24, maxLife: 0.24, color: b.color });
 }
@@ -2210,7 +2210,7 @@ function frostZone(b) {
   queryEnemies(b.x, b.y, radius, hits);
   for (const e of hits) {
     if (e.dead || e.boss) continue;
-    if (!e.controlImmune) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.75);
+    if (!e.controlImmune && !e.immuneFreeze) e.freezeTimer = Math.max(e.freezeTimer || 0, b.freezeDuration * 0.75);
   }
   world.weaponFx.push({ kind: "frostZone", x: b.x, y: b.y, radius, life: 0.75, maxLife: 0.75, color: b.color });
 }

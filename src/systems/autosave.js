@@ -1,4 +1,4 @@
-﻿import { state, world, createPlayer, createWeapons, createInventory, createEasterEggState } from "../state.js";
+import { state, world, createPlayer, createWeapons, createInventory, createEasterEggState } from "../state.js";
 import { recomputeAllWeapons } from "../economy/inventory.js";
 import { createShopState } from "../economy/shop.js";
 import { selectDifficulty } from "../difficulty.js";
@@ -35,6 +35,11 @@ export function autoSave() {
       spawnedBossWaves: [...(state.spawnedBossWaves || [])],
       thiefSpawnWave: state.thiefSpawnWave,
       thiefSpawnCount: state.thiefSpawnCount,
+      gameMode: state.gameMode,
+      controlMode: state.controlMode,
+      manualPrimaryIndex: state.manualPrimaryIndex,
+      spawnBudget: state.spawnBudget,
+      challengeSpawnTime: state.challengeSpawnTime,
       bossWaveActive: state.bossWaveActive,
       pendingNextWave: state.pendingNextWave,
     };
@@ -94,6 +99,10 @@ export function loadAutoSave() {
     state.spawnedBossWaves = new Set(data.spawnedBossWaves || []);
     state.thiefSpawnWave = data.thiefSpawnWave || 0;
     state.thiefSpawnCount = data.thiefSpawnCount || 0;
+    state.gameMode = data.gameMode || "swarm";
+    state.controlMode = data.controlMode || "auto";
+    state.manualPrimaryIndex = data.manualPrimaryIndex ?? null;
+    state.challengeSpawnTime = data.challengeSpawnTime ?? 0;
     state.bossWaveActive = data.bossWaveActive || false;
     state.pendingNextWave = data.pendingNextWave || false;
     selectDifficulty(data.difficultyId);
@@ -107,7 +116,6 @@ export function loadAutoSave() {
     state.spawnBudget = data.spawnBudget ?? 0;
     state.waveDuration = data.waveDuration ?? Math.min(60, 30 + (state.wave - 1) * 2);
     state.waveTimeLeft = data.waveTimeLeft ?? state.waveDuration;
-    state.bossWaveActive = false;
 
     return true;
   } catch {

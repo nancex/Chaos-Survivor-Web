@@ -151,7 +151,7 @@ export function updateEnemies(dt) {
   for (let i = world.enemies.length - 1; i >= 0; i--) {
     const e = world.enemies[i];
     updateEnemyKnockback(e, dt);
-    if (e.controlImmune && e.freezeTimer > 0) e.freezeTimer = 0;
+    if ((e.controlImmune || e.immuneFreeze) && e.freezeTimer > 0) e.freezeTimer = 0;
     if (e.freezeTimer > 0 && !e.boss) {
       e.freezeTimer = Math.max(0, e.freezeTimer - dt);
       e.hitTimer = Math.max(0, e.hitTimer - dt);
@@ -778,7 +778,7 @@ function updateGravityWell(h, dt) {
   if (h.armTime > 0) return;
   pullBody(state.player, h, dt, h.pull || 150, 0.5);
   for (const e of world.enemies) {
-    if (e.dead || e.boss) continue;
+    if (e.dead || e.boss || e.immuneGravity) continue;
     pullBody(e, h, dt, (h.pull || 150) * 0.38, 0.3);
   }
   for (const collection of [world.gems, world.coins]) {

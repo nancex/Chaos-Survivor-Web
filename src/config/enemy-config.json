@@ -38,7 +38,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "lancer": {
     "name": "突刺者",
@@ -87,7 +89,9 @@
     "dashDuration": 0.58,
     "recoverDuration": 0.34,
     "windupDuration": 0.52,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "wisp": {
     "name": "冰霜幽灵",
@@ -134,7 +138,9 @@
     "farDist": 460,
     "shootInitialCd": 0.7,
     "shootInitialCdRandom": 0.6,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_large": {
     "name": "大型史莱姆",
@@ -171,7 +177,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_medium": {
     "name": "中型史莱姆",
@@ -208,7 +216,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_small": {
     "name": "小型史莱姆",
@@ -245,7 +255,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "blackhole_mage": {
     "name": "黑洞法师",
@@ -285,7 +297,9 @@
     "recoverTime": 0.55,
     "channelDuration": 1.5,
     "recoverDuration": 0.55,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "mech_worm": {
     "name": "机械蠕虫",
@@ -318,7 +332,9 @@
     "speedMul": 1.08,
     "chargeDuration": 0.46,
     "strikeDuration": 0.62,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "doctor": {
     "name": "战地医生",
@@ -344,7 +360,9 @@
     "healRange": 260,
     "keepDistance": 330,
     "channelTime": 2.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "embermine": {
     "name": "余烬地雷兽",
@@ -380,7 +398,9 @@
     "maxMines": 16,
     "armRange": 430,
     "plantDuration": 0.36,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "exploder": {
     "name": "爆裂自毁者",
@@ -418,7 +438,9 @@
     "explodeRadius": 92,
     "fuseTime": 1.05,
     "armedSpeedMul": 0.42,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "tank": {
     "name": "重装坦克",
@@ -453,7 +475,9 @@
     "attackDist": 560,
     "armorValue": 0.42,
     "stanceInterval": 5.2,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "pyromancer": {
     "name": "烈焰人",
@@ -484,7 +508,9 @@
     "bulletLife": 4,
     "volleySpread": 0.18,
     "aimDuration": 0.55,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "laser_eye": {
     "difficultyWaves": {
@@ -553,7 +579,9 @@
     "shardVolleyCount": 3,
     "shardVolleySpeed": 420,
     "shardVolleyDamageMul": 0.56,
-    "shardVolleyLife": 2.2
+    "shardVolleyLife": 2.2,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "razorbat": {
     "name": "刃翼蝠",
@@ -593,7 +621,9 @@
     "bladeLife": 3.4,
     "bladeReturnAt": 2.25,
     "throwWindupTime": 0.28,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "wizard": {
     "name": "奥术巫师",
@@ -626,7 +656,9 @@
     "spellCountElite": 2,
     "castDuration": 0.68,
     "castTimeElite": 0.48,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "pentastar": {
     "name": "机械五角星",
@@ -654,7 +686,9 @@
     "bulletSpeed": 230,
     "bulletDamageMul": 0.62,
     "bulletLife": 3.2,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "gearfiend": {
     "name": "齿轮怪",
@@ -695,7 +729,9 @@
     "trapRadius": 38,
     "trapDamageMul": 0.82,
     "trapLife": 3.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "prism_medic": {
     "name": "棱镜协助者",
@@ -726,7 +762,9 @@
     "assistDuration": 0.42,
     "maxTargets": 7,
     "channelDuration": 1.25,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "phase_mirage": {
     "name": "裂相幻影",
@@ -756,7 +794,9 @@
     "shardDamageMul": 0.34,
     "shardLife": 0.75,
     "strikeDuration": 0.34,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "magnet_raider": {
     "name": "磁暴采掠者",
@@ -796,7 +836,9 @@
     "keepDistance": 310,
     "pullStrength": 230,
     "pullBase": 45,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "magma_beetle": {
     "name": "熔核甲虫",
@@ -824,7 +866,9 @@
     "trailDamageMul": 0.45,
     "trailLife": 1.5,
     "chargeDuration": 0.82,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "siege_pylon": {
     "name": "攻城棱塔",
@@ -864,7 +908,9 @@
     "volleySpread": 0.26,
     "volleySpreadElite": 0.34,
     "speedMul": 0.34,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "brood_seeder": {
     "name": "巢种播撒者",
@@ -901,7 +947,9 @@
     "summonLimit": 7,
     "keepRange": 280,
     "spawnWindupTime": 0.58,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "line_raider": {
     "name": "裂空突袭者",
@@ -931,7 +979,9 @@
     "initialTimerRandom": 1,
     "dashDefenseMul": 0.05,
     "warnDefenseMul": 0.35,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "shield_caster": {
     "name": "护盾施术者",
@@ -958,7 +1008,9 @@
     "keepRange": 320,
     "clusterRange": 420,
     "channelDuration": 0.35,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "gunner": {
     "name": "几何枪手",
@@ -1000,7 +1052,9 @@
     "bulletDamageMul": 0.46,
     "burstDelay": 0.12,
     "burstDelayTime": 0.12,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "artillery": {
     "name": "炮击方碑",
@@ -1027,7 +1081,9 @@
     "fireRange": 1160,
     "chargeTime": 1.65,
     "chargeTimeElite": 1.25,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "storm_tyrant": {
     "name": "风暴暴君",
@@ -1143,7 +1199,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_gold": {
     "name": "黄金史莱姆",
@@ -1169,7 +1227,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_glow": {
     "name": "荧光史莱姆",
@@ -1195,7 +1255,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_weeping": {
     "name": "哭泣的史莱姆",
@@ -1221,7 +1283,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_devil": {
     "name": "恶魔史莱姆",
@@ -1247,7 +1311,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_angel": {
     "name": "天使史莱姆",
@@ -1273,7 +1339,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "thief": {
     "name": "实验室小偷",
@@ -1301,7 +1369,9 @@
     "cd": 0.8,
     "cdRandom": 1.2,
     "cdInitial": 1.4,
-    "scale": 1.0
+    "scale": 1.0,
+    "immuneFreeze": false,
+    "immuneGravity": false
   },
   "slime_king": {
     "name": "史莱姆王",

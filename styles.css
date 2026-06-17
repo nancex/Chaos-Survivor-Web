@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --ink: #f3f7ff;
   --muted: #a7b4c7;
   --panel: rgba(10, 16, 28, 0.78);
@@ -3207,6 +3207,7 @@ h2 {
 
 .shop-card {
   --quality: var(--cyan);
+  position: relative;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   min-height: 260px;
@@ -4168,6 +4169,37 @@ h2 {
   box-shadow:
     0 0 18px color-mix(in srgb, var(--quality, var(--cyan)) 30%, transparent),
     inset 0 0 14px rgba(255, 255, 255, 0.055);
+}
+
+/* Fuse badge - glowing thumbs up for fusable weapons */
+.shop-fuse-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  font-size: 22px;
+  border-radius: 5px;
+  background: rgba(66, 232, 255, 0.12);
+  border: 1px solid rgba(66, 232, 255, 0.55);
+  animation: fuse-badge-glow 1.2s ease-in-out infinite alternate;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes fuse-badge-glow {
+  0% {
+    box-shadow: 0 0 6px rgba(66, 232, 255, 0.3), 0 0 12px rgba(66, 232, 255, 0.15);
+    border-color: rgba(66, 232, 255, 0.45);
+    background: rgba(66, 232, 255, 0.08);
+  }
+  100% {
+    box-shadow: 0 0 14px rgba(66, 232, 255, 0.65), 0 0 28px rgba(66, 232, 255, 0.35);
+    border-color: rgba(66, 232, 255, 0.75);
+    background: rgba(66, 232, 255, 0.18);
+  }
 }
 
 .shop-card-top i::after,

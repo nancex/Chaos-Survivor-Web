@@ -1,4 +1,4 @@
-import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE, SUMMON_LIMIT } from "../constants.js";
 import { state, world } from "../state.js";
 import { burst, particle, pulse } from "../effects.js";
 import { clamp } from "../utils.js";

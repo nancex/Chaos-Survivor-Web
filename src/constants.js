@@ -5,6 +5,7 @@ export const TOTAL_WAVES = 20;
 export const FIRST_WAVE_SECONDS = 30;
 export const MAX_WAVE_SECONDS = 60;
 export const ENEMY_LIMIT = 420;
+export const SUMMON_LIMIT = 36;
 export const PROJECTILE_LIMIT = 360;
 export const GEM_LIMIT = 360;
 export const PARTICLE_LIMIT = 520;

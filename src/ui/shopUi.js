@@ -117,7 +117,8 @@ function renderOffer(offer) {
   buy.disabled = Boolean(reason);
   buy.title = reason;
   buy.addEventListener("click", () => {
-    const result = purchaseOffer(offer.uid);
+    const opts = fuseTarget ? { fuseWeaponUid: fuseTarget.uid } : {};
+    const result = purchaseOffer(offer.uid, opts);
     renderShop(result.ok ? (fuseTarget ? text.fuseSuccess : text.bought) : result.reason);
   });
 
@@ -136,6 +137,7 @@ function renderOffer(offer) {
       <span>${offer.price} ${text.coin}</span>
       ${fuseTarget ? `<span>${text.directFuse}</span>` : ""}
     </div>
+    ${fuseTarget && offer.rarity !== "legendary" && offer.purchaseCount === 0 ? `<div class="shop-fuse-badge" title="\u53ef\u5408\u6210">\ud83d\udc4d</div>` : ""}
   `;
   const actions = document.createElement("div");
   actions.className = "shop-card-actions";

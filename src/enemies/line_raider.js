@@ -1,4 +1,4 @@
-﻿import { TAU, WORLD_SIZE } from "../constants.js";
+import { TAU, WORLD_SIZE } from "../constants.js";
 import { state } from "../state.js";
 import { burst, particle, pulse } from "../effects.js";
 import { clamp } from "../utils.js";
@@ -132,7 +132,7 @@ export class LineRaider extends BaseEnemy {
 }
 
 function drawWarningLine(ctx, e) {
-  const k = Math.max(0, e.timer / this.warningTime);
+  const k = Math.max(0, e.timer / e.warningTime);
   ctx.save();
   ctx.strokeStyle = `rgba(255,255,255,${0.25 + (1 - k) * 0.32})`;
   ctx.lineWidth = 18 + Math.sin(state.time * 18) * 2;
